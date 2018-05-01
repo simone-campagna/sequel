@@ -1,0 +1,9 @@
+gmpy2
+numpy
+sympy
+astor
+termcolor
+pytest
+pytest-cov
+pytest-sugar
+pylint
