@@ -407,7 +407,7 @@ Compile a sequence and tries to search it using the hierarchical algorithm""")
             help="multiline item mode")
 
         mode_group.add_argument(
-            "-1", "--oneline",
+            "-o", "--oneline",
             dest="item_mode", action="store_const", const="oneline",
             default=None,
             help="oneline item mode")
