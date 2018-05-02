@@ -18,6 +18,8 @@ from sequel.sequence import (
     derivative,
     Geometric,
     Arithmetic,
+    Repunit,
+    Demlo,
     verify_traits,
 )
 
@@ -119,6 +121,10 @@ _refs = [
                       51724158235372, 474869816156751]],
     ["genocchi", Genocchi(), [1, -1, 0, 1, 0, -3, 0, 17, 0, -155, 0, 2073, 0, -38227, 0, 929569, 0,
                               -28820619, 0, 1109652905, 0, -51943281731]],
+    ["repunit", Repunit(), [1, 11, 111, 1111, 11111, 111111]],
+    ["repunit", Repunit(10), [1, 11, 111, 1111, 11111, 111111]],
+    ["Repunit(base=2)", Repunit(2), [1, 3, 7, 15, 31, 63]],
+    ["demlo", Demlo(), [i ** 2 for i, _ in zip(Repunit(), range(10))]],
 ]
 
 

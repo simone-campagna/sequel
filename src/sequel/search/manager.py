@@ -53,9 +53,22 @@ class Manager(object):
             callback=self.set_result,
             items=())
         self.queue(items, priority=0, dependencies=[dependency])
-        while self._queue and not self._results:
-            self.process()
-        sequences = sorted(self._results, key=lambda x: x.complexity())
+        queue = self._queue
+        results = self._results
+        while queue and not results:
+            entry = queue.pop(0)
+            priority = entry.priority
+            items = entry.items
+            for algorithm in self.algorithms:
+                sequences = set(algorithm(self, items, priority))
+                if sequences:
+                    self.set_found(priority, items, sequences)
+                if results:
+                    break
+            self._queued_items.discard(entry.items)
+        # while self._queue and not self._results:
+        #     self.process()
+        sequences = sorted(results, key=lambda x: x.complexity())
         yield from sequences
 
     def set_result(self, manager, items, sequences):
@@ -93,18 +106,18 @@ class Manager(object):
 
         self._queued_items.add(entry.items)
 
-    def process(self):
-        queue = self._queue
-        while queue:
-            entry = queue.pop(0)
-            priority = entry.priority
-            items = entry.items
-            for algorithm in self.algorithms:
-                sequences = set(algorithm(self, items, priority))
-                if sequences:
-                    self.set_found(priority, items, sequences)
-            self._queued_items.discard(entry.items)
-            break
+    # def process(self):
+    #     queue = self._queue
+    #     while queue:
+    #         entry = queue.pop(0)
+    #         priority = entry.priority
+    #         items = entry.items
+    #         for algorithm in self.algorithms:
+    #             sequences = set(algorithm(self, items, priority))
+    #             if sequences:
+    #                 self.set_found(priority, items, sequences)
+    #         self._queued_items.discard(entry.items)
+    #         break
 
     def set_found(self, priority, items, sequences):
         managed = set()

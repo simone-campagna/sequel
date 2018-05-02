@@ -20,6 +20,7 @@ from .first_level import (
     SearchFibonacci,
     SearchPolynomial,
     SearchLinearCombination,
+    SearchRepunit,
 )
 from .common_factors import (
     SearchCommonFactors,
@@ -60,6 +61,7 @@ def search_config(defaults=True):
         SearchPower,
         SearchFibonacci,
         SearchPolynomial,
+        SearchRepunit,
         SearchLinearCombination,
         SearchMul,
         SearchDiv,

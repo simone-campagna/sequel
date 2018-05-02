@@ -32,6 +32,10 @@ from .number_theory import (
     MersennePrime,
     Euler, Bell, Genocchi,
 )
+from .repunit import (
+    Repunit,
+    Demlo,
+)
 from .trait import (
     Trait,
     verify_traits,

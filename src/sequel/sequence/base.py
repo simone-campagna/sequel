@@ -67,7 +67,9 @@ class Sequence(metaclass=SMeta):
     __ignored_errors__ = (ArithmeticError, OverflowError, ValueError, IndexError, SequenceUnknownValueError)
 
     def __new__(cls, *args, **kwargs):
-        parameters = (cls,) + tuple(cls.__signature__.bind(None, *args, **kwargs).arguments.items())[1:]
+        bound_args = cls.__signature__.bind(None, *args, **kwargs)
+        bound_args.apply_defaults()
+        parameters = (cls,) + tuple(bound_args.arguments.items())[1:]
         if parameters in cls.__instances__:
             return cls.__instances__[parameters]
         else:
@@ -78,6 +80,11 @@ class Sequence(metaclass=SMeta):
             instance._instance_expr = None
             cls.__instances__[parameters] = instance
             return instance
+
+    def __init__(self):
+        # WARNING: this empty __init__method is needed in order to correctly
+        #          inspect default arguments in __new__
+        pass
 
     def as_string(self):
         if self._instance_symbol is None:

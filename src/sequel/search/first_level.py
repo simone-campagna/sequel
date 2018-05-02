@@ -14,6 +14,7 @@ from ..sequence import (
     Const, Integer,
     Arithmetic, Geometric,
     Power, make_fibonacci,
+    Repunit,
 )
 from ..utils import (
     affine_transformation,
@@ -32,6 +33,7 @@ __all__ = [
     "SearchFibonacci",
     "SearchPolynomial",
     "SearchLinearCombination",
+    "SearchRepunit",
 ]
 
 
@@ -432,3 +434,19 @@ class SearchLinearCombination(SearchAlgorithm):
                         yield sequence
                     if num_components <= self.min_components:
                         return
+
+
+class SearchRepunit(SearchAlgorithm):
+    """Search for repunit sequences"""
+    __accepts_undefined__ = True
+    __min_items__ = 3
+
+    def iter_sequences(self, manager, items, priority):
+        it0 = items[0]  # base ** 0 => it0 == 1
+        base = items[1] - items[0]  # it0 + base ** 1 => it0 + base => base = it1 - it0
+        if it0 == 1:
+            sequence = Repunit(base=base)
+            if sequence_matches(sequence, items):
+                yield sequence
+
+
