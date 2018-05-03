@@ -78,6 +78,7 @@ class Sequence(metaclass=SMeta):
             instance._instance_traits = frozenset(cls.__traits__)
             instance._instance_symbol = None
             instance._instance_expr = None
+            instance._instance_doc = None
             cls.__instances__[parameters] = instance
             return instance
 
@@ -108,11 +109,18 @@ class Sequence(metaclass=SMeta):
     def traits(self):
         return self._instance_traits
 
-    def register(self, name, *traits):
+    def set_traits(self, *traits):
         for trait in traits:
             if not isinstance(trait, Trait):
                 raise TypeError("{!r} is not a Trait".format(trait))
         self._instance_traits |= frozenset(traits)
+        return self
+
+    def set_doc(self, doc):
+        self._instance_doc = doc
+        return self
+
+    def register(self, name):
         if name is not None:
             self._instance_symbol = name
             self.__registry__[name] = self
@@ -129,15 +137,16 @@ class Sequence(metaclass=SMeta):
     def __getitem__(self, i):
         return self(i)
 
+    def doc(self):
+        """Returns the documentation"""
+        if self._instance_doc:
+            return self._instance_doc
+        else:
+            return self.description()
+
     def description(self):
         """Returns the sequence description"""
         return repr(self)
-        lst = [self.__class__.__name__]
-        doc = self.doc()
-        if doc:
-            lst.append(" - ")
-            lst.append(doc)
-        return "".join(lst)
 
     @classmethod
     def get_registry(cls):
@@ -644,7 +653,7 @@ class Const(Function):
     def _str_impl(self):
         return str(self.__value)
 
-Integer().register('i', Trait.INJECTIVE, Trait.POSITIVE)
-Natural().register('n', Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
-# NegInteger().register('neg_i', Trait.INJECTIVE, Trait.NEGATIVE)
-# NegNatural().register('neg_n', Trait.INJECTIVE, Trait.NEGATIVE, Trait.NON_ZERO)
+Integer().register('i').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+Natural().register('n').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
+# NegInteger().register('neg_i').set_traits(Trait.INJECTIVE, Trait.NEGATIVE)
+# NegNatural().register('neg_n').set_traits(Trait.INJECTIVE, Trait.NEGATIVE, Trait.NON_ZERO)

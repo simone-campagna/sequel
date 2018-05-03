@@ -129,7 +129,7 @@ class Printer(object):
     def print_doc(self, sequence, num_items=None, full=False):
         if num_items is None:
             num_items = self.num_items
-        print(self.bold(str(sequence)) + " : " + sequence.description(), file=self.file)
+        print(self.bold(str(sequence)) + " : " + sequence.doc(), file=self.file)
         if full and sequence.traits:
             print(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
         if num_items:
@@ -159,14 +159,27 @@ class Printer(object):
     
     
     def print_tree(self, sequence):
+        max_complexity = sequence.complexity()
+        max_len = 1
+        while True:
+            if 10 ** max_len > max_complexity:
+                break
+            max_len += 1
+        if max_complexity < 10:
+            max_len = 1
+        elif max_complexity < 100:
+            max_len = 2
         for depth, child in sequence.walk():
             rchild = repr(child)
             schild = str(child)
+            complexity = str(child.complexity())
+            if len(complexity) < max_len:
+                complexity = (" " * (max_len - len(complexity))) + complexity
             lst = [self.bold(schild)]
             if schild != rchild:
                 lst.append(":")
                 lst.append(rchild)
-            hdr = ("  " * depth)
+            hdr = "{} ".format(self.blue(complexity)) + ("  " * depth)
             print(hdr + " ".join(lst), file=self.file)
     
     

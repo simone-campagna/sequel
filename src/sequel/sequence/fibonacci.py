@@ -69,9 +69,9 @@ class Fib(Iterator):
             return False
 
 
-FIB01 = Fib01().register('fib01', Trait.POSITIVE)
-FIB11 = Fib11().register('fib11', Trait.POSITIVE, Trait.NON_ZERO)
-LUCAS = Lucas().register('lucas', Trait.POSITIVE, Trait.NON_ZERO)
+FIB01 = Fib01().register('fib01').set_traits(Trait.POSITIVE)
+FIB11 = Fib11().register('fib11').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
+LUCAS = Lucas().register('lucas').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
 
 
 def make_fibonacci(first=0, second=1):

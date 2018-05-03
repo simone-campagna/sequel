@@ -7,15 +7,20 @@ import inspect
 from ..config import register_config, get_config
 from ..modules import make_ref, load_ref
 
-from .manager import Manager
-
+from .manager import (
+    Manager,
+    Collector,
+    Handler,
+    StopAtFirst,
+    StopAtLast,
+    StopBelowComplexity,
+)
 from .base import SearchAlgorithm
 from .first_level import (
     SearchCatalog,
     SearchAffineTransform,
     SearchArithmetic,
     SearchGeometric,
-    SearchAffineGeometric,
     SearchPower,
     SearchFibonacci,
     SearchPolynomial,
@@ -57,7 +62,6 @@ def search_config(defaults=True):
         SearchAffineTransform,
         SearchArithmetic,
         SearchGeometric,
-        SearchAffineGeometric,
         SearchPower,
         SearchFibonacci,
         SearchPolynomial,

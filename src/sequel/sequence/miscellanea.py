@@ -36,8 +36,8 @@ class Power(Function):
             return False
 
 
-Power(power=2).register('square', Trait.INJECTIVE, Trait.POSITIVE)
-Power(power=3).register('cube', Trait.INJECTIVE, Trait.POSITIVE)
+Power(power=2).register('square').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+Power(power=3).register('cube').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
 
 
 class Arithmetic(Function):
@@ -66,8 +66,8 @@ class Arithmetic(Function):
             return False
 
 
-Arithmetic(start=0, step=2).register('even', Trait.INJECTIVE, Trait.POSITIVE)
-Arithmetic(start=1, step=2).register('odd', Trait.INJECTIVE, Trait.POSITIVE)
+Arithmetic(start=0, step=2).register('even').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+Arithmetic(start=1, step=2).register('odd').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
 
 
 class Geometric(Function):
@@ -91,9 +91,9 @@ class Geometric(Function):
             return False
 
 
-Geometric(base=2).register('power_of_2', Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
-Geometric(base=3).register('power_of_3', Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
-Geometric(base=10).register('power_of_10', Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
+Geometric(base=2).register('power_of_2').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
+Geometric(base=3).register('power_of_3').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
+Geometric(base=10).register('power_of_10').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
 
 
 class ZeroOne(Function):
@@ -104,4 +104,4 @@ class ZeroOne(Function):
         return """f(n) =  n % 2  => [0, 1, 0, 1, 0, 1, ...]"""
 
 
-ZeroOne().register('zero_one', Trait.POSITIVE)
+ZeroOne().register('zero_one').set_traits(Trait.POSITIVE)

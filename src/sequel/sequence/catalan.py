@@ -23,4 +23,4 @@ class Catalan(Function):
         return """f(n): n-th Catalan number"""
 
 
-Catalan().register('catalan', Trait.POSITIVE, Trait.NON_ZERO)
+Catalan().register('catalan').set_traits(Trait.POSITIVE, Trait.NON_ZERO)

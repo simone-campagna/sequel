@@ -28,7 +28,6 @@ __all__ = [
     "SearchAffineTransform",
     "SearchArithmetic",
     "SearchGeometric",
-    "SearchAffineGeometric",
     "SearchPower",
     "SearchFibonacci",
     "SearchPolynomial",
@@ -127,46 +126,51 @@ class SearchGeometric(SearchAlgorithm):
         base = get_base(items)
         if base is not None:
             yield Geometric(base=base)
+        else:
+            # affine transform
+            # solve a + b * c^x = items, with x = [0, 1, 2, 3, ...]:
+            # 0. x == 0: a + b * c^0 = a + b := items[0] == i0
+            #    b = i0 - a
+            # 1. x == 1: a + b * c^1 = a + b * c := i1
+            #    a + (i0 - a) * c = i1
+            #    c = (i1 - a) / (i0 - a)
+            # 2. x == 2: a + b * c^2 = a + b * c^2 := i2
+            #    a + (i0 - a) * [(i1 - a) / (i0 - a)]^2 = i2
+            #    a + (i1 - a)^2 / (i0 - a) = i2
+            #    (i1 - a)^2 / (i0 - a) = i2 - a
+            #    (i1 - a)^2 = (i0 - a) * (i2 - a)
+            #    i1^2 + a^2 - 2 * a * i1 = i0 * i2 - i0 * a - i2 * a + a*2
+            #    -2 * i1 * a + (i0 + i2) * a = i0 * i2 - i1^2
+            #    (i0 -2 * i1 + i2) * a = i0 * i2 - i1^2
+            #    a = (i0 * i2 - i1^2) / (i0 -2 * i1 + i2)
+            if len(items) < 3:
+                return
+            i0, i1, i2 = items[:3]
+            den = i0 - (2 * i1) + i2
+            if den == 0:
+                return
 
-
-class SearchAffineGeometric(SearchAlgorithm):
-    """Search for sequences a + b * c^i == a + b * Geometric(c)"""
-
-    def iter_sequences(self, manager, items, priority):
-        # solve a + b * c^x = items, with x = [0, 1, 2, 3, ...]:
-        # 0. x == 0: a + b * c^0 = a + b := items[0] == i0
-        #    b = i0 - a
-        # 1. x == 1: a + b * c^1 = a + b * c := i1
-        #    a + (i0 - a) * c = i1
-        #    c = (i1 - a) / (i0 - a)
-        # 2. x == 2: a + b * c^2 = a + b * c^2 := i2
-        #    a + (i0 - a) * [(i1 - a) / (i0 - a)]^2 = i2
-        #    a + (i1 - a)^2 / (i0 - a) = i2
-        #    (i1 - a)^2 / (i0 - a) = i2 - a
-        #    (i1 - a)^2 = (i0 - a) * (i2 - a)
-        #    i1^2 + a^2 - 2 * a * i1 = i0 * i2 - i0 * a - i2 * a + a*2
-        #    -2 * i1 * a + (i0 + i2) * a = i0 * i2 - i1^2
-        #    (i0 -2 * i1 + i2) * a = i0 * i2 - i1^2
-        #    a = (i0 * i2 - i1^2) / (i0 -2 * i1 + i2)
-        if len(items) < 3:
-            return
-        den = items[0] - (2 * items[1]) + items[2]
-        if den == 0:
-            return
-        fa = ((items[0] * items[2]) - (items[1] ** 2)) / den
-        a = int(fa)
-        if a != fa or a == items[0]:
-            return
-        b = items[0] - a
-        fc = (items[1] - a) / (items[0] - a)
-        c = int(fc)
-        if c != fc or c < 2:
-            return
-        sequence = a + b * Geometric(base=c)
-        # sequence = sequence.simplify()
-        # can fail since only few elements are checked
-        if sequence_matches(sequence, items):
-            yield sequence
+            fa = ((i0 * i2) - (i1 ** 2)) / den
+            a = int(fa)
+            if a != fa or a == i0:
+                return
+            b = i0 - a
+            fc = (i1 - a) / (i0 - a)
+            c = int(fc)
+            if c != fc or c < 2:
+                return
+            sequence = Geometric(base=c)
+            if b == -1:
+                sequence = -sequence
+            elif b != 1:
+                sequence = b * sequence
+            if a != 0:
+                sequence = a + sequence
+            #sequence = a + b * Geometric(base=c)
+            # sequence = sequence.simplify()
+            # can fail since only few elements are checked
+            if sequence_matches(sequence, items):
+                yield sequence
 
 
 class SearchPower(SearchAlgorithm):
@@ -446,7 +450,9 @@ class SearchRepunit(SearchAlgorithm):
         base = items[1] - items[0]  # it0 + base ** 1 => it0 + base => base = it1 - it0
         if it0 == 1:
             sequence = Repunit(base=base)
-            if sequence_matches(sequence, items):
-                yield sequence
+        else:
+            sequence = (it0 - 1) + Repunit(base=base)
+        if sequence_matches(sequence, items):
+            yield sequence
 
 

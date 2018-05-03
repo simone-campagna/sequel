@@ -35,7 +35,7 @@ class Repunit(Sequence):
             s += base ** i
 
 
-Repunit().register('repunit', Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
+Repunit().register('repunit').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
 
 
 class Demlo(Sequence):
@@ -53,4 +53,6 @@ class Demlo(Sequence):
             s += base ** i
 
 
-Demlo().register('demlo', Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
+#(Repunit() ** 2).register('demlo').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE).set_doc("f(n) := the Demlo numbers, defined as repunit ** 2")
+Demlo().register('demlo').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
+

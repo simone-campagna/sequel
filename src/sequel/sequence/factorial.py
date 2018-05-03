@@ -22,4 +22,4 @@ class Factorial(Function):
         return """f(n) := n * f(n - 1), f(0) := 1"""
 
 
-Factorial().register('factorial', Trait.POSITIVE, Trait.NON_ZERO)
+Factorial().register('factorial').set_traits(Trait.POSITIVE, Trait.NON_ZERO)

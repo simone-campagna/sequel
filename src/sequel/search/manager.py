@@ -2,8 +2,10 @@
 Search manager
 """
 
+import abc
 import bisect
 import collections
+import functools
 import itertools
 
 from ..catalog import create_catalog
@@ -13,6 +15,11 @@ from .base import SearchAlgorithm
 
 
 __all__ = [
+    "Collector",
+    "Handler",
+    "StopAtFirst",
+    "StopAtLast",
+    "StopBelowComplexity",
     "Manager",
 ]
 
@@ -32,6 +39,88 @@ class Entry(collections.namedtuple("EntryNT", "priority items dependencies")):
         return self.ordering_key() < other.ordering_key()
 
 
+@functools.total_ordering
+class CollectorEntry(object):
+    def __init__(self, sequence, complexity=None):
+        if complexity is None:
+            complexity = sequence.complexity()
+        self.sequence = sequence
+        self.complexity = complexity
+
+    def __lt__(self, other):
+        return self.complexity < other.complexity
+
+    # def __eq__(self, other):
+    #     return self.complexity == other.complexity
+
+
+class Collector(object):
+    def __init__(self):
+        self._entries = []
+        self._partials = []
+
+    def first_entry(self):
+        if self._entries:
+            return self._entries[0]
+
+    def add(self, *sequences):
+        for sequence in sequences:
+            sequence = sequence.simplify()
+            item = CollectorEntry(sequence)
+            index = bisect.bisect_left(self._entries, item)
+            if index >= len(self._entries) or not sequence.equals(self._entries[index].sequence):
+                self._entries.insert(index, item)
+                yield sequence
+                self._partials.append(item)
+
+    def __len__(self):
+        return len(self._entries)
+
+    def __iter__(self):
+        for entry in self._entries:
+            yield entry.sequence
+
+    def entries(self):
+        yield from self._entries
+
+    def partials(self):
+        partials = self._partials
+        if partials:
+            # partials.sort(key=lambda x: x.complexity)
+            for entry in partials:
+                yield entry.sequence
+            partials.clear()
+
+
+class Handler(abc.ABC):
+    def __init__(self):
+        self.collector = Collector()
+
+    @abc.abstractmethod
+    def __bool__(self):
+        raise NotImplementedError()
+
+                
+class StopAtFirst(Handler):
+    def __bool__(self):
+        return bool(self.collector)
+
+
+class StopAtLast(Handler):
+    def __bool__(self):
+        return False
+
+
+class StopBelowComplexity(Handler):
+    def __init__(self, complexity=10):
+        self.complexity = complexity
+        super().__init__()
+
+    def __bool__(self):
+        entry = self.collector.first_entry()
+        return entry is not None and entry.complexity <= self.complexity
+
+
 class Manager(object):
     def __init__(self, size):
         self.size = size
@@ -39,7 +128,6 @@ class Manager(object):
         self._queue = []
         self._queued_items = set()
         self._entries = {}
-        self._results = set()
         self.algorithms = []
 
     def add_algorithm(self, algorithm):
@@ -47,15 +135,19 @@ class Manager(object):
             raise TypeError("{!r}: not a SearchAlgorithm".format(algorithm))
         self.algorithms.append(algorithm)
 
-    def search(self, items):
+    def search(self, items, handler=None):
         items = make_items(items)
+        if handler is None:
+            handler = StopAtFirst()
+        else:
+            if not isinstance(handler, Handler):
+                raise TypeError("{!r} is not an Handler".format(handler))
         dependency = self.make_dependency(
-            callback=self.set_result,
+            callback=(lambda manager, items, sequences: handler.collector.add(*sequences)),
             items=())
         self.queue(items, priority=0, dependencies=[dependency])
         queue = self._queue
-        results = self._results
-        while queue and not results:
+        while queue:
             entry = queue.pop(0)
             priority = entry.priority
             items = entry.items
@@ -63,18 +155,10 @@ class Manager(object):
                 sequences = set(algorithm(self, items, priority))
                 if sequences:
                     self.set_found(priority, items, sequences)
-                if results:
+                yield from handler.collector.partials()
+                if handler:
                     break
             self._queued_items.discard(entry.items)
-        # while self._queue and not self._results:
-        #     self.process()
-        sequences = sorted(results, key=lambda x: x.complexity())
-        yield from sequences
-
-    def set_result(self, manager, items, sequences):
-        sequences = set(sequences)
-        self._results.update(sequences)
-        yield from sequences
 
     @classmethod
     def make_dependency(cls, callback, items, *args, **kwargs):

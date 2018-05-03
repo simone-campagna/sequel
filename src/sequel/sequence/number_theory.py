@@ -116,7 +116,7 @@ class Prime(Iterator):
         return """f(n) := the n-th prime number"""
 
 
-Prime().register('p', Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
+Prime().register('p').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
 
 
 _MERSENNE_EXPONENTS = [gmpy2.mpz(x) for x in (
@@ -135,7 +135,7 @@ class MersenneExponent(EnumeratedSequence):
         return """f(n) := the n-th Mersenne exponent"""
 
 
-MersenneExponent().register("m_exp", Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN)
+MersenneExponent().register("m_exp").set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN)
 
 
 class MersennePrime(EnumeratedSequence):
@@ -145,7 +145,7 @@ class MersennePrime(EnumeratedSequence):
         return """f(n) := the n-th Mersenne prime"""
 
 
-MersennePrime().register("m_primes", Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN, Trait.FAST_GROWING)
+MersennePrime().register("m_primes").set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN, Trait.FAST_GROWING)
 
 
 class Pi(Iterator):
@@ -161,7 +161,7 @@ class Pi(Iterator):
         return """f(n) := count prime numbers <= n"""
 
 
-Pi().register('pi', Trait.POSITIVE)
+Pi().register('pi').set_traits(Trait.POSITIVE)
 
 
 class Phi(StashedFunction):
@@ -244,7 +244,7 @@ class Phi(StashedFunction):
         return """f(n) := count numbers <= n and prime to n (Euler's totient function)"""
 
 
-Phi().register('phi', Trait.POSITIVE, Trait.NON_ZERO)
+Phi().register('phi').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
 
 
 class Tau(StashedFunction):
@@ -299,7 +299,7 @@ class Tau(StashedFunction):
         return """f(n) := count divisors of n"""
 
 
-Tau().register('tau', Trait.POSITIVE, Trait.NON_ZERO)
+Tau().register('tau').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
 
 
 class Sigma(StashedFunction):
@@ -382,7 +382,7 @@ class Sigma(StashedFunction):
         return """f(n) := sum divisors of n"""
 
 
-Sigma().register('sigma', Trait.POSITIVE, Trait.NON_ZERO)
+Sigma().register('sigma').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
 
 
 # class Delegate(Iterator):

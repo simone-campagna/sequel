@@ -43,6 +43,6 @@ class Polygonal(Function):
             return False
 
 
-Polygonal(3).register('triangular', Trait.INJECTIVE, Trait.POSITIVE)
-Polygonal(5).register('pentagonal', Trait.INJECTIVE, Trait.POSITIVE)
-Polygonal(6).register('hexagonal', Trait.INJECTIVE, Trait.POSITIVE)
+Polygonal(3).register('triangular').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+Polygonal(5).register('pentagonal').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+Polygonal(6).register('hexagonal').set_traits(Trait.INJECTIVE, Trait.POSITIVE)

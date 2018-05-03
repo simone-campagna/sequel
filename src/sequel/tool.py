@@ -26,7 +26,12 @@ from .config import (
 from .display import Printer
 from .modules import load_ref
 from .hierarchical_search import search, create_algorithm
-from .search import create_manager
+from .search import (
+    create_manager,
+    StopAtFirst,
+    StopAtLast,
+    StopBelowComplexity,
+)
 from .sequence import Sequence
 from .profiler import Profiler
 
@@ -42,7 +47,7 @@ def make_printer(display_kwargs):
     return Printer(**display_kwargs)
 
     
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None):
+def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None):
     printer = make_printer(display_kwargs)
     config = get_config()
     size = printer.num_items
@@ -57,7 +62,7 @@ def function_test(sources, simplify=False, sort=False, reverse=False, limit=None
             counter = itertools.count()
         else:
             counter = range(limit)
-        found_sequences = manager.search(items)
+        found_sequences = manager.search(items, handler=handler)
         if sort:
             found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
         found = False
@@ -173,7 +178,7 @@ def function_doc(sources, simplify=False, full=False, display_kwargs=None):
         printer.print_doc(sequence, full=full)
 
 
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None):
+def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None):
     printer = make_printer(display_kwargs)
     if limit is None:
         counter = itertools.count()
@@ -182,7 +187,7 @@ def function_search(items, limit=None, sort=False, reverse=False, display_kwargs
     config = get_config()
     size = len(items)
     manager = create_manager(size, config=config)
-    found_sequences = manager.search(items)
+    found_sequences = manager.search(items, handler=handler)
     if sort:
         found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
     for count, sequence in zip(counter, found_sequences):
@@ -212,6 +217,10 @@ def function_hsearch(items, limit=None, sort=False, reverse=False, max_depth=10,
         printer.print_sequence(sequence, header=header, num_known=len(items))
     if profile:
         printer.print_stats(profiler)
+
+
+def type_stop_below_complexity(string):
+    return StopBelowComplexity(int(string))
 
 
 def type_config_key_value(string):
@@ -258,6 +267,9 @@ Sequitur
     common_hsearch_args = [
         'max_depth', 'max_rank', 'log', 'profile',
     ]
+    common_search_args = [
+        'handler',
+    ]
     search_description="""\
 Search sequence matching items {}
 
@@ -288,7 +300,7 @@ $ sequel search 2 3 5 7 12..20
     )
     search_parser.set_defaults(
         function=function_search,
-        function_args=['items', 'limit', 'sort', 'reverse'] + ['display_kwargs'])
+        function_args=['items', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
 
     hsearch_parser = subparsers.add_parser(
         'hsearch',
@@ -374,7 +386,7 @@ Reset config file""")
 Compile a sequence and tries to search it""")
     test_parser.set_defaults(
         function=function_test,
-        function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + ['display_kwargs'])
+        function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
 
     htest_parser = subparsers.add_parser(
         'htest',
@@ -546,6 +558,28 @@ Compile a sequence and tries to search it using the hierarchical algorithm""")
             default=False,
             action="store_true",
             help="full output")
+
+    for parser in search_parser, test_parser:
+        handler_group = parser.add_mutually_exclusive_group()
+        handler_group.add_argument(
+            "--first",
+            dest="handler", default=None,
+            action="store_const",
+            const=StopAtFirst(),
+            help="stop search at first results")
+
+        handler_group.add_argument(
+            "--last",
+            dest="handler", default=None,
+            action="store_const",
+            const=StopAtLast(),
+            help="never stops search")
+
+        handler_group.add_argument(
+            "--complexity",
+            dest="handler", default=None,
+            type=type_stop_below_complexity,
+            help="stop when below complexity")
 
     namespace = top_level_parser.parse_args()
     if 'display_kwargs' in namespace.function_args:
