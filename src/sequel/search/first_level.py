@@ -268,7 +268,7 @@ class LinearCombinationAlgorithm(Algorithm):
                      "min_elapsed", "max_elapsed", "exp_elapsed", "sequences"]
 
     def __init__(self, max_items=19, min_components=3, max_components=4, rationals=True,
-                 min_elapsed=0.2, max_elapsed=3.0, exp_elapsed=-0.8,
+                 min_elapsed=0.2, max_elapsed=2.0, exp_elapsed=-0.8,
                  sequences=None):
         super().__init__()
         if sequences:

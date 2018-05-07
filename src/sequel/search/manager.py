@@ -55,7 +55,6 @@ class CollectorEntry(object):
 class Collector(object):
     def __init__(self):
         self._entries = []
-        self._partials = []
 
     def first_entry(self):
         if self._entries:
@@ -68,8 +67,6 @@ class Collector(object):
             index = bisect.bisect_left(self._entries, item)
             if index >= len(self._entries) or not sequence.equals(self._entries[index].sequence):
                 self._entries.insert(index, item)
-                yield sequence
-                self._partials.append(item)
 
     def __len__(self):
         return len(self._entries)
@@ -80,14 +77,6 @@ class Collector(object):
 
     def entries(self):
         yield from self._entries
-
-    def partials(self):
-        partials = self._partials
-        if partials:
-            # partials.sort(key=lambda x: x.complexity)
-            for entry in partials:
-                yield entry.sequence
-            partials.clear()
 
 
 class Handler(abc.ABC):
@@ -143,10 +132,11 @@ class Manager(object):
         else:
             if not isinstance(handler, Handler):
                 raise TypeError("{!r} is not an Handler".format(handler))
-        dependency = self.make_dependency(
-            algorithm=None,
-            callback=(lambda manager, items, sequences: handler.collector.add(*sequences)),
-            items=(), kwargs={})
+        dependency = None
+        # self.make_dependency(
+        #     algorithm=None,
+        #     callback=(lambda manager, items, sequences: handler.collector.add(*sequences)),
+        #     items=(), kwargs={})
         self.queue(items, rank=0, dependencies=[dependency])
         queue = self._queue
         algorithms = self.algorithms
@@ -160,22 +150,25 @@ class Manager(object):
         while queue:
             entry = queue.pop(0)
             rank = entry.rank
-            #print(rank, len(queue), len(rec_stack))
-            #print(rank)
-            # if rank > 1000:
-            #     pass #print(rank)
             items = entry.items
             for algorithm in self.algorithms:
-                if timings_dict:
-                    t0 = time.time()
-                sequences = set(algorithm(self, items, rank))
-                if timings_dict:
-                    timings_dict[algorithm].add_timing(time.time() - t0)
-                if sequences:
-                    self.set_found(rank, items, sequences, timings_dict)
-                yield from handler.collector.partials()
-                if handler:
-                    break
+                algorithm_sequences = algorithm(self, items, rank)
+                num_found = 0
+                while True:
+                    if timings_dict:
+                        t0 = time.time()
+                    try:
+                        sequence = next(algorithm_sequences)
+                    except StopIteration:
+                        break
+                    finally:
+                        if timings_dict:
+                            timings_dict[algorithm].add_timing(time.time() - t0)
+                    for sequence in self._set_found(items, rank, [sequence], timings_dict):
+                        yield sequence
+                        handler.collector.add(sequence)
+                        if handler:
+                            return
                 rec_stack.append(entry)
             rec_rank = cur_rank
             while rec_stack and ((not queue) or (rec_stack and rank > rec_rank)):
@@ -188,7 +181,6 @@ class Manager(object):
                         pass
                     if timings_dict:
                         timings_dict[rec_algorithm].add_timing(time.time() - t0)
-                    yield from handler.collector.partials()
                     if handler:
                         break
             cur_rank = rank
@@ -221,7 +213,7 @@ class Manager(object):
             bisect.insort_left(queue, entry)
         self._entries[items] = entry
 
-    def set_found(self, rank, items, sequences, timings_dict):
+    def _set_found(self, items, rank, sequences, timings_dict):
         managed = set()
         found_res = {items: sequences}
         while found_res:
@@ -238,12 +230,15 @@ class Manager(object):
                 entry = self._entries.get(items, None)
                 if entry is not None:
                     for dependency in entry.dependencies:
-                        if timings_dict:
-                            t0 = time.time()
-                        dep_sequences = set(dependency.callback(self, dependency.items, sequences, **dependency.kwargs))
-                        if timings_dict:
-                            t0 = time.time()
-                        if dep_sequences and dependency.items not in managed:
-                            new_found_res[dependency.items].update(dep_sequences)
-                            managed.add(dependency.items)
+                        if dependency is None:
+                            yield from sequences
+                        else:
+                            if timings_dict:
+                                t0 = time.time()
+                            dep_sequences = set(dependency.callback(self, dependency.items, sequences, **dependency.kwargs))
+                            if timings_dict:
+                                t0 = time.time()
+                            if dep_sequences and dependency.items not in managed:
+                                new_found_res[dependency.items].update(dep_sequences)
+                                managed.add(dependency.items)
             found_res = new_found_res

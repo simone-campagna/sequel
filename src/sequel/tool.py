@@ -590,7 +590,7 @@ Compile a sequence and tries to search it using the hierarchical algorithm""")
 
         handler_group.add_argument(
             "--complexity",
-            dest="handler", default=None,
+            dest="handler", default=None, metavar='C',
             type=type_stop_below_complexity,
             help="stop when below complexity")
 
