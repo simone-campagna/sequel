@@ -133,10 +133,6 @@ class Manager(object):
             if not isinstance(handler, Handler):
                 raise TypeError("{!r} is not an Handler".format(handler))
         dependency = None
-        # self.make_dependency(
-        #     algorithm=None,
-        #     callback=(lambda manager, items, sequences: handler.collector.add(*sequences)),
-        #     items=(), kwargs={})
         self.queue(items, rank=0, dependencies=[dependency])
         queue = self._queue
         algorithms = self.algorithms
@@ -152,23 +148,16 @@ class Manager(object):
             rank = entry.rank
             items = entry.items
             for algorithm in self.algorithms:
-                algorithm_sequences = algorithm(self, items, rank)
-                num_found = 0
-                while True:
-                    if timings_dict:
-                        t0 = time.time()
-                    try:
-                        sequence = next(algorithm_sequences)
-                    except StopIteration:
-                        break
-                    finally:
-                        if timings_dict:
-                            timings_dict[algorithm].add_timing(time.time() - t0)
-                    for sequence in self._set_found(items, rank, [sequence], timings_dict):
-                        yield sequence
-                        handler.collector.add(sequence)
-                        if handler:
-                            return
+                if timings_dict:
+                    t0 = time.time()
+                sequences = set(algorithm(self, items, rank))
+                if timings_dict:
+                    timings_dict[algorithm].add_timing(time.time() - t0)
+                for sequence in self._set_found(items, rank, sequences, timings_dict):
+                    yield sequence
+                    handler.collector.add(sequence)
+                if handler:
+                    return
                 rec_stack.append(entry)
             rec_rank = cur_rank
             while rec_stack and ((not queue) or (rec_stack and rank > rec_rank)):
@@ -231,7 +220,7 @@ class Manager(object):
                 if entry is not None:
                     for dependency in entry.dependencies:
                         if dependency is None:
-                            yield from sequences
+                            yield from sorted(sequences, key=lambda x: x.complexity())
                         else:
                             if timings_dict:
                                 t0 = time.time()

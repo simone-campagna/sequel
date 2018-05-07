@@ -317,6 +317,13 @@ Compile a sequence and tries to search it""")
         function=function_test,
         function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
 
+    for parser in compile_parser, test_parser, doc_parser, tree_parser:
+        parser.add_argument(
+            "-s", "--simplify",
+            action="store_true",
+            default=False,
+            help="simplify expression")
+
     for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser:
         parser.add_argument(
             "-n", "--num-items",
