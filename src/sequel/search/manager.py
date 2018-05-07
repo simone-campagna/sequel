@@ -7,11 +7,12 @@ import bisect
 import collections
 import functools
 import itertools
+import time
 
 from ..catalog import create_catalog
 from ..items import make_items, Items
 
-from .base import SearchAlgorithm
+from .base import Algorithm, RecursiveAlgorithm
 
 
 __all__ = [
@@ -25,15 +26,15 @@ __all__ = [
 
 
 Dependency = collections.namedtuple(
-    "Dependency", "callback items args kwargs")
+    "Dependency", "algorithm callback items kwargs")
 
 
-class Entry(collections.namedtuple("EntryNT", "priority items dependencies")):
-    def __new__(cls, priority, items, dependencies=()):
-        return super().__new__(cls, priority, items, list(dependencies))
+class Entry(collections.namedtuple("EntryNT", "rank items dependencies")):
+    def __new__(cls, rank, items, dependencies=()):
+        return super().__new__(cls, rank, items, list(dependencies))
 
     def ordering_key(self):
-        return (self.priority, -len(self.dependencies))
+        return (self.rank, -len(self.dependencies))
 
     def __lt__(self, other):
         return self.ordering_key() < other.ordering_key()
@@ -49,9 +50,6 @@ class CollectorEntry(object):
 
     def __lt__(self, other):
         return self.complexity < other.complexity
-
-    # def __eq__(self, other):
-    #     return self.complexity == other.complexity
 
 
 class Collector(object):
@@ -126,16 +124,19 @@ class Manager(object):
         self.size = size
         self.catalog = create_catalog(size)
         self._queue = []
-        self._queued_items = set()
         self._entries = {}
         self.algorithms = []
+        self.rec_algorithms = []
 
     def add_algorithm(self, algorithm):
-        if not isinstance(algorithm, SearchAlgorithm):
-            raise TypeError("{!r}: not a SearchAlgorithm".format(algorithm))
-        self.algorithms.append(algorithm)
+        if isinstance(algorithm, RecursiveAlgorithm):
+            self.rec_algorithms.append(algorithm)
+        elif isinstance(algorithm, Algorithm):
+            self.algorithms.append(algorithm)
+        else:
+            raise TypeError("{!r}: not an Algorithm".format(algorithm))
 
-    def search(self, items, handler=None):
+    def search(self, items, handler=None, profiler=None):
         items = make_items(items)
         if handler is None:
             handler = StopAtFirst()
@@ -143,28 +144,60 @@ class Manager(object):
             if not isinstance(handler, Handler):
                 raise TypeError("{!r} is not an Handler".format(handler))
         dependency = self.make_dependency(
+            algorithm=None,
             callback=(lambda manager, items, sequences: handler.collector.add(*sequences)),
-            items=())
-        self.queue(items, priority=0, dependencies=[dependency])
+            items=(), kwargs={})
+        self.queue(items, rank=0, dependencies=[dependency])
         queue = self._queue
+        algorithms = self.algorithms
+        rec_algorithms = self.rec_algorithms
+        rec_stack = []
+        cur_rank = 0
+        timings_dict = {}
+        if profiler is not None:
+            for algorithm in itertools.chain(self.algorithms, self.rec_algorithms):
+                timings_dict[algorithm] = profiler[type(algorithm).__name__]
         while queue:
             entry = queue.pop(0)
-            priority = entry.priority
+            rank = entry.rank
+            #print(rank, len(queue), len(rec_stack))
+            #print(rank)
+            # if rank > 1000:
+            #     pass #print(rank)
             items = entry.items
             for algorithm in self.algorithms:
-                sequences = set(algorithm(self, items, priority))
+                if timings_dict:
+                    t0 = time.time()
+                sequences = set(algorithm(self, items, rank))
+                if timings_dict:
+                    timings_dict[algorithm].add_timing(time.time() - t0)
                 if sequences:
-                    self.set_found(priority, items, sequences)
+                    self.set_found(rank, items, sequences, timings_dict)
                 yield from handler.collector.partials()
                 if handler:
                     break
-            self._queued_items.discard(entry.items)
+                rec_stack.append(entry)
+            rec_rank = cur_rank
+            while rec_stack and ((not queue) or (rec_stack and rank > rec_rank)):
+                entry = rec_stack.pop()
+                rec_rank = entry.rank
+                for rec_algorithm in rec_algorithms:
+                    if timings_dict:
+                        t0 = time.time()
+                    for dummy in rec_algorithm(self, items, rank):
+                        pass
+                    if timings_dict:
+                        timings_dict[rec_algorithm].add_timing(time.time() - t0)
+                    yield from handler.collector.partials()
+                    if handler:
+                        break
+            cur_rank = rank
 
     @classmethod
-    def make_dependency(cls, callback, items, *args, **kwargs):
-        return Dependency(callback=callback, items=items, args=args, kwargs=kwargs)
+    def make_dependency(cls, algorithm, callback, items, kwargs):
+        return Dependency(algorithm=algorithm, callback=callback, items=items, kwargs=kwargs)
 
-    def queue(self, items, priority, dependencies):
+    def queue(self, items, rank, dependencies):
         queue = self._queue
         if not isinstance(items, Items):
             items = make_items(items)
@@ -176,10 +209,10 @@ class Manager(object):
                 del queue[index]
                 insert = True
             dependencies = entry.dependencies + list(dependencies)
-            entry = entry._replace(priority=min(entry.priority, priority), dependencies=dependencies)
+            entry = entry._replace(rank=min(entry.rank, rank), dependencies=dependencies)
         else:
             entry = Entry(
-                priority=priority,
+                rank=rank,
                 items=items,
                 dependencies=dependencies,
             )
@@ -188,22 +221,7 @@ class Manager(object):
             bisect.insort_left(queue, entry)
         self._entries[items] = entry
 
-        self._queued_items.add(entry.items)
-
-    # def process(self):
-    #     queue = self._queue
-    #     while queue:
-    #         entry = queue.pop(0)
-    #         priority = entry.priority
-    #         items = entry.items
-    #         for algorithm in self.algorithms:
-    #             sequences = set(algorithm(self, items, priority))
-    #             if sequences:
-    #                 self.set_found(priority, items, sequences)
-    #         self._queued_items.discard(entry.items)
-    #         break
-
-    def set_found(self, priority, items, sequences):
+    def set_found(self, rank, items, sequences, timings_dict):
         managed = set()
         found_res = {items: sequences}
         while found_res:
@@ -220,7 +238,11 @@ class Manager(object):
                 entry = self._entries.get(items, None)
                 if entry is not None:
                     for dependency in entry.dependencies:
-                        dep_sequences = set(dependency.callback(self, dependency.items, sequences, *dependency.args, **dependency.kwargs))
+                        if timings_dict:
+                            t0 = time.time()
+                        dep_sequences = set(dependency.callback(self, dependency.items, sequences, **dependency.kwargs))
+                        if timings_dict:
+                            t0 = time.time()
                         if dep_sequences and dependency.items not in managed:
                             new_found_res[dependency.items].update(dep_sequences)
                             managed.add(dependency.items)

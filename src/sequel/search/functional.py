@@ -7,24 +7,26 @@ from ..items import Items
 from ..sequence import integral, derivative, summation, product
 from ..utils import sequence_matches
 
-from .base import SearchAlgorithm
+from .base import RecursiveAlgorithm
 
 
 __all__ = [
-    "SearchSummation",
-    "SearchProduct",
-    "SearchIntegral",
-    "SearchDerivative",
+    "SummationAlgorithm",
+    "ProductAlgorithm",
+    "IntegralAlgorithm",
+    "DerivativeAlgorithm",
 ]
 
 
-class SearchSummation(SearchAlgorithm):
+class SummationAlgorithm(RecursiveAlgorithm):
     """Search for sums"""
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def iter_sequences(self, manager, items, priority):
-        yield from ()
+    def rank_increase(self):
+        return 1
+
+    def sub_search(self, manager, items, rank):
         s_items = []
         last = 0
         for item in items:
@@ -32,11 +34,9 @@ class SearchSummation(SearchAlgorithm):
             s_items.append(value)
             last = item
         sub_items = Items(s_items)
-        # print("sum:", [int(x) for x in sub_items])
-        dependency = manager.make_dependency(
-            callback=self._found_operand,
-            items=items)
-        manager.queue(sub_items, priority=priority + 1, dependencies=[dependency])
+        self.sub_queue(
+            manager, rank, items, sub_items, self._found_operand,
+            {})
 
     def _found_operand(self, manager, items, sequences):
         for operand in sequences:
@@ -45,13 +45,15 @@ class SearchSummation(SearchAlgorithm):
                 yield sequence
 
  
-class SearchProduct(SearchAlgorithm):
+class ProductAlgorithm(RecursiveAlgorithm):
     """Search for prods"""
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def iter_sequences(self, manager, items, priority):
-        yield from ()
+    def rank_increase(self):
+        return 1
+
+    def sub_search(self, manager, items, rank):
         s_items = []
         last = 1
         for item in items:
@@ -64,10 +66,9 @@ class SearchProduct(SearchAlgorithm):
             s_items.append(value)
             last = item
         sub_items = Items(s_items)
-        dependency = manager.make_dependency(
-            callback=self._found_operand,
-            items=items)
-        manager.queue(sub_items, priority=priority + 1, dependencies=[dependency])
+        self.sub_queue(
+            manager, rank, items, sub_items, self._found_operand,
+            {})
 
     def _found_operand(self, manager, items, sequences):
         for operand in sequences:
@@ -76,19 +77,20 @@ class SearchProduct(SearchAlgorithm):
                 yield sequence
 
 
-class SearchIntegral(SearchAlgorithm):
+class IntegralAlgorithm(RecursiveAlgorithm):
     """Search for integrals"""
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def iter_sequences(self, manager, items, priority):
-        yield from ()
+    def rank_increase(self):
+        return 1
+
+    def sub_search(self, manager, items, rank):
         if items.derivative:
             sub_items = Items(items.derivative)
-            dependency = manager.make_dependency(
-                callback=self._found_operand,
-                items=items)
-            manager.queue(sub_items, priority=priority + 1, dependencies=[dependency])
+            self.sub_queue(
+                manager, rank, items, sub_items, self._found_operand,
+                {})
 
     def _found_operand(self, manager, items, sequences):
         for operand in sequences:
@@ -97,18 +99,19 @@ class SearchIntegral(SearchAlgorithm):
                 yield sequence
 
 
-class SearchDerivative(SearchAlgorithm):
+class DerivativeAlgorithm(RecursiveAlgorithm):
     """Search for derivatives"""
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def iter_sequences(self, manager, items, priority):
-        yield from ()
+    def rank_increase(self):
+        return 1
+
+    def sub_search(self, manager, items, rank):
         sub_items = Items(items.make_integral())
-        dependency = manager.make_dependency(
-            callback=self._found_operand,
-            items=items)
-        manager.queue(sub_items, priority=priority + 1, dependencies=[dependency])
+        self.sub_queue(
+            manager, rank, items, sub_items, self._found_operand,
+            {})
 
     def _found_operand(self, manager, items, sequences):
         for operand in sequences:

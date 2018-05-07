@@ -8,56 +8,48 @@ from ..items import Items
 from ..sequence import Zip
 from ..utils import sequence_matches
 
-from .base import SearchAlgorithm
+from .base import RecursiveAlgorithm
 
 
 __all__ = [
-    "SearchZip",
+    "ZipAlgorithm",
 ]
 
 
-class SearchZip(SearchAlgorithm):
+class ZipAlgorithm(RecursiveAlgorithm):
     """Search for Zip(s1, s2, ...)"""
     __min_items__ = 3
     __accepts_undefined__ = True
+    __init_keys__ = ["max_level"]
 
     def __init__(self, max_level=3):
         super().__init__()
         self.max_level = max_level
 
-    def iter_sequences(self, manager, items, priority):
-        yield from ()
+    def rank_increase(self):
+        return 1
+
+    def sub_search(self, manager, items, rank):
         for level in range(2, self.max_level + 1):
             sub_items = Items(items[0::level])
             if len(sub_items) < 3:
                 continue
-            sub_priority = priority + level - 1
-            dependency = manager.make_dependency(
-                callback=self._found_sequence,
-                items=items,
-                orig_items=items,
-                priority=sub_priority,
-                results=(),
-                index=0,
-                level=level)
-            manager.queue(sub_items, priority=sub_priority, dependencies=[dependency])
+            sub_rank = rank + level - 2
+            self.sub_queue(
+                manager, sub_rank, items, sub_items, self._found_sequence,
+                {'orig_items': items, 'sub_rank': sub_rank, 'results': (), 'index': 0, 'level': level})
  
-    def _found_sequence(self, manager, items, sequences, orig_items, priority, results, index, level):
+    def _found_sequence(self, manager, items, sequences, orig_items, sub_rank, results, index, level):
         if index < level:
             results += (sequences,)
             index += 1
             sub_items = Items(items[index::level])
-            dependency = manager.make_dependency(
-                callback=self._found_sequence,
-                items=items,
-                orig_items=orig_items,
-                priority=priority,
-                results=results,
-                index=index,
-                level=level)
-            manager.queue(sub_items, priority=priority, dependencies=[dependency])
+            self.sub_queue(
+                manager, sub_rank, items, sub_items, self._found_sequence,
+                {'orig_items': orig_items, 'sub_rank': sub_rank, 'results': results, 'index': index, 'level': level})
         else:
-            for seq_list in itertools.product(*results):
-                sequence = Zip(*seq_list)
-                if sequence_matches(sequence, orig_items):
-                    yield sequence
+            if results:
+                for seq_list in itertools.product(*results):
+                    sequence = Zip(*seq_list)
+                    if sequence_matches(sequence, orig_items):
+                        yield sequence

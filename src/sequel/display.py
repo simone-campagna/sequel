@@ -186,7 +186,9 @@ class Printer(object):
     def print_stats(self, stats):
         print("## Stats:", file=self.file)
         table = [('ALGORITHM', 'COUNT', 'TOTAL_TIME', 'AVERAGE_TIME')]
-        for key, stats in stats.items():
+        lstats = list(stats.items())
+        lstats.sort(key=lambda x: x[1].total_time)
+        for key, stats in lstats:
             s_key = str(key)
             if stats.count == 0:
                 ave = ""

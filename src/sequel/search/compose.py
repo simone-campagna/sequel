@@ -9,18 +9,19 @@ from ..items import Items
 from ..sequence import Trait, Integer, Sequence
 from ..utils import sequence_matches
 
-from .base import SearchAlgorithm
+from .base import RecursiveAlgorithm
 
 
 __all__ = [
-    "SearchCompose",
+    "ComposeAlgorithm",
 ]
 
 
-class SearchCompose(SearchAlgorithm):
+class ComposeAlgorithm(RecursiveAlgorithm):
     """Search for sequence composition"""
     __min_items__ = 5
     __accepts_undefined__ = False
+    __init_keys__ = ["group_size", "cache_size", "max_abs_value", "max_results"]
 
     def __init__(self, group_size=2, cache_size=1000, max_abs_value=10 ** 10, max_results=10):
         super().__init__()
@@ -29,6 +30,9 @@ class SearchCompose(SearchAlgorithm):
         self.max_abs_value = abs(max_abs_value)
         self.max_results = max_results
         self.__cache = None
+
+    def rank_increase(self):
+        return 2
 
     def _get_cache(self, catalog):
         if self.__cache is None:
@@ -92,15 +96,12 @@ class SearchCompose(SearchAlgorithm):
                     # print("::: non-inj", sequence, indices)
                     yield sequence, indices
 
-    def iter_sequences(self, manager, items, priority):
-        yield from ()
+    def sub_search(self, manager, items, rank):
         for sequence, indices in self.iterindices(manager.catalog, items):
             sub_items = Items(indices)
-            dependency = manager.make_dependency(
-                callback=self._found_index_sequence,
-                items=items,
-                sequence=sequence)
-            manager.queue(sub_items, priority=priority + 2, dependencies=[dependency])
+            self.sub_queue(
+                manager, rank, items, sub_items, self._found_index_sequence,
+                {'sequence': sequence})
 
     def _found_index_sequence(self, manager, items, sequences, sequence):
         for index_sequence in sequences:

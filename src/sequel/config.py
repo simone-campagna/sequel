@@ -53,7 +53,7 @@ def _setup_sequel_config(name, config):
 register_config(
     name="sequel",
     default={
-        "random_seed": None
+        "random_seed": 2,
     },
     setup_callback=_setup_sequel_config)
 

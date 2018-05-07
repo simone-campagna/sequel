@@ -15,41 +15,44 @@ from .manager import (
     StopAtLast,
     StopBelowComplexity,
 )
-from .base import SearchAlgorithm
+from .base import Algorithm
 from .first_level import (
-    SearchCatalog,
-    SearchAffineTransform,
-    SearchArithmetic,
-    SearchGeometric,
-    SearchPower,
-    SearchFibonacci,
-    SearchPolynomial,
-    SearchLinearCombination,
-    SearchRepunit,
+    CatalogAlgorithm,
+    AffineTransformAlgorithm,
+    ArithmeticAlgorithm,
+    GeometricAlgorithm,
+    PowerAlgorithm,
+    FibonacciAlgorithm,
+    PolynomialAlgorithm,
+    LinearCombinationAlgorithm,
+    RepunitAlgorithm,
 )
 from .common_factors import (
-    SearchCommonFactors,
+    CommonFactorsAlgorithm,
 )
 from .compose import (
-    SearchCompose,
+    ComposeAlgorithm,
 )
 from .functional import (
-    SearchSummation,
-    SearchProduct,
-    SearchIntegral,
-    SearchDerivative,
+    SummationAlgorithm,
+    ProductAlgorithm,
+    IntegralAlgorithm,
+    DerivativeAlgorithm,
 )
-from .mul_div_pow import (
-    SearchMul,
-    SearchDiv,
-    SearchPow,
+from .binary import (
+    AddAlgorithm,
+    SubAlgorithm,
+    MulAlgorithm,
+    DivAlgorithm,
+    PowAlgorithm,
 )
 from .zip_sequences import (
-    SearchZip,
+    ZipAlgorithm,
 )
 
 __all__ = [
-    "SearchAlgorithm",
+    "Algorithm",
+    "RecursiveAlgorithm",
     "Manager",
     "create_manager",
 ]
@@ -58,25 +61,27 @@ __all__ = [
 def search_config(defaults=True):
     configs = []
     algorithm_types = [
-        SearchCatalog,
-        SearchAffineTransform,
-        SearchArithmetic,
-        SearchGeometric,
-        SearchPower,
-        SearchFibonacci,
-        SearchPolynomial,
-        SearchRepunit,
-        SearchLinearCombination,
-        SearchMul,
-        SearchDiv,
-        SearchPow,
-        SearchCommonFactors,
-        SearchCompose,
-        SearchSummation,
-        SearchProduct,
-        SearchIntegral,
-        SearchDerivative,
-        SearchZip,
+        CatalogAlgorithm,
+        AffineTransformAlgorithm,
+        ArithmeticAlgorithm,
+        GeometricAlgorithm,
+        PowerAlgorithm,
+        FibonacciAlgorithm,
+        PolynomialAlgorithm,
+        RepunitAlgorithm,
+        LinearCombinationAlgorithm,
+        AddAlgorithm,
+        SubAlgorithm,
+        MulAlgorithm,
+        DivAlgorithm,
+        PowAlgorithm,
+        CommonFactorsAlgorithm,
+        ComposeAlgorithm,
+        SummationAlgorithm,
+        ProductAlgorithm,
+        IntegralAlgorithm,
+        DerivativeAlgorithm,
+        ZipAlgorithm,
     ]
     for algorithm_type in algorithm_types:
         algorithm_config = {

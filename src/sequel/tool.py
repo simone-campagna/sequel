@@ -47,11 +47,15 @@ def make_printer(display_kwargs):
     return Printer(**display_kwargs)
 
     
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None):
+def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=None):
     printer = make_printer(display_kwargs)
     config = get_config()
     size = printer.num_items
     manager = create_manager(size, config=config)
+    if profile:
+        profiler = Profiler()
+    else:
+        profiler = None
     for source in sources:
         print(printer.bold("###") + " compiling " + printer.bold(str(source)) + " ...")
         sequence = Sequence.compile(source, simplify=simplify)
@@ -62,7 +66,7 @@ def function_test(sources, simplify=False, sort=False, reverse=False, limit=None
             counter = itertools.count()
         else:
             counter = range(limit)
-        found_sequences = manager.search(items, handler=handler)
+        found_sequences = manager.search(items, handler=handler, profiler=profiler)
         if sort:
             found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
         found = False
@@ -85,6 +89,8 @@ def function_test(sources, simplify=False, sort=False, reverse=False, limit=None
                 print("sequence {}: found as {}".format(sequence, best_match))
             else:
                 print("sequence {}: *not* found".format(sequence))
+    if profile:
+        printer.print_stats(profiler)
             
 
 def function_htest(sources, simplify=False, sort=False, reverse=False, limit=None, max_depth=10, max_rank=10, log=False, profile=False, display_kwargs=None):
@@ -184,15 +190,21 @@ def function_search(items, limit=None, sort=False, reverse=False, display_kwargs
         counter = itertools.count()
     else:
         counter = range(limit)
+    if profile:
+        profiler = Profiler()
+    else:
+        profiler = None
     config = get_config()
     size = len(items)
     manager = create_manager(size, config=config)
-    found_sequences = manager.search(items, handler=handler)
+    found_sequences = manager.search(items, handler=handler, profiler=profiler)
     if sort:
         found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
     for count, sequence in zip(counter, found_sequences):
         header = "{:>5d}] ".format(count)
         printer.print_sequence(sequence, header=header, num_known=len(items))
+    if profile:
+        printer.print_stats(profiler)
 
 
 def function_hsearch(items, limit=None, sort=False, reverse=False, max_depth=10, max_rank=10, log=False, profile=False, display_kwargs=None):
@@ -268,7 +280,7 @@ Sequitur
         'max_depth', 'max_rank', 'log', 'profile',
     ]
     common_search_args = [
-        'handler',
+        'handler', 'profile',
     ]
     search_description="""\
 Search sequence matching items {}
@@ -521,16 +533,17 @@ Compile a sequence and tries to search it using the hierarchical algorithm""")
             help="max search rank")
 
         parser.add_argument(
-            "-p", "--profile",
-            action="store_true",
-            default=False,
-            help="show timing stats")
-
-        parser.add_argument(
             "-L", "--log",
             default=False,
             action="store_true",
             help="enable logging")
+
+    for parser in hsearch_parser, htest_parser, search_parser, test_parser:
+        parser.add_argument(
+            "-p", "--profile",
+            action="store_true",
+            default=False,
+            help="show timing stats")
 
     for parser in hsearch_parser, search_parser:
         parser.add_argument(
