@@ -25,7 +25,6 @@ from .config import (
 )
 from .display import Printer
 from .modules import load_ref
-from .hierarchical_search import search, create_algorithm
 from .search import (
     create_manager,
     StopAtFirst,
@@ -47,7 +46,7 @@ def make_printer(display_kwargs):
     return Printer(**display_kwargs)
 
     
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=None):
+def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
     printer = make_printer(display_kwargs)
     config = get_config()
     size = printer.num_items
@@ -67,53 +66,6 @@ def function_test(sources, simplify=False, sort=False, reverse=False, limit=None
         else:
             counter = range(limit)
         found_sequences = manager.search(items, handler=handler, profiler=profiler)
-        if sort:
-            found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
-        found = False
-        best_match, best_match_complexity = None, 1000000
-        for count, found_sequence in zip(counter, found_sequences):
-            header = "{:>5d}] ".format(count)
-            if sequence.equals(found_sequence):
-                found = True
-                header += "[*] "
-            else:
-                header += "    "
-            complexity = found_sequence.complexity()
-            if best_match_complexity > complexity:
-                best_match, best_match_complexity = found_sequence, complexity
-            printer.print_sequence(found_sequence, num_items=0, header=header)
-        if found:
-            print("sequence {}: found".format(sequence))
-        else:
-            if best_match is not None:
-                print("sequence {}: found as {}".format(sequence, best_match))
-            else:
-                print("sequence {}: *not* found".format(sequence))
-    if profile:
-        printer.print_stats(profiler)
-            
-
-def function_htest(sources, simplify=False, sort=False, reverse=False, limit=None, max_depth=10, max_rank=10, log=False, profile=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    config = get_config()
-    size = printer.num_items
-    catalog = create_catalog(size)
-    algorithm = create_algorithm(size=size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    for source in sources:
-        print(printer.bold("###") + " compiling " + printer.bold(str(source)) + " ...")
-        sequence = Sequence.compile(source, simplify=simplify)
-        printer.print_sequence(sequence)
-        items = sequence.get_values(printer.num_items)
-        print(printer.bold("###") + " searching " + printer.bold(" ".join(printer.repr_items(items))) + " ...")
-        if limit is None:
-            counter = itertools.count()
-        else:
-            counter = range(limit)
-        found_sequences = algorithm.search(catalog, items, max_depth=max_depth, max_rank=max_rank, log=log, profiler=profiler)
         if sort:
             found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
         found = False
@@ -184,7 +136,7 @@ def function_doc(sources, simplify=False, full=False, display_kwargs=None):
         printer.print_doc(sequence, full=full)
 
 
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None):
+def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False):
     printer = make_printer(display_kwargs)
     if limit is None:
         counter = itertools.count()
@@ -198,30 +150,6 @@ def function_search(items, limit=None, sort=False, reverse=False, display_kwargs
     size = len(items)
     manager = create_manager(size, config=config)
     found_sequences = manager.search(items, handler=handler, profiler=profiler)
-    if sort:
-        found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
-    for count, sequence in zip(counter, found_sequences):
-        header = "{:>5d}] ".format(count)
-        printer.print_sequence(sequence, header=header, num_known=len(items))
-    if profile:
-        printer.print_stats(profiler)
-
-
-def function_hsearch(items, limit=None, sort=False, reverse=False, max_depth=10, max_rank=10, log=False, profile=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    if limit is None:
-        counter = itertools.count()
-    else:
-        counter = range(limit)
-    config = get_config()
-    size = len(items)
-    catalog = create_catalog(size)
-    algorithm = create_algorithm(size=size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    found_sequences = algorithm.search(catalog, items, max_depth=max_depth, max_rank=max_rank, log=log, profiler=profiler)
     if sort:
         found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
     for count, sequence in zip(counter, found_sequences):
@@ -276,9 +204,6 @@ Sequitur
         'num_items', 'item_mode', 'separator', 'item_format', 'base', 'wraps',
         'max_compact_digits', 'max_full_digits', 'colored',
     ]
-    common_hsearch_args = [
-        'max_depth', 'max_rank', 'log', 'profile',
-    ]
     common_search_args = [
         'handler', 'profile',
     ]
@@ -313,14 +238,6 @@ $ sequel search 2 3 5 7 12..20
     search_parser.set_defaults(
         function=function_search,
         function_args=['items', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
-
-    hsearch_parser = subparsers.add_parser(
-        'hsearch',
-        description=search_description.format("using the hierarchical algorithm")
-    )
-    hsearch_parser.set_defaults(
-        function=function_hsearch,
-        function_args=['items', 'limit', 'sort', 'reverse'] + common_hsearch_args + ['display_kwargs'])
 
     doc_parser = subparsers.add_parser(
         'doc',
@@ -400,22 +317,7 @@ Compile a sequence and tries to search it""")
         function=function_test,
         function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
 
-    htest_parser = subparsers.add_parser(
-        'htest',
-        description="""\
-Compile a sequence and tries to search it using the hierarchical algorithm""")
-    htest_parser.set_defaults(
-        function=function_htest,
-        function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_hsearch_args + ['display_kwargs'])
-
-    for parser in compile_parser, htest_parser, test_parser, doc_parser, tree_parser:
-        parser.add_argument(
-            "-s", "--simplify",
-            action="store_true",
-            default=False,
-            help="simplify expression")
-
-    for parser in hsearch_parser, search_parser, compile_parser, htest_parser, test_parser, doc_parser, tree_parser:
+    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser:
         parser.add_argument(
             "-n", "--num-items",
             metavar="N",
@@ -497,7 +399,7 @@ Compile a sequence and tries to search it using the hierarchical algorithm""")
             default=None,
             help="maximum number of digits for full item display")
 
-    for parser in hsearch_parser, htest_parser, search_parser, test_parser:
+    for parser in search_parser, test_parser:
         parser.add_argument(
             "-l", "--limit",
             metavar="L",
@@ -517,42 +419,21 @@ Compile a sequence and tries to search it using the hierarchical algorithm""")
             default=False,
             help="reverse sorting")
 
-    for parser in hsearch_parser, htest_parser:
-        parser.add_argument(
-            "-d", "--max-depth",
-            metavar="D",
-            default=10,
-            type=int,
-            help="max search depth")
-
-        parser.add_argument(
-            "-k", "--max-rank",
-            metavar="R",
-            default=10,
-            type=int,
-            help="max search rank")
-
-        parser.add_argument(
-            "-L", "--log",
-            default=False,
-            action="store_true",
-            help="enable logging")
-
-    for parser in hsearch_parser, htest_parser, search_parser, test_parser:
+    for parser in search_parser, test_parser:
         parser.add_argument(
             "-p", "--profile",
             action="store_true",
             default=False,
             help="show timing stats")
 
-    for parser in hsearch_parser, search_parser:
+    for parser in search_parser,:
         parser.add_argument(
             "items",
             nargs='+',
             type=make_item,
             help="sequence items")
 
-    for parser in htest_parser, test_parser, compile_parser, tree_parser:
+    for parser in test_parser, compile_parser, tree_parser:
         parser.add_argument(
             "sources",
             type=str,
