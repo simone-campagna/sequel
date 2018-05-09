@@ -40,6 +40,6 @@ from .trait import (
     Trait,
     verify_traits,
 )
-from .zip_sequences import (
-    Zip,
+from .roundrobin import (
+    roundrobin,
 )

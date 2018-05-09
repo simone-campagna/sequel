@@ -46,8 +46,8 @@ from .binary import (
     DivAlgorithm,
     PowAlgorithm,
 )
-from .zip_sequences import (
-    ZipAlgorithm,
+from .roundrobin import (
+    RoundrobinAlgorithm,
 )
 
 __all__ = [
@@ -81,7 +81,7 @@ def search_config(defaults=True):
         ProductAlgorithm,
         IntegralAlgorithm,
         DerivativeAlgorithm,
-        ZipAlgorithm,
+        RoundrobinAlgorithm,
     ]
     for algorithm_type in algorithm_types:
         algorithm_config = {

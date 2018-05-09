@@ -5,19 +5,19 @@ Search zip algorithm class
 import itertools
 
 from ..items import Items
-from ..sequence import Zip
+from ..sequence import roundrobin
 from ..utils import sequence_matches
 
 from .base import RecursiveAlgorithm
 
 
 __all__ = [
-    "ZipAlgorithm",
+    "RoundrobinAlgorithm",
 ]
 
 
-class ZipAlgorithm(RecursiveAlgorithm):
-    """Search for Zip(s1, s2, ...)"""
+class RoundrobinAlgorithm(RecursiveAlgorithm):
+    """Search for roundrobin(s1, s2, ...)"""
     __min_items__ = 3
     __accepts_undefined__ = True
     __init_keys__ = ["max_level"]
@@ -50,6 +50,6 @@ class ZipAlgorithm(RecursiveAlgorithm):
         else:
             if results:
                 for seq_list in itertools.product(*results):
-                    sequence = Zip(*seq_list)
+                    sequence = roundrobin(*seq_list)
                     if sequence_matches(sequence, orig_items):
                         yield sequence

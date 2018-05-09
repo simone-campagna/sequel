@@ -1,25 +1,63 @@
 import sympy
 
 
-class compose(sympy.Function):
-    pass
+__all__ = [
+    "MOCK_CLASSES",
+]
 
 
-class summation(sympy.Function):
-    pass
+# class SympyMock(sympy.Function):
+#     def __new__(cls, *args, **kwargs):
+#         return super().__new__(cls)
+# 
+#     def __init__(self, *args, **kwargs):
+#         pass
+# 
 
+# class compose(SympyMock):
+#     pass
+# 
+# 
+# class summation(SympyMock):
+#     pass
+# 
+# 
+# class product(SympyMock):
+#     pass
+# 
+# 
+# class integral(SympyMock):
+#     pass
+# 
+# 
+# class derivative(SympyMock):
+#     pass
+# 
+# 
+# class roundrobin(SympyMock):
+#     pass
+# 
 
-class product(sympy.Function):
-    pass
+# class Geometric(SympyMock):
+#     pass
 
 
 class integral(sympy.Function):
-    pass
+    def __new__(cls, base=None):
+        return super().__new__(cls, base)
+
+    def __init__(self, base=None):
+        pass
 
 
-class derivative(sympy.Function):
-    pass
+class Geometric(sympy.Function):
+    def __new__(cls, base=None):
+        return super().__new__(cls, base)
+
+    def __init__(self, base=None):
+        pass
 
 
-class Zip(sympy.Function):
-    pass
+MOCK_CLASSES = {
+    'Geometric': Geometric,
+}

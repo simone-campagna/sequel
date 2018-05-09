@@ -18,7 +18,6 @@ import sympy
 
 from ..item import Any, ANY, Range, Set, Value
 from ..utils import is_integer
-from . import sympy_classes
 from .trait import Trait
 
 
@@ -37,7 +36,6 @@ __all__ = [
     'Const',
     'Compose',
 ]
-
 
 
 class SequenceError(Exception):
@@ -98,6 +96,15 @@ class Sequence(metaclass=SMeta):
     def _make_expr(self):
         if self._instance_symbol:
             return sympy.symbols(self._instance_symbol, integer=True)
+
+    def _make_simplify_expr(self, vdict):
+        expr = self.expr
+        if expr is not None:
+            return expr
+        else:
+            symbol = "tmp_{}".format(len(vdict))
+            vdict[symbol] = self
+            return sympy.symbols(symbol, integer=True)
 
     @property
     def expr(self):
@@ -242,7 +249,7 @@ class Sequence(metaclass=SMeta):
             sequence_type_list = new_list
     
     @classmethod
-    def compile(cls, source, simplify=False):
+    def compile(cls, source, simplify=False, locals=None, check_type=True):
         """Compile sequence from source.
     
            Parameters
@@ -251,13 +258,17 @@ class Sequence(metaclass=SMeta):
                Sequence source
            simplify: bool, optional
                Simplify sequence (defaults to False)
+           locals dict, optional
+               locals dictionary (defaults to None)
+           check_type: bool, optional
+               check if the output is a Sequence (defaults to True)
     
            Returns
            -------
            Sequence
                The compiled Sequence.
         """
-        g_dict = {
+        globals = {
             "ANY": ANY,
             "Any": Any,
             "Range": Range,
@@ -265,16 +276,19 @@ class Sequence(metaclass=SMeta):
             "Value": Value,
         }
         for sequence_type in Sequence.sequence_types():
-            g_dict[sequence_type.__name__] = sequence_type
-        g_dict.update(Sequence.__registry__)
-        sequence = eval(source, g_dict, {})
-        if isinstance(sequence, int):
-            sequence = Const(value=sequence)
-        elif isinstance(sequence, float):
-            sequence = Const(value=int(sequence))
-        elif not isinstance(sequence, Sequence):
-            raise TypeError("{!r} is not a Sequence".format(sequence))
-        if simplify:
+            globals[sequence_type.__name__] = sequence_type
+        globals.update(Sequence.__registry__)
+        if locals is None:
+            locals = {}
+        sequence = eval(source, globals, locals)
+        if check_type:
+            if is_integer(sequence):
+                sequence = Const(value=sequence)
+            elif isinstance(sequence, float):
+                sequence = Const(value=int(sequence))
+            elif not isinstance(sequence, Sequence):
+                raise TypeError("{!r} is not a Sequence".format(sequence))
+        if isinstance(sequence, Sequence) and simplify:
             sequence = sequence.simplify()
         return sequence
 
@@ -284,8 +298,8 @@ class Sequence(metaclass=SMeta):
             ", ".join("{}={!r}".format(key, val) for key, val in self._instance_parameters[1:]))
 
     @classmethod
-    def from_expr(cls, expr):
-        return cls.compile(str(expr))
+    def from_expr(cls, expr, locals=None):
+        return cls.compile(str(expr), locals=locals)
         
     def simplify(self):
         expr = self.expr
@@ -299,7 +313,10 @@ class Sequence(metaclass=SMeta):
                 except NameError:
                     return self
         else:
-            return self
+            return self._simplify_backup()
+
+    def _simplify_backup(self):
+        return self
 
     def __str__(self):
         return astor.to_source(
@@ -435,6 +452,12 @@ class UnOp(Sequence):
         if expr is not None:
             return self._unop(expr)
 
+    def _simplify_backup(self):
+        o = self.operand.simplify()
+        return self._unop(
+            self.operand.simplify()
+        )
+
     def __call__(self, i):
         return gmpy2.mpz(self._unop(self.operand[i]))
 
@@ -506,6 +529,17 @@ class BinOp(Sequence):
     def children(self):
         yield from (self.left, self.right)
 
+    def _simplify_backup(self):
+        vdict = {}
+        left = self.left.expr
+        if left is None:
+            left = self.left.simplify()._make_simplify_expr(vdict)
+        right = self.right.expr
+        if right is None:
+            right = self.right.simplify()._make_simplify_expr(vdict)
+        expr = self._binop(left, right)
+        return self.from_expr(str(expr), locals=vdict)
+
 
 class Add(BinOp):
     __operator__ = '+'
@@ -538,11 +572,6 @@ class Div(BinOp):
     def _binop(cls, l, r):
         return l // r
 
-    # def _make_expr(self):
-    #     l_expr = self.left.expr
-    #     r_expr = self.right.expr
-    #     if l_expr is not None and r_expr is not None:
-    #         return l_expr / r_expr
 
 class Mod(BinOp):
     __operator__ = '%'

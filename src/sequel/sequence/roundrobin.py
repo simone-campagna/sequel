@@ -1,5 +1,5 @@
 """
-Zip
+roundrobin
 """
 
 import abc
@@ -7,14 +7,17 @@ import abc
 from .base import Iterator
 
 __all__ = [
-    'Zip',
+    'roundrobin',
 ]
 
 
-class Zip(Iterator):
+class roundrobin(Iterator):
     def __init__(self, operand, *operands):
         self.operands = [self.make_sequence(operand)]
         self.operands.extend(self.make_sequence(op) for op in operands)
+
+    def _simplify_backup(self):
+        return self.__class__(*[operand.simplify() for operand in self.operands])
 
     def __iter__(self):
         its = [iter(op) for op in self.operands]
