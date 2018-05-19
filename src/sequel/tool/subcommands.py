@@ -29,7 +29,13 @@ from ..config import (
 )
 from ..item import make_item
 from ..items import make_items
-from ..search import create_manager
+from ..search import (
+    create_manager,
+    StopAtFirst,
+    StopAtLast,
+    # StopAtNum,
+    StopBelowComplexity,
+)
 from ..sequence import compile_sequence, Sequence
 from ..profiler import Profiler
 from ..utils import assert_sequence_matches
@@ -47,9 +53,47 @@ def make_printer(display_kwargs=None):
     return Printer(**display_kwargs)
 
 
+# def type_stop_at_num(string):
+#     return StopAtNum(int(string))
+
+
+def type_stop_below_complexity(string):
+    return StopBelowComplexity(int(string))
+
+
+class declist(object):
+    def __init__(self, decorators):
+        self.decorators = decorators
+
+    def __call__(self, function):
+        for decorator in self.decorators:
+            function = decorator(function)
+        return function
+            
+
 class SequelShell(Interpreter):
     __example_line_prefix__ = "  "
     __simplify_argument__ = argument('-s', '--simplify', action='store_true', default=False, help='simplify expressions')
+    __profile_argument__ = argument('-p', '--profile', action='store_true', default=False, help='show profiling stats')
+    __sort_argument__ = argument('-t', '--sort', action='store_true', default=False, help='sort sequences')
+    __base_argument__ = argument('-b', '--base', type=int, default=None, help='output base')
+    __limit_argument__ = argument('-l', '--limit', type=int, default=None, help='max number of displayed results')
+    __num_items_argument__ = argument('-n', '--num-items', type=int, metavar='N', default=None, help='number of displayed items')
+    __search_arguments__ = declist([
+        __profile_argument__,
+        __sort_argument__,
+        __base_argument__,
+        __num_items_argument__,
+        __limit_argument__,
+        argument('-f', '--first', dest='handler', action="store_const", const=StopAtFirst(), default=None,
+                 mutually_exclusive_group='stop', help="stop search at first matches"),
+        argument('-a', '--all', dest='handler', action="store_const", const=StopAtLast(), default=None,
+                 mutually_exclusive_group='stop', help="search all sequences"),
+        # argument('-l', '--limit', dest='handler', metavar='L', type=type_stop_at_num, default=None,
+        #          mutually_exclusive_group='stop', help="search at most L sequences"),
+        argument('-c', '--complexity', dest='handler', metavar="C", type=type_stop_below_complexity, default=None,
+                 mutually_exclusive_group='stop', help="stop below complexity C"),
+    ])
 
     def __init__(self, printer=None):
         if printer is None:
@@ -247,10 +291,24 @@ Some functions can be used to create new sequences; for instance:
 
     ### search:
     @argument('items', type=make_item, nargs='+', help="sequence items")
+    @__search_arguments__
     @command(name='search')
-    def _search_command(self, items):
+    def _search_command(self, items, handler, profile, base, sort, limit, num_items):
         """Search a sequence matching the given items"""
-        function_search(items)
+        printer = self.printer
+        if profile:
+            profiler = Profiler()
+        else:
+            profiler = None
+        config = get_config()
+        size = len(items)
+        manager = create_manager(size, config=config)
+        found_sequences = manager.search(items, handler=handler, profiler=profiler)
+        sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+        with printer.overwrite(base=base, num_items=num_items):
+            printer.print_sequences(sequences, num_known=len(items))
+            if profile:
+                printer.print_stats(profiler)
 
     @_search_command.document
     def _search_help(self):
@@ -479,7 +537,7 @@ be disabled.""")
 
 def iter_selected_sequences(found_sequences, sort=False, limit=None):
     if sort:
-        found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
+        found_sequences = sorted(found_sequences, key=lambda x: x.complexity())
     if limit is None:
         yield from found_sequences
     else:

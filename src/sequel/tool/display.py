@@ -270,3 +270,17 @@ class Printer(object):
         self.print_sequence(sequence)
         self(self.bold("###") + " searching " + self.bold(" ".join(self.repr_items(items))) + " ...")
         self.print_sequences(sequences, num_items=0, num_known=0, target_sequence=sequence)
+
+    @contextlib.contextmanager
+    def overwrite(self, base=None, num_items=None):
+        old_base = self.base
+        old_num_items = self.num_items
+        try:
+            if base is not None:
+                self.base = base
+            if num_items is not None:
+                self.num_items = num_items
+            yield self
+        finally:
+            self.num_items = old_num_items
+            self.base = old_base

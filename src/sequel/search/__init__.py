@@ -13,6 +13,7 @@ from .manager import (
     Handler,
     StopAtFirst,
     StopAtLast,
+    StopAtNum,
     StopBelowComplexity,
 )
 from .base import Algorithm

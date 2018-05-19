@@ -20,6 +20,7 @@ __all__ = [
     "Handler",
     "StopAtFirst",
     "StopAtLast",
+    "StopAtNum",
     "StopBelowComplexity",
     "Manager",
 ]
@@ -96,6 +97,15 @@ class StopAtFirst(Handler):
 class StopAtLast(Handler):
     def __bool__(self):
         return False
+
+
+class StopAtNum(Handler):
+    def __init__(self, limit):
+        self.limit = limit
+        super().__init__()
+
+    def __bool__(self):
+        return len(self.collector) >= self.limit
 
 
 class StopBelowComplexity(Handler):
