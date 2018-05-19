@@ -12,7 +12,9 @@ __all__ = [
     "Value",
     "ANY",
     "Any",
-    "Range",
+    "UpperBound",
+    "LowerBound",
+    "Interval",
     "make_item",
     "simplify_item",
 ]
@@ -71,7 +73,7 @@ class Any(Item):
         return "ANY"
 
     def as_string(self):
-        return "%"
+        return ".."
 
     def __hash__(self):
         return hash("ANY")
@@ -116,7 +118,75 @@ class Value(Item):
         yield self._value
 
 
-class Range(Item):
+class LowerBound(Item):
+    def __init__(self, min_value):
+        self._min_value = gmpy2.mpz(min_value)
+
+    def __contains__(self, value):
+        return self._min_value <= value
+
+    @property
+    def min_value(self):
+        return self._min_value
+
+    def __eq__(self, value):
+        if isinstance(value, Item):
+            return self.equals(value)
+        else:
+            return self._min_value <= value
+
+    def __repr__(self):
+        return "{}({})".format(
+            type(self).__name__,
+            self._min_value)
+
+    def as_string(self):
+        return "{}..".format(self._srepr(self._min_value))
+
+    def __hash__(self):
+        return hash(self._min_value)
+
+    def equals(self, other):
+        if super().equals(other):
+            return self._min_value == other._min_value
+        return False
+
+
+class UpperBound(Item):
+    def __init__(self, max_value):
+        self._max_value = gmpy2.mpz(max_value)
+
+    def __contains__(self, value):
+        return value <= self._max_value
+
+    @property
+    def max_value(self):
+        return self._max_value
+
+    def __eq__(self, value):
+        if isinstance(value, Item):
+            return self.equals(value)
+        else:
+            return value <= self._max_value
+
+    def __repr__(self):
+        return "{}({})".format(
+            type(self).__name__,
+            self._max_value)
+
+    def as_string(self):
+        return "..{}".format(self._srepr(self._max_value))
+
+    def __hash__(self):
+        return hash(self._max_value)
+
+    def equals(self, other):
+        if super().equals(other):
+            return self._max_value == other._max_value
+        return False
+
+
+class Interval(Item):
     def __init__(self, min_value, max_value):
         self._min_value = gmpy2.mpz(min_value)
         self._max_value = gmpy2.mpz(max_value)
@@ -220,30 +290,49 @@ def make_item(x, simplify=True):
         else:
             return Value(int(x))
     elif isinstance(x, str):
-        if x == '%':
-            return ANY
         rw = re.compile(r'\D')
         m = rw.search(x)
         if m:
             c = m.group()
             if c.isalpha():
-                value = eval(x, {
-                    'ANY': ANY,
-                    'Any': Any,
-                    'Range': Range,
-                    'Set': Set,
-                    'Value': Value,
-                })
-                if isinstance(value, Item):
-                    if simplify and value.size == 1:
-                        return next(value.iter_values())
-                    else:
-                        return value
-                elif is_integer(value):
-                    return value
+                try:
+                    value = eval(x, {
+                        'ANY': ANY,
+                        'Any': Any,
+                        'LowerBound': LowerBound,
+                        'UpperBound': UpperBound,
+                        'Interval': Interval,
+                        'Set': Set,
+                        'Value': Value,
+                    })
+                except:
+                    raise
                 else:
-                    raise ValueError(x)
-            elif c == ',':
+                    if is_integer(value):
+                        if simplify:
+                            return value
+                        else:
+                            return Value(value)
+                    elif isinstance(value, Item):
+                        if simplify and value.size == 1:
+                            return next(value.iter_values())
+                        else:
+                            return value
+                    else:
+                        raise TypeError("{!r}: not a valid Item".format(x, value))
+            elif '..' in x:
+                min_value, max_value = [t.strip() for t in x.split('..', 1)]
+                if min_value:
+                    if max_value:
+                        return Interval(int(min_value), int(max_value))
+                    else:
+                        return LowerBound(int(min_value))
+                else:
+                    if max_value:
+                        return UpperBound(int(max_value))
+                    else:
+                        return ANY
+            elif ',' in x:
                 lst = []
                 for t in x.split(','):
                     lst.append(int(t.strip()))
@@ -251,17 +340,56 @@ def make_item(x, simplify=True):
                     return lst[0]
                 else:
                     return Set(*lst)
-            elif '..' in x:
-                lst = x.split('..', 1)
-                mn = int(lst[0])
-                mx = int(lst[1])
-                if simplify and mn == mx:
-                    return mn
-                else:
-                    return Range(mn, mx)
         if simplify:
             return int(x)
         else:
             return Value(int(x))
     else:
         raise TypeError("{!r}: not a valid Item".format(x))
+
+#             
+#         if x == '%':
+#             return ANY
+#         rw = re.compile(r'\D')
+#         m = rw.search(x)
+#         if m:
+#             c = m.group()
+#             if c.isalpha():
+#                 value = eval(x, {
+#                     'ANY': ANY,
+#                     'Any': Any,
+#                     'Interval': Interval,
+#                     'Set': Set,
+#                     'Value': Value,
+#                 })
+#                 if isinstance(value, Item):
+#                     if simplify and value.size == 1:
+#                         return next(value.iter_values())
+#                     else:
+#                         return value
+#                 elif is_integer(value):
+#                     return value
+#                 else:
+#                     raise ValueError(x)
+#             elif c == ',':
+#                 lst = []
+#                 for t in x.split(','):
+#                     lst.append(int(t.strip()))
+#                 if simplify and len(lst) == 1:
+#                     return lst[0]
+#                 else:
+#                     return Set(*lst)
+#             elif '..' in x:
+#                 lst = x.split('..', 1)
+#                 mn = int(lst[0])
+#                 mx = int(lst[1])
+#                 if simplify and mn == mx:
+#                     return mn
+#                 else:
+#                     return Interval(mn, mx)
+#         if simplify:
+#             return int(x)
+#         else:
+#             return Value(int(x))
+#     else:
+#         raise TypeError("{!r}: not a valid Item".format(x))

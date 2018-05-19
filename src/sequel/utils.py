@@ -9,7 +9,6 @@ import sys
 import gmpy2
 import sympy
 
-
 __all__ = [
     'gcd',
     'lcm',
@@ -125,6 +124,13 @@ def sequence_matches(sequence, items):
         return False
 
 
+def item_repr(item):
+    if is_integer(item):
+        return int(item)
+    else:
+        return item
+
+
 def assert_sequence_matches(sequence, items):
     try:
        result = not any(x != y for x, y in zip(sequence, items))
@@ -134,4 +140,4 @@ def assert_sequence_matches(sequence, items):
        # print("ko", err)
     if not result:
         raise AssertionError("sequence {} does not match items {}".format(
-            str(sequence), [int(x) for x in items]))
+            str(sequence), [item_repr(x) for x in items]))

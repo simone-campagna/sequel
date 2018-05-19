@@ -4,7 +4,7 @@ Search mul/div/pow sequences
 
 import itertools
 
-from ..item import ANY, Range
+from ..item import ANY, Interval
 from ..items import make_items
 from ..utils import (
     factorize, gcd, divisors,
@@ -128,7 +128,7 @@ class DivAlgorithm(RecursiveAlgorithm):
                     if vr == vl:
                         vv = vr
                     else:
-                        vv = Range(vl, vr)
+                        vv = Interval(vl, vr)
                     sub_items.append(vv)
             else:
                 # ok

@@ -3,160 +3,38 @@ Main tool.
 """
 
 import argparse
-import collections
-import itertools
-import json
-import os
-import sys
-import textwrap
 
-from .item import make_item
-from .catalog import create_catalog
-from .config import (
-    default_config,
-    get_config,
+from .. import VERSION
+from ..config import (
     set_config,
     load_config,
-    dump_config,
-    write_config,
-    reset_config,
     update_config,
     setup_config,
 )
-from .display import Printer
-from .modules import load_ref
-from .search import (
-    create_manager,
+from ..item import make_item
+from ..modules import load_ref
+from ..search import (
     StopAtFirst,
     StopAtLast,
     StopBelowComplexity,
 )
-from .sequence import Sequence
-from .profiler import Profiler
 
+from .subcommands import (
+    function_search,
+    function_shell,
+    function_test,
+    function_compile,
+    function_doc,
+    function_tree,
+    function_config_show,
+    function_config_write,
+    function_config_reset,
+)
 
 __all__ = [
     'main',
+    'main_argparse',
 ]
-
-
-def make_printer(display_kwargs):
-    if display_kwargs is None:
-        display_kwargs = {}
-    return Printer(**display_kwargs)
-
-    
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    config = get_config()
-    size = printer.num_items
-    manager = create_manager(size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    for source in sources:
-        print(printer.bold("###") + " compiling " + printer.bold(str(source)) + " ...")
-        sequence = Sequence.compile(source, simplify=simplify)
-        printer.print_sequence(sequence)
-        items = sequence.get_values(printer.num_items)
-        print(printer.bold("###") + " searching " + printer.bold(" ".join(printer.repr_items(items))) + " ...")
-        if limit is None:
-            counter = itertools.count()
-        else:
-            counter = range(limit)
-        found_sequences = manager.search(items, handler=handler, profiler=profiler)
-        if sort:
-            found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
-        found = False
-        best_match, best_match_complexity = None, 1000000
-        for count, found_sequence in zip(counter, found_sequences):
-            header = "{:>5d}] ".format(count)
-            if sequence.equals(found_sequence):
-                found = True
-                header += "[*] "
-            else:
-                header += "    "
-            complexity = found_sequence.complexity()
-            if best_match_complexity > complexity:
-                best_match, best_match_complexity = found_sequence, complexity
-            printer.print_sequence(found_sequence, num_items=0, header=header)
-        if found:
-            print("sequence {}: found".format(sequence))
-        else:
-            if best_match is not None:
-                print("sequence {}: found as {}".format(sequence, best_match))
-            else:
-                print("sequence {}: *not* found".format(sequence))
-    if profile:
-        printer.print_stats(profiler)
-            
-
-def function_config_show():
-    config = get_config()
-    print(json.dumps(config, indent=4))
-
-
-def function_config_write(output_config_filename=None, reset=False):
-    if reset:
-        config = default_config()
-    else:
-        config = get_config()
-    write_config(config, output_config_filename)
-
-
-def function_config_reset():
-    reset_config()
-
-
-def function_compile(sources, simplify=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    for source in sources:
-        sequence = Sequence.compile(source, simplify=simplify)
-        printer.print_sequence(sequence)
-
-    
-def function_tree(sources, simplify=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    for source in sources:
-        sequence = Sequence.compile(source, simplify=simplify)
-        printer.print_tree(sequence)
-
-    
-def function_doc(sources, simplify=False, full=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    if not sources:
-        sources = [str(sequence) for sequence in Sequence.get_registry().values()]
-    first = True
-    for source in sorted(sources):
-        if not first:
-            print()
-        first = False
-        sequence = Sequence.compile(source, simplify=simplify)
-        printer.print_doc(sequence, full=full)
-
-
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    if limit is None:
-        counter = itertools.count()
-    else:
-        counter = range(limit)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    config = get_config()
-    size = len(items)
-    manager = create_manager(size, config=config)
-    found_sequences = manager.search(items, handler=handler, profiler=profiler)
-    if sort:
-        found_sequences = sorted(found_sequences, key=lambda x: x.complexity(), reverse=reverse)
-    for count, sequence in zip(counter, found_sequences):
-        header = "{:>5d}] ".format(count)
-        printer.print_sequence(sequence, header=header, num_known=len(items))
-    if profile:
-        printer.print_stats(profiler)
 
 
 def type_stop_below_complexity(string):
@@ -169,14 +47,15 @@ def type_config_key_value(string):
     return (key, value)
 
 
-def main():
+def main_argparse():
     """Main function"""
     top_level_parser = argparse.ArgumentParser(
         description="""\
-Sequitur
-""")
+Sequel v{version} - integer sequence finder
+""".format(version=VERSION))
+
     top_level_parser.set_defaults(
-        function=top_level_parser.print_help,
+        function=function_shell,
         function_args=[])
 
     top_level_parser.add_argument(
@@ -197,6 +76,11 @@ Sequitur
         dest="config_keys", default=[], type=type_config_key_value,
         action="append",
         help="set config key")
+
+    top_level_parser.add_argument(
+        "--version",
+        action="version",
+        version=VERSION)
 
     subparsers = top_level_parser.add_subparsers()
 
@@ -253,7 +137,7 @@ Show sequence documentation""")
 Compile a sequence""")
     compile_parser.set_defaults(
         function=function_compile,
-        function_args=['sources', 'simplify'] + ['display_kwargs'])
+        function_args=['sources', 'simplify', 'tree'] + ['display_kwargs'])
 
     tree_parser = subparsers.add_parser(
         'tree',
@@ -309,6 +193,14 @@ Reset config file""")
         function=function_config_reset,
         function_args=[])
 
+    shell_parser = subparsers.add_parser(
+        'shell',
+        description="""\
+Open an interactive shell""")
+    shell_parser.set_defaults(
+        function=function_shell,
+        function_args=['display_kwargs'])
+
     test_parser = subparsers.add_parser(
         'test',
         description="""\
@@ -324,7 +216,7 @@ Compile a sequence and tries to search it""")
             default=False,
             help="simplify expression")
 
-    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser:
+    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser, shell_parser:
         parser.add_argument(
             "-n", "--num-items",
             metavar="N",
@@ -439,6 +331,12 @@ Compile a sequence and tries to search it""")
             nargs='+',
             type=make_item,
             help="sequence items")
+
+    compile_parser.add_argument(
+        '-t', '--tree',
+        action='store_true',
+        default=False,
+        help="show sequence tree")
 
     for parser in test_parser, compile_parser, tree_parser:
         parser.add_argument(

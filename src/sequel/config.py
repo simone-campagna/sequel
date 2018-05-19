@@ -2,6 +2,9 @@
 Configuration
 """
 
+import collections
+import copy
+import functools
 import json
 import os
 import random
@@ -13,6 +16,8 @@ __all__ = [
     "get_config_filename",
     "default_config",
     "get_config",
+    "get_rl_history_filename",
+    "get_rl_init_filename",
     "get_actual_config_filename",
     "get_actual_base_path",
     "set_config",
@@ -22,14 +27,26 @@ __all__ = [
     "reset_config",
     "update_config",
     "setup_config",
+    "show_config",
 ]
 
 RCDIR = os.path.normpath(os.path.abspath(os.path.join(os.path.expanduser("~"), ".sequel")))
 CONFIG_FILENAME = os.path.join(RCDIR, "sequel.config")
+RL_HISTORY_FILENAME = os.path.join(RCDIR, "sequel.rl-history")
+RL_INIT_FILENAME = os.path.join(RCDIR, "sequel.rl-init")
 
 CONFIG = None
 
 CONFIG_REGISTRY = {}
+
+
+def get_rl_history_filename():
+    return RL_HISTORY_FILENAME
+
+
+def get_rl_init_filename():
+    return RL_INIT_FILENAME
+
 
 def register_config(name, default, setup_callback=None):
     CONFIG_REGISTRY[name] = (default, setup_callback)
@@ -160,3 +177,51 @@ def update_config(config, key, value):
         for token in tokens[:-1]:
             cfg = cfg.setdefault(token, {})
         cfg[tokens[-1]] = value
+
+
+def get_config_key(config, key):
+    tokens = [x.strip() for x in key.split(".")]
+    if tokens:
+        cfg = config
+        for token in tokens[:-1]:
+            cfg = cfg.setdefault(token, {})
+        return cfg[tokens[-1]]
+
+
+@functools.singledispatch
+def show_value(value, key, prefix, print_function=print, sort_keys=False):
+    print_function("{} = {!r}".format(key, value))
+
+
+@show_value.register(collections.Mapping)
+def _(value, key, prefix, print_function=print, sort_keys=False):
+    items = value.items()
+    if sort_keys:
+        items = sorted(items, key=lambda x: x[0])
+    for skey, svalue in items:
+        sk = prefix + skey
+        sp = sk + '.'
+        show_value(svalue, sk, sp, print_function=print_function, sort_keys=sort_keys)
+
+
+@show_value.register(list)
+@show_value.register(tuple)
+@show_value.register(set)
+def _(value, key, prefix, print_function=print, sort_keys=False):
+    for scount, svalue in enumerate(value):
+        sk = "{}[{}]".format(prefix, scount)
+        sp = sk + '.'
+        show_value(svalue, sk, sp, print_function=print_function, sort_keys=sort_keys)
+
+
+def show_config(config=None, keys=None, prefix='', print_function=print, sort_keys=False):
+    if config is None:
+        config = get_config()
+    config = config.copy()
+    config.pop("__internal__", None)
+    if keys:
+        for key in keys:
+            show_value(config, key, key + '.', print_function=print_function, sort_keys=sort_keys)
+    else:
+        show_value(config, '', '', print_function=print_function, sort_keys=sort_keys)
+        

@@ -2,6 +2,8 @@
 Print utils
 """
 
+import contextlib
+import functools
 import sys
 import textwrap
 
@@ -9,9 +11,9 @@ import termcolor
 
 import gmpy2
 
-from .config import get_config, register_config
+from ..config import get_config, register_config
 
-from .sequence import Sequence
+from ..sequence import Sequence
 
 
 __all__ = [
@@ -62,6 +64,20 @@ class Printer(object):
             setattr(self, key, value)
         self.file = file
 
+    def __call__(self, *args, **kwargs):
+        if not 'file' in kwargs:
+            kwargs['file'] = self.file
+        print(*args, **kwargs)
+
+    @contextlib.contextmanager
+    def set_file(self, file):
+        old_file = self.file
+        self.file = file
+        try:
+            yield self
+        finally:
+            self.file = old_file
+
     def _colored(self, string, color):
         if self.colored:
             return termcolor.colored(string, color)
@@ -80,6 +96,19 @@ class Printer(object):
         else:
             return string
 
+    def color(self, string, *attrs):
+        if self.colored:
+            arglist = []
+            attrlist = []
+            for attr in  attrs:
+                if attr in termcolor.ATTRIBUTES:
+                    attrlist.append(attr)
+                else:
+                    arglist.append(attr)
+            return termcolor.colored(string, *arglist, attrs=attrlist)
+        else:
+            return string
+      
     def repr_items(self, items):
         return [self.repr_item(i) for i in items]
 
@@ -116,7 +145,7 @@ class Printer(object):
             data = self._oneline_items(items, num_known=num_known)
             if False and self.wraps:
                 data = textwrap.fill(data, subsequent_indent='    ', break_long_words=False)
-            print(data, file=self.file)
+            self(data)
         elif self.item_mode == "multiline":
             for index, item in enumerate(items):
                 if index < num_known:
@@ -124,17 +153,25 @@ class Printer(object):
                 else:
                    fn = self.blue
                 item = fn(self.repr_item(item))
-                print(self.item_format.format(index=index, item=item), file=self.file)
+                self(self.item_format.format(index=index, item=item))
                 
-    def print_doc(self, sequence, num_items=None, full=False):
-        if num_items is None:
-            num_items = self.num_items
-        print(self.bold(str(sequence)) + " : " + sequence.doc(), file=self.file)
-        if full and sequence.traits:
-            print(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
-        if num_items:
-            items = sequence.get_values(num_items)
-            self.print_items(items)
+    def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
+        if sources is None:
+            sources = [str(sequence) for sequence in Sequence.get_registry().values()]
+        first = True
+        for source in sorted(sources):
+            if not first:
+                self()
+            first = False
+            sequence = Sequence.compile(source, simplify=simplify)
+            if num_items is None:
+                num_items = self.num_items
+            self(self.bold(str(sequence)) + " : " + sequence.doc())
+            if full and sequence.traits:
+                self(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
+            if num_items:
+                items = sequence.get_values(num_items)
+                self.print_items(items)
 
     
     def print_sequence(self, sequence, num_items=None, num_known=0, header=""):
@@ -151,13 +188,38 @@ class Printer(object):
             num_items = self.num_items
         s_sequence = str(sequence)
         s_sequence = self.bold(str(sequence))
-        print("{}{}".format(header, s_sequence), file=self.file)
-        self.file.flush()
+        self("{}{}".format(header, s_sequence))
         if num_items:
             items = sequence.get_values(num_items)
             self.print_items(items, num_known=num_known)
     
     
+    def print_sequences(self, sequences, num_items=None, num_known=0, header="", target_sequence=None):
+        if target_sequence is not None:
+            best_match, best_match_complexity = None, 1000000
+            found = False
+        for count, sequence in enumerate(sequences):
+            header = "{:>5d}] ".format(count)
+            if target_sequence is not None:
+                if sequence.equals(target_sequence):
+                    found = True
+                    header += "[*] "
+                else:
+                    header += "    "
+                complexity = sequence.complexity()
+                if best_match_complexity > complexity:
+                    best_match, best_match_complexity = sequence, complexity
+            self.print_sequence(sequence, header=header, num_known=num_known)
+        if target_sequence is not None:
+            if found:
+                self("sequence {}: found".format(target_sequence))
+            else:
+                if best_match is not None:
+                    self("sequence {}: found as {}".format(target_sequence, best_match))
+                else:
+                    self("sequence {}: *not* found".format(target_sequence))
+
+
     def print_tree(self, sequence):
         max_complexity = sequence.complexity()
         max_len = 1
@@ -180,11 +242,11 @@ class Printer(object):
                 lst.append(":")
                 lst.append(rchild)
             hdr = "{} ".format(self.blue(complexity)) + ("  " * depth)
-            print(hdr + " ".join(lst), file=self.file)
+            self(hdr + " ".join(lst))
     
     
     def print_stats(self, stats):
-        print("## Stats:", file=self.file)
+        self("## Stats:")
         table = [('ALGORITHM', 'COUNT', 'TOTAL_TIME', 'AVERAGE_TIME')]
         lstats = list(stats.items())
         lstats.sort(key=lambda x: x[1].total_time)
@@ -201,4 +263,10 @@ class Printer(object):
         aligns = ['<', '>', '>', '>']
         fmt = " ".join("{{:{a}{l}s}}".format(a=a, l=l) for a, l in zip(aligns, lengths))
         for row in table:
-            print(fmt.format(*row), file=self.file)
+            self(fmt.format(*row))
+
+    def print_test(self, source, sequence, items, sequences):
+        self(self.bold("###") + " compiling " + self.bold(str(source)) + " ...")
+        self.print_sequence(sequence)
+        self(self.bold("###") + " searching " + self.bold(" ".join(self.repr_items(items))) + " ...")
+        self.print_sequences(sequences, num_items=0, num_known=0, target_sequence=sequence)

@@ -16,7 +16,10 @@ import weakref
 import gmpy2
 import sympy
 
-from ..item import Any, ANY, Range, Set, Value
+from ..item import (
+    Any, ANY, Interval, Set, Value,
+    LowerBound, UpperBound,
+)
 from ..utils import is_integer
 from .trait import Trait
 
@@ -271,7 +274,9 @@ class Sequence(metaclass=SMeta):
         globals = {
             "ANY": ANY,
             "Any": Any,
-            "Range": Range,
+            "Interval": Interval,
+            "LowerBound": LowerBound,
+            "UpperBound": UpperBound,
             "Set": Set,
             "Value": Value,
         }
@@ -380,8 +385,8 @@ class Sequence(metaclass=SMeta):
         return tuple(lst)
 
 
-def compile_sequence(source):
-    return Sequence.compile(source)
+def compile_sequence(source, simplify=False):
+    return Sequence.compile(source, simplify=simplify)
 
 
 class StashMixin(object):

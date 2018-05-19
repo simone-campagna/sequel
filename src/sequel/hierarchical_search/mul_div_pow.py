@@ -5,7 +5,7 @@ Search integral/derivative algorithm class
 import itertools
 import time
 
-from ..item import ANY, Range
+from ..item import ANY, Interval
 from ..items import Items
 from ..utils import (
     factorize, gcd, divisors,
@@ -69,7 +69,7 @@ class SearchDiv(RecursiveSearchAlgorithm):
                         sub_items.append(0)
                     else:
                         vv = item * r_value
-                        sub_items.append(Range(vv, vv + r_value - 1))
+                        sub_items.append(Interval(vv, vv + r_value - 1))
             else:
                 # ok
                 sub_items = Items(sub_items)
