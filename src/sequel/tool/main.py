@@ -5,7 +5,7 @@ Main tool.
 import shlex
 import sys
 
-from .subcommands import SequelShell, make_printer
+from .sequel_shell import SequelShell
 
 __all__ = [
     'main',
@@ -13,7 +13,7 @@ __all__ = [
 
 
 def main():
-    cmd = SequelShell(printer=make_printer())
+    cmd = SequelShell()
     if sys.argv[1:]:
         cmd.cli()
     else:

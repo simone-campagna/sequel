@@ -26,6 +26,7 @@ __all__ = [
     "write_config",
     "reset_config",
     "update_config",
+    "get_config_key",
     "setup_config",
     "show_config",
 ]
@@ -181,6 +182,14 @@ def update_config(config, key, value):
 
 def get_config_key(config, key):
     tokens = [x.strip() for x in key.split(".")]
+    val = config
+    for token in tokens:
+        val = val[token]
+    return val
+
+
+def get_config_key(config, key):
+    tokens = [x.strip() for x in key.split(".")]
     if tokens:
         cfg = config
         for token in tokens[:-1]:
@@ -221,7 +230,7 @@ def show_config(config=None, keys=None, prefix='', print_function=print, sort_ke
     config.pop("__internal__", None)
     if keys:
         for key in keys:
-            show_value(config, key, key + '.', print_function=print_function, sort_keys=sort_keys)
+            show_value(get_config_key(config, key), key, key + '.', print_function=print_function, sort_keys=sort_keys)
     else:
         show_value(config, '', '', print_function=print_function, sort_keys=sort_keys)
         

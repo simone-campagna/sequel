@@ -1,5 +1,5 @@
 """
-Main tool.
+Sequel shell
 """
 
 import collections
@@ -69,6 +69,16 @@ class declist(object):
         for decorator in self.decorators:
             function = decorator(function)
         return function
+
+
+def iter_selected_sequences(found_sequences, sort=False, limit=None):
+    if sort:
+        found_sequences = sorted(found_sequences, key=lambda x: x.complexity())
+    if limit is None:
+        yield from found_sequences
+    else:
+        for sequence, _ in zip(found_sequences, range(limit)):
+            yield sequence
             
 
 class SequelShell(Interpreter):
@@ -263,17 +273,23 @@ Some functions can be used to create new sequences; for instance:
     @argument('keys', nargs='*', metavar='K', help="key")
     @_config_group.command(name="show")
     def _config_show_command(self, keys, sort_keys):
-        function_config_show(keys, sort_keys=sort_keys)
+        config = get_config()
+        show_config(config, keys=keys, sort_keys=sort_keys)
+
 
     @argument('-o', '--output-config-filename', metavar='F', default=None, help="output config filename")
     @argument('-r', '--reset', action='store_true', default=False, help="reset config")
     @_config_group.command(name="write")
     def _config_write_command(self, output_config_filename, reset):
-        function_config_write(output_config_filename=output_config_filename, reset=reset)
+        if reset:
+            config = default_config()
+        else:
+            config = get_config()
+        write_config(config, output_config_filename)
 
     @_config_group.command(name="reset")
     def _config_reset_command(self):
-        function_config_reset()
+        reset_config()
 
     @argument('value', metavar='V', help="value")
     @argument('key', metavar='K', help="key")
@@ -387,11 +403,17 @@ be disabled.""")
 
     ### doc:
     @__simplify_argument__
-    @argument('--full', action='store_true', default=False, help="show full documentation")
     @argument('sources', type=str, nargs='*', help="sequence expressions")
+    @argument('--full', action='store_true', default=False, help="show full documentation")
+    @__base_argument__
+    @__num_items_argument__
     @command(name='doc')
-    def _doc_command(self, sources, simplify, full):
-        function_doc(sources, simplify=simplify, full=full)
+    def _doc_command(self, sources, simplify, num_items, base, full):
+        if not sources:
+            sources = None
+        printer = self.printer
+        with printer.overwrite(num_items=num_items, base=base):
+            printer.print_doc(sources=sources, simplify=simplify, full=full)
 
     @_doc_command.completer
     def _doc_completer(self, text, line, begidx, endidx):
@@ -560,96 +582,3 @@ be disabled.""")
         if end:
             self._add_end_line(lines, shell=shell)
         return self._make_text(lines)
-
-
-def iter_selected_sequences(found_sequences, sort=False, limit=None):
-    if sort:
-        found_sequences = sorted(found_sequences, key=lambda x: x.complexity())
-    if limit is None:
-        yield from found_sequences
-    else:
-        for sequence, _ in zip(found_sequences, range(limit)):
-            yield sequence
-
-    
-def function_shell(display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    cmd = SequelShell(printer=printer)
-    cmd.run()
-
-
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    config = get_config()
-    size = printer.num_items
-    manager = create_manager(size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        items = sequence.get_values(printer.num_items)
-        found_sequences = manager.search(items, handler=handler, profiler=profiler)
-        sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-        printer.print_test(source, sequence, items, sequences)
-    if profile:
-        printer.print_stats(profiler)
-            
-
-def function_config_show(keys=None, sort_keys=False):
-    config = get_config()
-    show_config(config, keys=keys, sort_keys=sort_keys)
-
-
-def function_config_write(output_config_filename=None, reset=False):
-    if reset:
-        config = default_config()
-    else:
-        config = get_config()
-    write_config(config, output_config_filename)
-
-
-def function_config_reset():
-    reset_config()
-
-
-def function_compile(sources, simplify=False, tree=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    if tree:
-        print_function = printer.print_tree
-    else:
-        print_function = printer.print_sequence
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        print_function(sequence)
-
-    
-def function_tree(sources, simplify=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        printer.print_tree(sequence)
-
-    
-def function_doc(sources, simplify=False, full=False, display_kwargs=None):
-    if not sources:
-        sources = None
-    printer = make_printer(display_kwargs)
-    printer.print_doc(sources=sources, simplify=simplify, full=full)
-
-
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    config = get_config()
-    size = len(items)
-    manager = create_manager(size, config=config)
-    found_sequences = manager.search(items, handler=handler, profiler=profiler)
-    sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-    printer.print_sequences(sequences, num_known=len(items))
-    if profile:
-        printer.print_stats(profiler)
