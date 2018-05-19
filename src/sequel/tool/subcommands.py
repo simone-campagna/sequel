@@ -96,6 +96,13 @@ Show/write/reset sequel config""")
     def _make_link(self, text):
         return self.colored(text, "blue", style="underline")
 
+    def _item_list(self, item, description):
+        self.output(''.join([
+            " ○  ",
+            self.colored(item, style="bold"),
+            ": ",
+            description]))
+
     def _title(self, text):
         self.output("")
         self.output(self.colored(text, style="reverse"))
@@ -115,10 +122,10 @@ The main sequel subcommands are:
 Sequel can be used as a command shell or as a command line tool; see
 {help_usage} for information.
 """.format(
-    c_search=self.colored("search", "blue"),
-    c_compile=self.colored("compile", "blue"),
-    c_doc=self.colored("doc", "blue"),
-    c_help=self.colored("help", "blue"),
+    c_search=self._make_link("search"),
+    c_compile=self._make_link("compile"),
+    c_doc=self._make_link("doc"),
+    c_help=self._make_link("help"),
     help_usage=self._make_link("help usage")))
 
     @topic(name='usage')
@@ -140,6 +147,73 @@ command is passed as argument.""")
             sequences=[compile_sequence('p'), compile_sequence('m_exp')],
             shell=False,
         ))
+
+    @topic(name='core')
+    def _topic_core(self):
+        self.output("""\
+Sequel known many core sequences. The {doc} command shows information about the core
+sequences:
+""".format(doc=self._make_link("doc")))
+        self.output(self._doc_example(sources=None, max_lines=7))
+        self.output("""
+Sequel known also sequence families (or parametric sequences); for instance the
+Geometric sequences depend on the sequence 'Geometric(8)' is the geometric sequence
+with base 8:
+""")
+        self.output(self._doc_example(sources=['Geometric(8)']))
+        self.output("""
+The most common family members are registered as core sequences; for instance, the
+geometric sequence with base 3 is the core sequence 'power_of_3':
+""")
+        self.output(self._doc_example(sources=['Geometric(3)']))
+        self.output("\nOther sequence families are:\n")
+        self._item_list("Geometric(base)", "the geometric sequences 'base ** i'")
+        self._item_list("Arithmetic(start, step)", "the arithmetic sequences 'start + i * step'")
+        self._item_list("Polygolan(sides)", "the polygonal numbers with 'sides' sides")
+        self._item_list("Power(power)", "the power sequences 'i ** power'")
+        self._item_list("Fib(first, second)", "the generalized Fibonacci sequences")
+        self.output("""
+Sequel has algorithms to find matches for all these sequences.
+
+Other sequences can be created; see {help_expressions}.""".format(
+        help_expressions=self._make_link("help expressions")))
+
+    @topic(name='expressions')
+    def _topic_expressions(self):
+        self.output("""\
+Core sequences can be combined to create new sequence expressions; the
+{c_compile} command can be used to compile a sequence expression and to
+show its first values. For instance:
+""".format(
+            c_compile=self._make_link("compile"),
+        ))
+        self.output(self._compile_example(
+            sources=['p * n']
+        ))
+        self.output("\nThe arithmetic operators are available:\n")
+        self._item_list("+", "addition, for instance 'p + n'")
+        self._item_list("-", "subtraction, for instance 'p - n'")
+        self._item_list("*", "multiplication, for instance 'p * n'")
+        self._item_list("/", "division, for instance 'p / n'")
+        self._item_list("%", "modulo, for instance 'p % n'")
+        self._item_list("**", "power, for instance 'p ** n'")
+        self.output("""
+The {o} operator can be used to compose sequences; for instance, {p_o_zero_one} is
+the sequence 'p' computed on the values of 'zero_one':
+""".format(
+        o=self.colored("|", style="bold"),
+        p_o_zero_one=self.colored("p | zero_one", style="bold")))
+        self.output(self._compile_example(
+            sources=['p', 'zero_one', 'p | zero_one']
+        ))
+        self.output("""
+Some functions can be used to create new sequences; for instance:
+""")
+        self._item_list("derivative(sequence)", "the derivative of the 'sequence'")
+        self._item_list("integral(sequence, start)", "the integral of the 'sequence'")
+        self._item_list("summation(sequence)", "the cumulative sum of the 'sequence'")
+        self._item_list("product(sequence)", "the cumulative product of the 'sequence'")
+        self._item_list("roundrobin(s0, s1, ...)", "the values 's0[0], s1[0], ... s0[1], ...'")
 
     @argument('-s', '--sort-keys', action='store_true', default=False, help="sort keys")
     @argument('keys', nargs='*', metavar='K', help="key")
@@ -186,12 +260,13 @@ command is passed as argument.""")
             sequences=[compile_sequence('p'), compile_sequence('m_exp')])
         self.output(text)
         self.output("""
-Search applies many algorithms to find a matching sequence; see {help_algorithms}.
+Search applies many algorithms to find a matching sequence; see
+{help_search_algorithms} for more details.
 
-Search command accepts patterns; see {help_patterns}.
+Search command accepts patterns; see {help_search_patterns}.
 """.format(
-            help_patterns=self._make_link("help patterns"),
-            help_algorithms=self._make_link("help algorithms"),
+            help_search_patterns=self._make_link("help search patterns"),
+            help_search_algorithms=self._make_link("help search algorithms"),
             ))
 
     @_search_command.topic(name="algorithms")
