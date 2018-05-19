@@ -93,6 +93,9 @@ Show/write/reset sequel config""")
     def show_banner(self):
         self.output(self.get_banner_text())
 
+    def _make_link(self, text):
+        return self.colored(text, "blue", style="underline")
+
     def _title(self, text):
         self.output("")
         self.output(self.colored(text, style="reverse"))
@@ -116,7 +119,7 @@ Sequel can be used as a command shell or as a command line tool; see
     c_compile=self.colored("compile", "blue"),
     c_doc=self.colored("doc", "blue"),
     c_help=self.colored("help", "blue"),
-    help_usage=self.colored("help usage", style="underline")))
+    help_usage=self._make_link("help usage")))
 
     @topic(name='usage')
     def _topic_usage(self):
@@ -177,11 +180,77 @@ command is passed as argument.""")
 
     @_search_command.document
     def _search_help(self):
-        self.output("Search a sequence matching the given items; for instance:\n")
+        self.output("Search a sequence matching the given values; for instance:\n")
         text = self._search_example(
             items=[2, 3, 5, 7],
             sequences=[compile_sequence('p'), compile_sequence('m_exp')])
         self.output(text)
+        self.output("""
+Search applies many algorithms to find a matching sequence; see {help_algorithms}.
+
+Search command accepts patterns; see {help_patterns}.
+""".format(
+            help_patterns=self._make_link("help patterns"),
+            help_algorithms=self._make_link("help algorithms"),
+            ))
+
+    @_search_command.topic(name="algorithms")
+    def _search_algorithms(self):
+        self.output("""\
+Search command applies many different algorithms to search a matching sequence.
+It first tries to find a matching core sequence; if none can be found, a more
+complex sequence is searched.
+
+For instance:\n""")
+        self.output(self._search_example(
+            items=[10, 15, 25, 35, 71, 97, 101, 191],
+            sequences=[compile_sequence('-3 * p + 8 * m_exp')],
+            end=False))
+        self.output(self._search_example(
+            items=[3, 6, 9, 15, 24],
+            sequences=[compile_sequence('3 * Fib(first=1, second=2)')],
+            end=False))
+        self.output(self._search_example(
+            items=[1, 36, 316, 2556, 20476, 163836],
+            sequences=[compile_sequence('-4 + 5 * Geometric(base=8)')],
+            end=False))
+        self.output(self._search_example(
+            items=[2, 101, 3, 107, 5, 149, 7, 443],
+            sequences=[compile_sequence('roundrobin(p, 100 + Geometric(base=7))'),
+                       compile_sequence('roundrobin(m_exp, 100 + Geometric(base=7))')],
+            end=True))
+
+    @_search_command.topic(name="patterns")
+    def _search_patterns(self):
+        self.output("""\
+Search values can be patterns. For instance:
+ * {c_any} means any integer value
+ * {c_lower_10} means any integer value not lower than 10
+ * {c_upper_10} means any integer value not greater than 10
+ * {c_interval_3_10} means any integer value int the closed interval [3, 10]
+
+For instance:
+""".format(
+            c_any=self.colored("..", style="bold"),
+            c_lower_10=self.colored("..10", style="bold"),
+            c_upper_10=self.colored("10..", style="bold"),
+            c_interval_3_10=self.colored("3..10", style="bold"),
+        ))
+        self.output(self._search_example(
+            items=[2, 3, 5, '..', 13],
+            sequences=[compile_sequence('m_exp')],
+            end=False))
+        self.output(self._search_example(
+            items=[2, 3, 5, 7, '..12'],
+            sequences=[compile_sequence('p')],
+            end=False))
+        self.output(self._search_example(
+            items=[2, 3, 5, 7, '10..20'],
+            sequences=[compile_sequence('p'), compile_sequence('m_exp')],
+            end=True))
+        self.output("""
+Notice that when using patterns some of the available search algorithms could
+be disabled.""")
 
     ### doc:
     @__simplify_argument__
@@ -258,7 +327,7 @@ command is passed as argument.""")
         else:
             lines.append("$ sequel " + cmd)
 
-    def _search_example(self, items, sequences, max_lines=None, shell=False):
+    def _search_example(self, items, sequences, max_lines=None, shell=False, end=True):
         printer = self.printer
         orig_items = tuple(items)
         items = make_items(items)
@@ -270,11 +339,12 @@ command is passed as argument.""")
             printer.print_sequences(sequences, num_known=len(items))
         lines = []
         self._add_begin_line(lines, "search " + " ".join(str(item) for item in orig_items), shell=shell)
-        lines.extend(self._text_lines(ios.getvalue(), max_lines=max_lines))
-        self._add_end_line(lines, shell=shell)
+        lines.extend(self._text_lines(ios.getvalue().rstrip(), max_lines=max_lines))
+        if end:
+            self._add_end_line(lines, shell=shell)
         return self._make_text(lines)
 
-    def _compile_example(self, sources, simplify=False, max_lines=None, shell=False):
+    def _compile_example(self, sources, simplify=False, max_lines=None, shell=False, end=True):
         printer = self.printer
         ios = StringIO()
         with printer.set_file(ios):
@@ -288,11 +358,12 @@ command is passed as argument.""")
             args.extend(sources)
         lines = []
         self._add_begin_line(lines, "compile " + " ".join(shlex.quote(arg) for arg in args), shell=shell)
-        lines.extend(self._text_lines(ios.getvalue(), max_lines=max_lines))
-        self._add_end_line(lines, shell=shell)
+        lines.extend(self._text_lines(ios.getvalue().rstrip(), max_lines=max_lines))
+        if end:
+            self._add_end_line(lines, shell=shell)
         return self._make_text(lines)
 
-    def _test_example(self, source, sequences, simplify=False, max_lines=None, shell=False):
+    def _test_example(self, source, sequences, simplify=False, max_lines=None, shell=False, end=True):
         printer = self.printer
         ios = StringIO()
         with printer.set_file(ios):
@@ -308,11 +379,12 @@ command is passed as argument.""")
         args.extend(shlex.quote(source))
         lines = []
         self._add_begin_line(lines, "test " + " ".join(args), shell=shell)
-        lines.extend(self._text_lines(ios.getvalue(), max_lines=max_lines))
-        self._add_end_line(lines, shell=shell)
+        lines.extend(self._text_lines(ios.getvalue().rstrip(), max_lines=max_lines))
+        if end:
+            self._add_end_line(lines, shell=shell)
         return self._make_text(lines)
 
-    def _doc_example(self, sources, simplify=False, max_lines=None, shell=False):
+    def _doc_example(self, sources, simplify=False, max_lines=None, shell=False, end=True):
         printer = self.printer
         ios = StringIO()
         with printer.set_file(ios):
@@ -324,8 +396,9 @@ command is passed as argument.""")
             args.extend(sources)
         lines = []
         self._add_begin_line(lines, "doc " + " ".join(args), shell=shell)
-        lines.extend(self._text_lines(ios.getvalue(), max_lines=max_lines))
-        self._add_end_line(lines, shell=shell)
+        lines.extend(self._text_lines(ios.getvalue().rstrip(), max_lines=max_lines))
+        if end:
+            self._add_end_line(lines, shell=shell)
         return self._make_text(lines)
 
 
