@@ -8,6 +8,11 @@ import functools
 import json
 import os
 import random
+import shutil
+import subprocess
+import sys
+import tempfile
+
 import numpy as np
 
 
@@ -71,6 +76,7 @@ def _setup_sequel_config(name, config):
 register_config(
     name="sequel",
     default={
+        "editor": "vim",
         "random_seed": 2,
     },
     setup_callback=_setup_sequel_config)
@@ -135,7 +141,9 @@ def make_abs_path(pathname, config=None):
 
 
 def reset_config():
-    write_config(default_config(), None)
+    config = default_config()
+    write_config(config, None)
+    return config
 
 
 def load_config(filename=None):
@@ -233,4 +241,17 @@ def show_config(config=None, keys=None, prefix='', print_function=print, sort_ke
             show_value(get_config_key(config, key), key, key + '.', print_function=print_function, sort_keys=sort_keys)
     else:
         show_value(config, '', '', print_function=print_function, sort_keys=sort_keys)
-        
+
+
+def edit_config(config=None):
+    if config is None:
+        config = get_config()
+    with tempfile.TemporaryDirectory() as tmpd:
+        tmpf = os.path.join(tmpd, "sequel.config")
+        write_config(config, tmpf)
+        returncode = subprocess.call([config['sequel']['editor'], tmpf])
+        if returncode == 0:
+            print("ERR: edit command failed", file=sys.stderr)
+            return load_config(tmpf)
+        else:
+            return config

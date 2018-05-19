@@ -26,6 +26,7 @@ from ..config import (
     write_config,
     reset_config,
     show_config,
+    edit_config,
 )
 from ..item import make_item
 from ..items import make_items
@@ -45,12 +46,6 @@ from .display import Printer
 __all__ = [
     'main',
 ]
-
-
-def make_printer(display_kwargs=None):
-    if display_kwargs is None:
-        display_kwargs = {}
-    return Printer(**display_kwargs)
 
 
 # def type_stop_at_num(string):
@@ -107,7 +102,7 @@ class SequelShell(Interpreter):
 
     def __init__(self, printer=None):
         if printer is None:
-            printer = make_printer()
+            printer = Printer()
         config = get_config()
         colored = config['display']['colored']
         self.line_prefix = "    "
@@ -286,10 +281,27 @@ Some functions can be used to create new sequences; for instance:
         else:
             config = get_config()
         write_config(config, output_config_filename)
+        set_config(config)
+        self.printer = Printer()
+
+    @argument('-o', '--output-config-filename', metavar='F', default=None, help="output config filename")
+    @argument('-r', '--reset', action='store_true', default=False, help="reset config")
+    @_config_group.command(name="edit")
+    def _config_edit_command(self, output_config_filename, reset):
+        if reset:
+            config = default_config()
+        else:
+            config = get_config()
+        config = edit_config(config)
+        write_config(config, output_config_filename)
+        set_config(config)
+        self.printer = Printer()
 
     @_config_group.command(name="reset")
     def _config_reset_command(self):
-        reset_config()
+        config = reset_config()
+        set_config(config)
+        self.printer = Printer()
 
     @argument('value', metavar='V', help="value")
     @argument('key', metavar='K', help="key")
@@ -299,6 +311,7 @@ Some functions can be used to create new sequences; for instance:
         value = eval(value)
         update_config(config, key, value)
         set_config(config)
+        self.printer = Printer()
 
     @_config_show_command.completer
     @_config_update_command.completer
@@ -403,7 +416,7 @@ be disabled.""")
 
     ### doc:
     @__simplify_argument__
-    @argument('sources', type=str, nargs='*', help="sequence expressions")
+    @argument('sources', type=str, nargs='*', help="sequence sources")
     @argument('--full', action='store_true', default=False, help="show full documentation")
     @__base_argument__
     @__num_items_argument__
@@ -433,7 +446,7 @@ be disabled.""")
     @argument('-t', '--tree', action='store_true', default=False, help="show sequence tree")
     @__base_argument__
     @__num_items_argument__
-    @argument('sources', type=str, nargs='+', metavar='SRC', help="sequence source")
+    @argument('sources', type=str, nargs='+', help="sequence sources")
     @command(name='compile')
     def _compile_command(self, sources, simplify, tree, base, num_items):
         printer = self.printer
@@ -456,7 +469,7 @@ be disabled.""")
     ### test:
     @__simplify_argument__
     @__search_arguments__
-    @argument('sources', type=str, nargs='+', metavar='SRC', help="sequence source")
+    @argument('sources', type=str, nargs='+', help="sequence sources")
     @command(name='test')
     def _test_command(self, sources, simplify, handler, profile, base, sort, limit, num_items):
         printer = self.printer
