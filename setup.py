@@ -15,7 +15,7 @@ setup(
         'numpy',
         'sympy',
         'astor',
-        'shells_kitchen',
+        'shells_kitchen>=0.10.0',
         'termcolor',
     ],
     package_dir={"": "src"},

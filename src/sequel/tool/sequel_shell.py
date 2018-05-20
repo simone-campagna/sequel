@@ -116,8 +116,8 @@ class SequelShell(Interpreter):
                 'history': HISTORY,
             },
         )
-        self.banner = self.__class__.show_banner
-        self.doc = self.__class__.show_documentation
+        self.banner = self.__class__._show_banner
+        self.doc = self.__class__._show_documentation
         self.prompt = self.colored('SEQUEL> ', style='bold')
         self.printer = printer
 
@@ -139,7 +139,7 @@ Show/write/reset sequel config""")
     def get_banner_text(self):
         return "Sequel " + self.colored("v{version}".format(version=VERSION), style="bold") + " - integer sequence finder\n"
 
-    def show_banner(self):
+    def _show_banner(self):
         self.output(self.get_banner_text())
 
     def _make_link(self, text):
@@ -157,8 +157,8 @@ Show/write/reset sequel config""")
         self.output(self.colored(text, style="reverse"))
         self.output("")
 
-    def show_documentation(self):
-        self.show_banner()
+    def _show_documentation(self):
+        self._show_banner()
         self.output("""\
 Sequel is a tool to search integer sequences.
 

@@ -3,7 +3,7 @@ numpy
 sympy
 astor
 termcolor
-shells_kitchen>=0.9.0
+shells_kitchen>=0.10.0
 pytest
 pytest-cov
 pytest-sugar
