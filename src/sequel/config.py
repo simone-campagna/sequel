@@ -206,41 +206,46 @@ def get_config_key(config, key):
 
 
 @functools.singledispatch
-def show_value(value, key, prefix, print_function=print, sort_keys=False):
-    print_function("{} = {!r}".format(key, value))
+def yield_config_items(value, key, prefix):
+    yield (key, value)
 
 
-@show_value.register(collections.Mapping)
-def _(value, key, prefix, print_function=print, sort_keys=False):
-    items = value.items()
-    if sort_keys:
-        items = sorted(items, key=lambda x: x[0])
-    for skey, svalue in items:
+@yield_config_items.register(collections.Mapping)
+def _(value, key, prefix):
+    for skey, svalue in value.items():
         sk = prefix + skey
         sp = sk + '.'
-        show_value(svalue, sk, sp, print_function=print_function, sort_keys=sort_keys)
+        yield from yield_config_items(svalue, sk, sp)
 
 
-@show_value.register(list)
-@show_value.register(tuple)
-@show_value.register(set)
-def _(value, key, prefix, print_function=print, sort_keys=False):
+@yield_config_items.register(list)
+@yield_config_items.register(tuple)
+@yield_config_items.register(set)
+def _(value, key, prefix):
     for scount, svalue in enumerate(value):
         sk = "{}[{}]".format(prefix, scount)
         sp = sk + '.'
-        show_value(svalue, sk, sp, print_function=print_function, sort_keys=sort_keys)
+        yield from yield_config_items(svalue, sk, sp)
 
 
-def show_config(config=None, keys=None, prefix='', print_function=print, sort_keys=False):
+def get_config_items(config=None, keys=None):
     if config is None:
         config = get_config()
     config = config.copy()
     config.pop("__internal__", None)
     if keys:
         for key in keys:
-            show_value(get_config_key(config, key), key, key + '.', print_function=print_function, sort_keys=sort_keys)
+            yield from yield_config_items(get_config_key(config, key), key, key + '.')
     else:
-        show_value(config, '', '', print_function=print_function, sort_keys=sort_keys)
+        yield from yield_config_items(config, '', '')
+
+
+def show_config(config=None, keys=None, prefix='', print_function=print, sort_keys=False):
+    kviter = get_config_items(config=config, keys=keys)
+    if sort_keys:
+        kviter = sorted(kviter, key=lambda x: x[0])
+    for key, value in kviter:
+        print_function("{} = {!r}".format(key, value))
 
 
 def edit_config(config=None):

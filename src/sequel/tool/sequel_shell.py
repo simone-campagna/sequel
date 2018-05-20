@@ -25,7 +25,7 @@ from ..config import (
     update_config,
     write_config,
     reset_config,
-    show_config,
+    get_config_items,
     edit_config,
 )
 from ..item import make_item
@@ -264,13 +264,18 @@ Some functions can be used to create new sequences; for instance:
         self._item_list("product(sequence)", "the cumulative product of the 'sequence'")
         self._item_list("roundrobin(s0, s1, ...)", "the values 's0[0], s1[0], ... s0[1], ...'")
 
-    @argument('-s', '--sort-keys', action='store_true', default=False, help="sort keys")
     @argument('keys', nargs='*', metavar='K', help="key")
     @_config_group.command(name="show")
-    def _config_show_command(self, keys, sort_keys):
+    def _config_show_command(self, keys):
         config = get_config()
-        show_config(config, keys=keys, sort_keys=sort_keys)
+        for key, value in sorted(get_config_items(config, keys=keys), key=lambda x: x[0]):
+            self.output("{} = {}".format(
+                key,
+                self.colored(repr(value), style="bold")))
 
+    @_config_show_command.document
+    def _config_show_doc(self):
+        self.output("Show the entire configuration file or selected keys")
 
     @argument('-o', '--output-config-filename', metavar='F', default=None, help="output config filename")
     @argument('-r', '--reset', action='store_true', default=False, help="reset config")
@@ -283,6 +288,10 @@ Some functions can be used to create new sequences; for instance:
         write_config(config, output_config_filename)
         set_config(config)
         self.printer = Printer()
+
+    @_config_write_command.document
+    def _config_write_doc(self):
+        self.output("Write the configuration file")
 
     @argument('-o', '--output-config-filename', metavar='F', default=None, help="output config filename")
     @argument('-r', '--reset', action='store_true', default=False, help="reset config")
@@ -297,11 +306,19 @@ Some functions can be used to create new sequences; for instance:
         set_config(config)
         self.printer = Printer()
 
+    @_config_edit_command.document
+    def _config_edit_doc(self):
+        self.output("Edit the configuration file")
+
     @_config_group.command(name="reset")
     def _config_reset_command(self):
         config = reset_config()
         set_config(config)
         self.printer = Printer()
+
+    @_config_reset_command.document
+    def _config_reset_doc(self):
+        self.output("Reset the configuration file")
 
     @argument('value', metavar='V', help="value")
     @argument('key', metavar='K', help="key")
