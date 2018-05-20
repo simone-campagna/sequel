@@ -71,7 +71,7 @@ class Fib(Iterator):
 
 FIB01 = Fib01().register('fib01').set_traits(Trait.POSITIVE)
 FIB11 = Fib11().register('fib11').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
-LUCAS = Lucas().register('lucas').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
+LUCAS = Lucas().register('lucas').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
 
 
 def make_fibonacci(first=0, second=1):
