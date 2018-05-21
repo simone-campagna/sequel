@@ -264,7 +264,7 @@ Some functions can be used to create new sequences; for instance:
         self._item_list("product(sequence)", "the cumulative product of the 'sequence'")
         self._item_list("roundrobin(s0, s1, ...)", "the values 's0[0], s1[0], ... s0[1], ...'")
 
-    @argument('keys', nargs='*', metavar='K', help="key")
+    @argument('keys', nargs='*', metavar='KEY', help="key")
     @_config_group.command(name="show")
     def _config_show_command(self, keys):
         config = get_config()
@@ -320,8 +320,8 @@ Some functions can be used to create new sequences; for instance:
     def _config_reset_doc(self):
         self.output("Reset the configuration file")
 
-    @argument('value', metavar='V', help="value")
-    @argument('key', metavar='K', help="key")
+    @argument('value', help="value")
+    @argument('key', help="key")
     @_config_group.command(name="update")
     def _config_update_command(self, key, value):
         config = get_config()
