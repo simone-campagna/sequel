@@ -78,6 +78,7 @@ class Sequence(metaclass=SMeta):
             instance._instance_parameters = parameters
             instance._instance_traits = frozenset(cls.__traits__)
             instance._instance_symbol = None
+            instance._instance_hash = None
             instance._instance_expr = None
             instance._instance_doc = None
             cls.__instances__[parameters] = instance
@@ -225,6 +226,29 @@ class Sequence(metaclass=SMeta):
 
     def __ror__(self, other):
         return Compose(other, self)
+
+    def __le__(self, other):
+        return Le(self, other)
+
+    def __lt__(self, other):
+        return Lt(self, other)
+
+    def __ge__(self, other):
+        return Ge(self, other)
+
+    def __gt__(self, other):
+        return Gt(self, other)
+
+    def __eq__(self, other):
+        return Eq(self, other)
+
+    def __ne__(self, other):
+        return Ne(self, other)
+
+    def __hash__(self):
+        if self._instance_hash is None:
+            self._instance_hash = hash(self.as_string())
+        return self._instance_hash
 
     @classmethod
     def sequence_types(cls, abstract=False):
@@ -592,6 +616,54 @@ class Pow(BinOp):
     @classmethod
     def _binop(cls, l, r):
         return l ** r
+
+
+class Le(BinOp):
+    __operator__ = '<='
+
+    @classmethod
+    def _binop(cls, l, r):
+        return int(l <= r)
+
+
+class Lt(BinOp):
+    __operator__ = '<'
+
+    @classmethod
+    def _binop(cls, l, r):
+        return int(l < r)
+
+
+class Ge(BinOp):
+    __operator__ = '>='
+
+    @classmethod
+    def _binop(cls, l, r):
+        return int(l >= r)
+
+
+class Gt(BinOp):
+    __operator__ = '>'
+
+    @classmethod
+    def _binop(cls, l, r):
+        return int(l > r)
+
+
+class Eq(BinOp):
+    __operator__ = '=='
+
+    @classmethod
+    def _binop(cls, l, r):
+        return int(l == r)
+
+
+class Ne(BinOp):
+    __operator__ = '!='
+
+    @classmethod
+    def _binop(cls, l, r):
+        return int(l != r)
 
 
 class Compose(Sequence):
