@@ -239,13 +239,28 @@ show its first values. For instance:
         self.output(self._compile_example(
             sources=['p * n']
         ))
-        self.output("\nThe arithmetic operators are available:\n")
+        self.output("\nThe following arithmetic operators are available:\n")
         self._item_list("+", "addition, for instance 'p + n'")
         self._item_list("-", "subtraction, for instance 'p - n'")
         self._item_list("*", "multiplication, for instance 'p * n'")
         self._item_list("/", "division, for instance 'p / n'")
         self._item_list("%", "modulo, for instance 'p % n'")
         self._item_list("**", "power, for instance 'p ** n'")
+
+        self.output("\nThe following comparison operators are available:\n")
+        self._item_list("<", "strictly-less-than operator, for instance 'm_primes < p + 120'")
+        self._item_list("<=", "less-than-or-equal-to operator, for instance 'm_primes <= p + 120'")
+        self._item_list(">", "strictly-greater-than operator, for instance 'm_primes > p + 120'")
+        self._item_list(">=", "greater-than-or-equal-to operator, for instance 'm_primes >= p + 120'")
+        self._item_list("==", "equal-to operator, for instance 'm_primes == p + 120'")
+        self._item_list("!=", "not-equal-to operator, for instance 'm_primes != p + 120'")
+        self.output("""
+Notice that boolean values are always converted to 1 (True) or 0 (False):
+""")
+        self.output(self._compile_example(
+            sources=['m_primes <= p + 120']
+        ))
+
         self.output("""
 The {o} operator can be used to compose sequences; for instance, {p_o_zero_one} is
 the sequence 'p' computed on the values of 'zero_one':
@@ -263,6 +278,7 @@ Some functions can be used to create new sequences; for instance:
         self._item_list("summation(sequence)", "the cumulative sum of the 'sequence'")
         self._item_list("product(sequence)", "the cumulative product of the 'sequence'")
         self._item_list("roundrobin(s0, s1, ...)", "the values 's0[0], s1[0], ... s0[1], ...'")
+        self._item_list("ifelse(condition, ts, fs)", "the value 'ts' if 'condition' is True, 'fs' otherwise")
 
     @argument('keys', nargs='*', metavar='KEY', help="key")
     @_config_group.command(name="show")

@@ -11,6 +11,7 @@ __all__ = [
     'product',
     'derivative',
     'integral',
+    'ifelse',
 ]
 
 
@@ -112,3 +113,35 @@ class integral(Functional):
                 return start + operand.operand
         instance = self.__class__(operand, start=self.start)
         return instance
+
+
+class ifelse(Functional):
+    def __init__(self, condition, true_sequence, false_sequence):
+        super().__init__(condition)
+        self.true_sequence = self.make_sequence(true_sequence)
+        self.false_sequence = self.make_sequence(false_sequence)
+
+    def __iter__(self):
+        for c, t, f in zip(self.operand, self.true_sequence, self.false_sequence):
+            if c:
+                yield t
+            else:
+                yield f
+
+    def children(self):
+        yield from super().children()
+        yield self.true_sequence
+        yield self.false_sequence
+
+    def _str_impl(self):
+        return "{}({}, {}, {})".format(
+            type(self).__name__,
+            str(self.operand),
+            str(self.true_sequence),
+            str(self.false_sequence))
+
+    def simplify(self):
+        operand = self.operand.simplify()
+        true_sequence = self.true_sequence.simplify()
+        false_sequence = self.false_sequence.simplify()
+        return self.__class__(operand, true_sequence, false_sequence)
