@@ -15,7 +15,6 @@ from .base import (
     compile_sequence,
 )
 
-from .catalan import Catalan
 from .factorial import Factorial
 from .fibonacci import (
     Fib01, Fib11, Lucas, Fib, make_fibonacci,
@@ -36,6 +35,7 @@ from .merge_join import (
     merge, join,
 )
 from .number_theory import (
+    Catalan,
     Prime, Phi, Sigma, Tau, Pi,
     MersenneExponent,
     MersennePrime,

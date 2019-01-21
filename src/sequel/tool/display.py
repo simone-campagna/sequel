@@ -251,7 +251,7 @@ class Printer(object):
            traits: bool, optional
                print sequence traits (defaults to False)
            classify: bool, optional
-               classify sequence and print sequence tree (defaults to False)
+               classify sequence traits (defaults to False)
            inspect: bool, optional
                inspect sequence (defaults to False)
         """
@@ -274,34 +274,41 @@ class Printer(object):
     def print_sequence_traits(self, sequence, classify=False, header=""):
         sequence_traits = set(sequence.traits)
         if classify:
-            classified_traits = classify_sequence(sequence)
+            classified_traits_d = classify_sequence(sequence)
             colored_traits = []
             self(header + "   {:30s} DECLARED CLASSIFIED".format("TRAIT"))
             on_txt = self.bold('X')
             off_txt = ' '
             for trait in sorted(Trait, key=lambda x: x.value):
                 show = False
+                c_value = classified_traits_d[trait]
                 if trait in sequence_traits:
+                    d_txt = 'X'
                     show = True
-                    d_txt = on_txt
-                    if trait in classified_traits:
-                        c_txt = on_txt
+                    if c_value is None:
+                        c_txt = '?'
+                        color = self.color
+                    elif c_value:
+                        c_txt = 'X'
                         color = self.green
                     else:
-                        c_txt = off_txt
-                        color = self.blue
-                else:
-                    d_txt = off_txt
-                    if trait in classified_traits:
-                        show = True
-                        c_txt = on_txt
+                        c_txt = '-'
                         color = self.red
-                    else:
-                        c_txt = off_txt
+                else:
+                    d_txt = '-'
+                    if c_value is None:
+                        c_txt = '?'
                         color = self.color
+                    elif c_value:
+                        c_txt = 'X'
+                        color = self.blue
+                        show = True
+                    else:
+                        c_txt = '-'
+                        color = self.green
                 if show:
                     trait_txt = color("{:30s}".format(trait))
-                    self(header + " + " + trait_txt + "        " + d_txt + "          " + c_txt)
+                    self(header + "   + " + trait_txt + "      " + d_txt + "          " + c_txt)
         else:
             colored_traits = []
             for trait in sorted(sequence_traits, key=lambda x: x.value):

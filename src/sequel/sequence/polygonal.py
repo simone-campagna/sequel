@@ -44,6 +44,6 @@ class Polygonal(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('triangular', lambda: cls(3).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
-        cls.register_factory('pentagonal', lambda: cls(5).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
-        cls.register_factory('hexagonal', lambda: cls(6).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('triangular', lambda: cls(3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('pentagonal', lambda: cls(5).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('hexagonal', lambda: cls(6).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))

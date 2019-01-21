@@ -94,21 +94,14 @@ def classify_items(items):
            if decreasing and item > prev_item:
                decreasing = False
         prev_item = item
-    traits = set()
-    if injective:
-        traits.add(Trait.INJECTIVE)    
-    if positive:
-        traits.add(Trait.POSITIVE)    
-    if negative:
-        traits.add(Trait.NEGATIVE)    
-    if non_zero:
-        traits.add(Trait.NON_ZERO)    
-    if alternating:
-        traits.add(Trait.ALTERNATING)    
-    if increasing:
-        traits.add(Trait.INCREASING)    
-    if decreasing:
-        traits.add(Trait.DECREASING)    
+    traits = {trait: None for trait in Trait}
+    traits[Trait.INJECTIVE] = injective
+    traits[Trait.POSITIVE] = positive
+    traits[Trait.NEGATIVE] = negative
+    traits[Trait.NON_ZERO] = non_zero
+    traits[Trait.ALTERNATING] = alternating
+    traits[Trait.INCREASING] = increasing
+    traits[Trait.DECREASING] = decreasing
     return traits
         
         

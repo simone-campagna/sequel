@@ -6,11 +6,12 @@ import itertools
 
 from ..lazy import gmpy2, sympy
 from ..utils import divisors
-from .base import Sequence, Iterator, StashMixin, StashedFunction, EnumeratedSequence
+from .base import Sequence, Function, Iterator, StashMixin, StashedFunction, EnumeratedSequence
 from .trait import Trait
 
 
 __all__ = [
+    'Catalan',
     'Prime',
     'MersenneExponent',
     'MersennePrime',
@@ -26,8 +27,23 @@ __all__ = [
 ]
 
 
+class Catalan(Function):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
+
+    def __call__(self, i):
+        gmpy2_module = gmpy2.module()
+        return gmpy2_module.mpz(gmpy2_module.round_away(gmpy2_module.bincoef(2 * i, i) / (i + 1)))
+
+    def description(self):
+        return """f(n): n-th Catalan number"""
+
+    @classmethod
+    def register(cls):
+        cls.register_factory('catalan', cls)
+
+
 class Prime(StashMixin, Iterator):
-    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO]
+    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
     __stash__ = None
 
     @classmethod
@@ -138,7 +154,7 @@ _MERSENNE_EXPONENTS = [
 
 
 class MersenneExponent(EnumeratedSequence):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN, Trait.INJECTIVE, Trait.INCREASING]
     __stash__ = None
 
     @classmethod
@@ -154,7 +170,7 @@ class MersenneExponent(EnumeratedSequence):
 
 
 class MersennePrime(EnumeratedSequence):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN, Trait.FAST_GROWING]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.PARTIALLY_KNOWN, Trait.FAST_GROWING, Trait.INJECTIVE, Trait.INCREASING]
     __stash__ = None
 
     @classmethod
@@ -170,7 +186,7 @@ class MersennePrime(EnumeratedSequence):
 
 
 class Pi(Iterator):
-    __traits__ = [Trait.POSITIVE]
+    __traits__ = [Trait.POSITIVE, Trait.INCREASING]
 
     def __iter__(self):
         prev = 1
@@ -465,6 +481,7 @@ class Euler(EnumeratedSequence):
 
 
 class Bell(EnumeratedSequence):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
     __stash__ = None
 
     @classmethod
@@ -643,7 +660,7 @@ class Mobius(StashedFunction):
 
 
 class LookAndSay(StashMixin, Iterator):
-    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.FAST_GROWING, Trait.SLOW]
+    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.FAST_GROWING, Trait.SLOW, Trait.INCREASING]
     __stash__ = None
 
     @classmethod

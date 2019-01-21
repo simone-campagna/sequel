@@ -87,5 +87,3 @@ def verify_traits(items, *traits):
         if not verify_trait_function(items):
             return False
     return True
-
-

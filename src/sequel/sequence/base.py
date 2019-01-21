@@ -844,7 +844,7 @@ class Compose(Sequence):
 
 
 class Integer(Function):
-    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE])
+    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING])
 
     def __call__(self, i):
         return i
@@ -858,7 +858,7 @@ class Integer(Function):
 
 
 class Natural(Function):
-    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO])
+    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING])
 
     def __call__(self, i):
         return i + 1
