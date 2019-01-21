@@ -24,6 +24,7 @@ from ..sequence import (
     compile_sequence,
     inspect_sequence,
     classify as classify_sequence,
+    Trait,
 )
 
 
@@ -149,7 +150,6 @@ class Printer(object):
 
     def guess(self, string):
         return string
-        #return termcolor.colored(string, attrs=["underline"])
 
     def bold(self, string):
         if self.colored:
@@ -218,7 +218,7 @@ class Printer(object):
             for index, (item, item_type) in enumerate(zip(items, item_types())):
                 self(header + self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
                 
-    def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
+    def print_doc(self, sources=None, num_items=None, traits=False, classify=False, simplify=False):
         if sources is None:
             sources = sorted([str(sequence) for sequence in Sequence.get_registry().values() if sequence.is_bound()])
         first = True
@@ -231,8 +231,8 @@ class Printer(object):
             else:
                 sequence = Sequence.compile(source, simplify=simplify)
             self(self.bold(str(sequence)) + " : " + sequence.doc())
-            if full:
-                self.print_sequence_traits(sequence)
+            if traits or classify:
+                self.print_sequence_traits(sequence, classify=classify)
             self.print_sequence_items(sequence, num_items)
 
     def print_sequence(self, sequence, num_items=None, tree=False, traits=False, classify=False, inspect=False, doc=False, item_types=KNOWN, header=""):
@@ -272,22 +272,41 @@ class Printer(object):
             self.print_tree(sequence, header=header + "        ")
     
     def print_sequence_traits(self, sequence, classify=False, header=""):
+        sequence_traits = set(sequence.traits)
         if classify:
             classified_traits = classify_sequence(sequence)
+            colored_traits = []
+            self(header + "   {:30s} DECLARED CLASSIFIED".format("TRAIT"))
+            on_txt = self.bold('X')
+            off_txt = ' '
+            for trait in sorted(Trait, key=lambda x: x.value):
+                show = False
+                if trait in sequence_traits:
+                    show = True
+                    d_txt = on_txt
+                    if trait in classified_traits:
+                        c_txt = on_txt
+                        color = self.green
+                    else:
+                        c_txt = off_txt
+                        color = self.blue
+                else:
+                    d_txt = off_txt
+                    if trait in classified_traits:
+                        show = True
+                        c_txt = on_txt
+                        color = self.red
+                    else:
+                        c_txt = off_txt
+                        color = self.color
+                if show:
+                    trait_txt = color("{:30s}".format(trait))
+                    self(header + " + " + trait_txt + "        " + d_txt + "          " + c_txt)
         else:
-            classified_traits = set()
-        sequence_traits = set(sequence.traits)
-        traits = sequence_traits.union(classified_traits)
-        colored_traits = []
-        for trait in sorted(traits, key=lambda x: x.value):
-            if trait not in sequence_traits:
-                color = self.blue
-            elif trait not in classified_traits:
-                color = self.red
-            else:
-                color = self.green
-            colored_traits.append(color(trait.name))
-        self(header + "traits: {}".format("|".join(colored_traits)))
+            colored_traits = []
+            for trait in sorted(sequence_traits, key=lambda x: x.value):
+                colored_traits.append(trait.name)
+            self(header + "traits: {}".format("|".join(colored_traits)))
 
     def print_sequence_info(self, sequence, header=""):
         info = inspect_sequence(sequence)

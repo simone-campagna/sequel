@@ -47,16 +47,6 @@ __all__ = [
 ]
 
 
-def make_printer(display_kwargs=None):
-    if display_kwargs is None:
-        display_kwargs = {}
-    return Printer(**display_kwargs)
-
-
-# def type_stop_at_num(string):
-#     return StopAtNum(int(string))
-
-
 def type_stop_below_complexity(string):
     return StopBelowComplexity(int(string))
 
@@ -108,8 +98,8 @@ def function_config_reset():
     reset_config()
 
 
-def function_compile(sources, simplify=False, tree=False, inspect=False, traits=False, classify=False, doc=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
+def function_compile(sources, simplify=False, tree=False, inspect=False, traits=False, classify=False, doc=False):
+    printer = Printer()
     if tree:
         print_function = printer.print_tree
     else:
@@ -119,25 +109,25 @@ def function_compile(sources, simplify=False, tree=False, inspect=False, traits=
         printer.print_sequence(sequence, tree=tree, inspect=inspect, traits=traits, classify=classify, doc=doc)
 
     
-def function_tree(sources, simplify=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
+def function_tree(sources, simplify=False):
+    printer = Printer()
     for source in sources:
         sequence = compile_sequence(source, simplify=simplify)
         printer.print_tree(sequence)
 
     
-def function_doc(sources, simplify=False, full=False, display_kwargs=None):
+def function_doc(sources, simplify=False, traits=False, classify=False):
     if not sources:
         sources = None
-    printer = make_printer(display_kwargs)
-    printer.print_doc(sources=sources, simplify=simplify, full=full)
+    printer = Printer()
+    printer.print_doc(sources=sources, simplify=simplify, traits=traits, classify=classify)
 
 
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False, declarations=None):
+def function_search(items, limit=None, sort=False, reverse=False, handler=None, profile=False, declarations=None):
     if declarations is None:
         declarations = ()
     with declared(*declarations):
-        printer = make_printer(display_kwargs)
+        printer = Printer()
         if profile:
             profiler = Profiler()
         else:
@@ -152,11 +142,11 @@ def function_search(items, limit=None, sort=False, reverse=False, display_kwargs
             printer.print_stats(profiler)
 
 
-def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False, declarations=None):
+def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=None, handler=None, profile=False, declarations=None):
     if declarations is None:
         declarations = ()
     with declared(*declarations):
-        printer = make_printer(display_kwargs)
+        printer = Printer()
         config = get_config()
         size = printer.num_items
         manager = create_manager(size, config=config)
@@ -174,22 +164,22 @@ def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=N
             printer.print_stats(profiler)
             
 
-def function_generate(level, algorithm, display_kwargs=None):
-    printer = make_printer(display_kwargs)
+def function_generate(level, algorithm):
+    printer = Printer()
     sequence = generate(level=level, algorithm=algorithm)
     if sequence is not None:
         printer.print_doc(sources=[sequence])
 
 
-def function_play(level, algorithm, display_kwargs=None):
-    printer = make_printer(display_kwargs)
+def function_play(level, algorithm):
+    printer = Printer()
     sequence_iterator = generate_sequences(level=level, algorithm=algorithm)
     quiz_shell = QuizShell(sequence_iterator=sequence_iterator)
     quiz_shell.interact()
 
 
-def function_shell(display_kwargs=None):
-    printer = make_printer(display_kwargs)
+def function_shell():
+    printer = Printer()
     shell = SequelShell(printer=printer)
     shell.interact()
 

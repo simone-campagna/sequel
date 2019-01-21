@@ -76,6 +76,7 @@ def classify_items(items):
                 all_items.add(item)
         item_sign = get_sign(item)
         if item_sign == 0:
+            alternating = False
             non_zero = False
         elif item_sign < 0:
             positive = False
@@ -85,7 +86,7 @@ def classify_items(items):
            prev_item_sign = get_sign(item)
         else:
            if alternating:
-               if item_sign == prev_item_sign:
+               if item_sign == 0 or item_sign == prev_item_sign:
                    alternating = False
                prev_item_sign = item_sign
            if increasing and item < prev_item:

@@ -189,6 +189,16 @@ def update_config(config, key, value):
         cfg[tokens[-1]] = value
 
 
+def merge_config(config, cfg):
+    for key, value in cfg.items():
+        if key not in config:
+            raise KeyError(key)
+        if isinstance(key, collections.Mapping):
+            merge_config(config[key], value)
+        else:
+            config[key] = value
+
+
 def get_config_key(config, key):
     tokens = [x.strip() for x in key.split(".")]
     val = config
