@@ -256,7 +256,7 @@ def edit_config(config=None):
         write_config(config, tmpf)
         returncode = subprocess.call([config['sequel']['editor'], tmpf])
         if returncode == 0:
-            print("ERR: edit command failed", file=sys.stderr)
             return load_config(tmpf)
         else:
+            print("ERR: edit command failed", file=sys.stderr)
             return config

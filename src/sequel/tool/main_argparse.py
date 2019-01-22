@@ -29,6 +29,7 @@ from .subcommands import (
     function_config_show,
     function_config_write,
     function_config_reset,
+    function_config_edit,
 )
 
 __all__ = [
@@ -173,17 +174,26 @@ Write config file""")
         function=function_config_write,
         function_args=["output_config_filename", "reset"])
 
-    config_write_parser.add_argument(
-        "-r", "--reset",
-        action="store_true",
-        default=False,
-        help="reset to default values")
+    config_edit_parser = config_subparsers.add_parser(
+        'edit',
+        description="""\
+Edit config file""")
+    config_edit_parser.set_defaults(
+        function=function_config_edit,
+        function_args=["output_config_filename", "reset"])
 
-    config_write_parser.add_argument(
-        "-o", "--output-config-filename",
-        type=str,
-        default=None,
-        help="output config filename")
+    for parser in config_write_parser, config_edit_parser:
+        parser.add_argument(
+            "-r", "--reset",
+            action="store_true",
+            default=False,
+            help="reset to default values")
+
+        parser.add_argument(
+            "-o", "--output-config-filename",
+            type=str,
+            default=None,
+            help="output config filename")
 
     config_reset_parser = config_subparsers.add_parser(
         'reset',

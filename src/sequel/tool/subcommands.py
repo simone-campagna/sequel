@@ -26,6 +26,7 @@ from ..config import (
     write_config,
     reset_config,
     show_config,
+    edit_config,
 )
 from ..item import make_item
 from ..items import make_items
@@ -608,6 +609,16 @@ def function_config_write(output_config_filename=None, reset=False):
     else:
         config = get_config()
     write_config(config, output_config_filename)
+
+
+def function_config_edit(output_config_filename=None, reset=False):
+    if reset:
+        config = default_config()
+    else:
+        config = get_config()
+    config = edit_config(config)
+    write_config(config, output_config_filename)
+    set_config(config)
 
 
 def function_config_reset():

@@ -2,7 +2,7 @@
 Sequel tool
 """
 
-from .main import main
+from .main_argparse import main_argparse as main
 
 __all__ = [
     'main',
