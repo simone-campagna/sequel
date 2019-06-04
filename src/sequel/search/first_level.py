@@ -25,6 +25,7 @@ from ..utils import (
 
 __all__ = [
     "CatalogAlgorithm",
+    "ConstAlgorithm",
     "AffineTransformAlgorithm",
     "ArithmeticAlgorithm",
     "GeometricAlgorithm",
@@ -45,8 +46,18 @@ class CatalogAlgorithm(Algorithm):
         yield from manager.catalog.iter_matching_sequences(items)
 
 
+class ConstAlgorithm(Algorithm):
+    """Search for const sequences"""
+    __min_items__ = 1
+
+    def iter_sequences(self, manager, items, rank):
+        if len(set(items.derivative)) <= 1:
+            yield Const(items[0])
+        
+
 class AffineTransformAlgorithm(Algorithm):
     """Search for affine transformations of known sequences"""
+    __min_items__ = 2
 
     def iter_sequences(self, manager, items, rank):
         catalog = manager.catalog
