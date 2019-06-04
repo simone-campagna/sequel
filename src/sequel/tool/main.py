@@ -58,10 +58,18 @@ def type_config_key_value(string):
 
 def main():
     """Main function"""
+    common_parser_kwargs = {
+        'formatter_class': argparse.RawDescriptionHelpFormatter,
+    }
     top_level_parser = argparse.ArgumentParser(
         description="""\
 Sequel v{version} - integer sequence finder
-""".format(version=VERSION))
+
+To enable completion run the following command:
+
+  $ eval "$(register-python-argcomplete sequel)"
+""".format(version=VERSION),
+        **common_parser_kwargs)
 
     top_level_parser.set_defaults(
         function=function_shell,
@@ -126,7 +134,8 @@ $ sequel search 2 3 5 7 12..20
 """
     search_parser = subparsers.add_parser(
         'search',
-        description=search_description.format("")
+        description=search_description.format(""),
+        **common_parser_kwargs,
     )
     search_parser.set_defaults(
         function=function_search,
@@ -135,7 +144,9 @@ $ sequel search 2 3 5 7 12..20
     doc_parser = subparsers.add_parser(
         'doc',
         description="""\
-Show sequence documentation""")
+Show sequence documentation""",
+        **common_parser_kwargs,
+    )
     doc_parser.set_defaults(
         function=function_doc,
         function_args=['sources', 'simplify', 'full'] + ['display_kwargs'])
@@ -143,7 +154,8 @@ Show sequence documentation""")
     compile_parser = subparsers.add_parser(
         'compile',
         description="""\
-Compile a sequence""")
+Compile a sequence""",
+        **common_parser_kwargs)
     compile_parser.set_defaults(
         function=function_compile,
         function_args=['sources', 'simplify', 'tree'] + ['display_kwargs'])
@@ -151,7 +163,8 @@ Compile a sequence""")
     tree_parser = subparsers.add_parser(
         'tree',
         description="""\
-Compile a sequence and show it as a tree""")
+Compile a sequence and show it as a tree""",
+        **common_parser_kwargs)
     tree_parser.set_defaults(
         function=function_tree,
         function_args=['sources', 'simplify'] + ['display_kwargs'])
@@ -159,7 +172,8 @@ Compile a sequence and show it as a tree""")
     config_parser = subparsers.add_parser(
         'config',
         description="""\
-Show config file""")
+Show config file""",
+        **common_parser_kwargs)
     config_parser.set_defaults(
         function=function_config_show,
         function_args=[])
@@ -169,7 +183,8 @@ Show config file""")
     config_show_parser = config_subparsers.add_parser(
         'show',
         description="""\
-Show config file""")
+Show config file""",
+        **common_parser_kwargs)
     config_show_parser.set_defaults(
         function=function_config_show,
         function_args=[])
@@ -177,7 +192,8 @@ Show config file""")
     config_write_parser = config_subparsers.add_parser(
         'write',
         description="""\
-Write config file""")
+Write config file""",
+        **common_parser_kwargs)
     config_write_parser.set_defaults(
         function=function_config_write,
         function_args=["output_config_filename", "reset"])
@@ -185,7 +201,8 @@ Write config file""")
     config_edit_parser = config_subparsers.add_parser(
         'edit',
         description="""\
-Edit config file""")
+Edit config file""",
+        **common_parser_kwargs)
     config_edit_parser.set_defaults(
         function=function_config_edit,
         function_args=["output_config_filename", "reset"])
@@ -206,7 +223,8 @@ Edit config file""")
     config_reset_parser = config_subparsers.add_parser(
         'reset',
         description="""\
-Reset config file""")
+Reset config file""",
+        **common_parser_kwargs)
     config_reset_parser.set_defaults(
         function=function_config_reset,
         function_args=[])
@@ -214,7 +232,8 @@ Reset config file""")
     test_parser = subparsers.add_parser(
         'test',
         description="""\
-Compile a sequence and tries to search it""")
+Compile a sequence and tries to search it""",
+        **common_parser_kwargs)
     test_parser.set_defaults(
         function=function_test,
         function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
