@@ -4,6 +4,8 @@ Main tool.
 
 import argparse
 
+import argcomplete
+
 from .. import VERSION
 from ..config import (
     set_config,
@@ -19,6 +21,9 @@ from ..search import (
     StopBelowComplexity,
 )
 
+from ..sequence import (
+    Sequence,
+)
 from .subcommands import (
     function_search,
     function_shell,
@@ -35,6 +40,10 @@ from .subcommands import (
 __all__ = [
     'main',
 ]
+
+
+def sequence_completer(prefix, action, parser, parsed_args):
+    return [str(sequence) for sequence in Sequence.get_registry().values()] 
 
 
 def type_stop_below_complexity(string):
@@ -202,14 +211,6 @@ Reset config file""")
         function=function_config_reset,
         function_args=[])
 
-    shell_parser = subparsers.add_parser(
-        'shell',
-        description="""\
-Open an interactive shell""")
-    shell_parser.set_defaults(
-        function=function_shell,
-        function_args=['display_kwargs'])
-
     test_parser = subparsers.add_parser(
         'test',
         description="""\
@@ -225,7 +226,7 @@ Compile a sequence and tries to search it""")
             default=False,
             help="simplify expression")
 
-    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser, shell_parser:
+    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser:
         parser.add_argument(
             "-n", "--num-items",
             metavar="N",
@@ -352,14 +353,14 @@ Compile a sequence and tries to search it""")
             "sources",
             type=str,
             nargs='+',
-            help="sequence source")
+            help="sequence source").completer = sequence_completer
 
     for parser in doc_parser,:
         parser.add_argument(
             "sources",
             type=str,
             nargs='*',
-            help="sequence source")
+            help="sequence source").completer = sequence_completer
 
         parser.add_argument(
             "-t", "--full",
@@ -389,6 +390,7 @@ Compile a sequence and tries to search it""")
             type=type_stop_below_complexity,
             help="stop when below complexity")
 
+    argcomplete.autocomplete(top_level_parser)
     namespace = top_level_parser.parse_args()
     if 'display_kwargs' in namespace.function_args:
         display_kwargs = {}
