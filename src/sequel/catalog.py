@@ -5,6 +5,7 @@ import json
 import pickle
 
 from .sequence import Sequence
+from .utils import gmpy2
 
 __all__ = [
     "Catalog",
@@ -97,8 +98,9 @@ class Catalog(object):
         instance._all_sequences.update(sequence_dict)
         lst_values = instance._lst_values
         lst_sequences = instance._lst_sequences
+        mpz = gmpy2().mpz
         for values, sequence_sources in zip(state_values, state_sequences):
-            lst_values.append([gmpy2.mpz(x) for x in values])
+            lst_values.append([mpz(x) for x in values])
             lst_sequences.append([sequence_dict[sequence_source] for sequence_source in sequence_sources])
         return instance
 

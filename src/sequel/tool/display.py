@@ -9,11 +9,11 @@ import textwrap
 
 import termcolor
 
-import gmpy2
-
 from ..config import get_config, register_config
 
 from ..sequence import Sequence
+
+from ..utils import gmpy2
 
 
 __all__ = [
@@ -113,7 +113,7 @@ class Printer(object):
         return [self.repr_item(i) for i in items]
 
     def repr_item(self, item):
-        item = gmpy2.mpz(item)
+        item = gmpy2().mpz(item)
         num_digits = item.num_digits(self.base)
         if num_digits >= self.max_compact_digits:
             return self.big_int

@@ -35,9 +35,10 @@ class Power(Function):
         else:
             return False
 
-
-Power(power=2).register('square').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
-Power(power=3).register('cube').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+    @classmethod
+    def register(cls):
+        cls.register_factory('square', lambda: cls(power=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('cube', lambda: cls(power=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
 
 
 class Arithmetic(Function):
@@ -65,9 +66,10 @@ class Arithmetic(Function):
         else:
             return False
 
-
-Arithmetic(start=0, step=2).register('even').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
-Arithmetic(start=1, step=2).register('odd').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+    @classmethod
+    def register(cls):
+        cls.register_factory('even', lambda: cls(start=0, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('odd', lambda: cls(start=1, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
 
 
 class Geometric(Function):
@@ -90,18 +92,22 @@ class Geometric(Function):
         else:
             return False
 
-
-Geometric(base=2).register('power_of_2').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
-Geometric(base=3).register('power_of_3').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
-Geometric(base=10).register('power_of_10').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
+    @classmethod
+    def register(cls):
+        cls.register_factory('power_of_2', lambda: cls(base=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO))
+        cls.register_factory('power_of_3', lambda: cls(base=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO))
+        cls.register_factory('power_of_10', lambda: cls(base=10).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO))
 
 
 class ZeroOne(Function):
+    __trais__ = [Trait.POSITIVE]
+
     def __call__(self, i):
         return i % 2
 
     def description(self):
         return """f(n) =  n % 2  => [0, 1, 0, 1, 0, 1, ...]"""
 
-
-ZeroOne().register('zero_one').set_traits(Trait.POSITIVE)
+    @classmethod
+    def register(cls):
+        cls.register_factory('zero_one', cls)

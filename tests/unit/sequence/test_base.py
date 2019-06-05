@@ -4,7 +4,6 @@ from sequel.sequence import (
     Sequence,
     Compose,
     Integer, Natural,
-    NegInteger, NegNatural,
     Const,
     Fib01, Fib11, Lucas, make_fibonacci, Fib,
     Prime, Sigma, Tau, Phi, Pi,
@@ -37,8 +36,6 @@ _indices = list(range(10))
 _refs = [
     ["i", Integer(), _indices],
     ["n", Natural(), [i + 1 for i in _indices]],
-    ["NegInteger()", NegInteger(), [-i for i in _indices]],
-    ["NegNatural()", NegNatural(), [-(i + 1) for i in _indices]],
     ["0", Const(value=0), [0 for _ in _indices]],
     ["5", Const(value=5), [5 for _ in _indices]],
     ["i + 3", Integer() + 3, [i + 3 for i in _indices]],

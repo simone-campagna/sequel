@@ -26,8 +26,8 @@ class RoundrobinAlgorithm(RecursiveAlgorithm):
         super().__init__()
         self.max_level = max_level
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         for level in range(2, self.max_level + 1):

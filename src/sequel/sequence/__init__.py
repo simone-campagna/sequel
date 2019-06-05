@@ -5,7 +5,6 @@ Sequence module
 from .base import (
     Sequence, Function, Iterator,
     Integer, Natural,
-    NegInteger, NegNatural,
     Const,
     Compose,
     compile_sequence,

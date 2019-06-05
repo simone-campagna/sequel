@@ -60,7 +60,7 @@ class Algorithm(abc.ABC):
 class RecursiveAlgorithm(Algorithm):
 
     @abc.abstractmethod
-    def rank_increase(self):
+    def rank_increase(self, rank):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -77,4 +77,4 @@ class RecursiveAlgorithm(Algorithm):
             callback=callback,
             items=items,
             kwargs=kwargs)
-        manager.queue(sub_items, rank=rank + self.rank_increase(), dependencies=[dependency])
+        manager.queue(sub_items, rank=self.rank_increase(rank), dependencies=[dependency])

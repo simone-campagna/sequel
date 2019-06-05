@@ -27,8 +27,8 @@ __all__ = [
 class AddAlgorithm(RecursiveAlgorithm):
     """Search for s1 = lseq + rseq"""
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         catalog = manager.catalog
@@ -50,8 +50,8 @@ class AddAlgorithm(RecursiveAlgorithm):
 class SubAlgorithm(RecursiveAlgorithm):
     """Search for s1 = lseq - rseq"""
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         catalog = manager.catalog
@@ -73,8 +73,8 @@ class SubAlgorithm(RecursiveAlgorithm):
 class MulAlgorithm(RecursiveAlgorithm):
     """Search for s1 = lseq * rseq"""
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         catalog = manager.catalog
@@ -110,9 +110,8 @@ class MulAlgorithm(RecursiveAlgorithm):
 class DivAlgorithm(RecursiveAlgorithm):
     """Search for s1 = lseq // rseq"""
 
-    def rank_increase(self):
-        return 2
-
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         catalog = manager.catalog
@@ -149,8 +148,8 @@ class PowAlgorithm(RecursiveAlgorithm):
 
     __init_keys__ = ["max_value"]
 
-    def rank_increase(self):
-        return 2
+    def rank_increase(self, rank):
+        return rank + 1
 
     def __init__(self, max_value=2**50):
         self.max_value = abs(max_value)

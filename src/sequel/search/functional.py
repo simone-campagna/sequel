@@ -23,8 +23,8 @@ class SummationAlgorithm(RecursiveAlgorithm):
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         s_items = []
@@ -50,8 +50,8 @@ class ProductAlgorithm(RecursiveAlgorithm):
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         s_items = []
@@ -82,8 +82,8 @@ class IntegralAlgorithm(RecursiveAlgorithm):
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         if items.derivative:
@@ -104,8 +104,8 @@ class DerivativeAlgorithm(RecursiveAlgorithm):
     __min_items__ = 3
     __accepts_undefined__ = False
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        return rank + 1
 
     def sub_search(self, manager, items, rank):
         sub_items = Items(items.make_integral())

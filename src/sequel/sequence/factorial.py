@@ -4,10 +4,10 @@ Factorial Sequence
 
 import collections
 
-import gmpy2
-
 from .base import Function
 from .trait import Trait
+from ..utils import gmpy2
+
 
 __all__ = [
     'Factorial',
@@ -15,11 +15,14 @@ __all__ = [
 
 
 class Factorial(Function):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO]
+
     def __call__(self, i):
-        return gmpy2.fac(i)
+        return self.__gmpy2__.fac(i)
 
     def description(self):
         return """f(n) := n * f(n - 1), f(0) := 1"""
 
-
-Factorial().register('factorial').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
+    @classmethod
+    def register(cls):
+        cls.register_factory('factorial', cls)

@@ -4,9 +4,7 @@ Fibonacci Sequence
 
 import collections
 
-import gmpy2
-
-from .base import Function, Iterator
+from .base import Sequence, Function, Iterator
 from .trait import Trait
 
 
@@ -20,24 +18,42 @@ __all__ = [
 
 
 class Fib01(Function):
+    __traits__ = [Trait.POSITIVE]
+
     def __call__(self, i):
-        return gmpy2.fib(i)
+        return self.__gmpy2__.fib(i)
 
     def description(self):
         return """f(n) := f(n - 2) + f(n - 1), f(0) := 0, f(1) := 1 (Fibonacci sequence [0, 1, 1, 2, 3, 5, 8, ...])"""
 
+    @classmethod
+    def register(cls):
+        cls.register_factory('fib01', cls)
+
 
 class Fib11(Function):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO]
+
     def __call__(self, i):
-        return gmpy2.fib(i + 1)
+        return self.__gmpy2__.fib(i + 1)
 
     def description(self):
         return """f(n) := f(n - 2) + f(n - 1), f(0) := 1, f(1) := 1 (Fibonacci sequence [1, 1, 2, 3, 5, 8, ...])"""
 
+    @classmethod
+    def register(cls):
+        cls.register_factory('fib11', cls)
+
 
 class Lucas(Function):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
+
     def __call__(self, i):
-        return gmpy2.lucas(i)
+        return self.__gmpy2__.lucas(i)
+
+    @classmethod
+    def register(cls):
+        cls.register_factory('lucas', cls)
 
 
 class Fib(Iterator):
@@ -69,18 +85,13 @@ class Fib(Iterator):
             return False
 
 
-FIB01 = Fib01().register('fib01').set_traits(Trait.POSITIVE)
-FIB11 = Fib11().register('fib11').set_traits(Trait.POSITIVE, Trait.NON_ZERO)
-LUCAS = Lucas().register('lucas').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
-
-
 def make_fibonacci(first=0, second=1):
     fs = (first, second)
     if fs == (0, 1):
-        return FIB01
+        return Sequence.get_registry()['fib01']
     elif fs == (1, 1):
-        return FIB11
+        return Sequence.get_registry()['fib11']
     elif fs == (2, 1):
-        return LUCAS
+        return Sequence.get_registry()['lucas']
     else:
         return Fib(first, second)

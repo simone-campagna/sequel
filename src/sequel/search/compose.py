@@ -31,8 +31,11 @@ class ComposeAlgorithm(RecursiveAlgorithm):
         self.max_results = max_results
         self.__cache = None
 
-    def rank_increase(self):
-        return 2
+    def rank_increase(self, rank):
+        if rank == 0:
+            return rank
+        else:
+            return rank + 1
 
     def _get_cache(self, catalog):
         if self.__cache is None:

@@ -3,10 +3,10 @@ Repunit Sequence
 """
 
 import itertools
-import gmpy2
 
 from .base import Sequence
 from .trait import Trait
+
 
 __all__ = [
     'Repunit',
@@ -14,8 +14,10 @@ __all__ = [
 
 
 class Repunit(Sequence):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
+
     def __init__(self, base=10):
-        self.__base = gmpy2.mpz(base)
+        self.__base = self.__gmpy2__.mpz(base)
 
     def description(self):
         return "f(n) := the repunit sequence in base {}".format(self.__base)
@@ -34,11 +36,14 @@ class Repunit(Sequence):
             yield s
             s += base ** i
 
-
-Repunit().register('repunit').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
+    @classmethod
+    def register(cls):
+        cls.register_factory('repunit', cls)
 
 
 class Demlo(Sequence):
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
+
     def description(self):
         return "f(n) := the Demlo numbers, defined as repunit ** 2"
 
@@ -52,7 +57,6 @@ class Demlo(Sequence):
             yield s ** 2
             s += base ** i
 
-
-#(Repunit() ** 2).register('demlo').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE).set_doc("f(n) := the Demlo numbers, defined as repunit ** 2")
-Demlo().register('demlo').set_traits(Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE)
-
+    @classmethod
+    def register(cls):
+        cls.register_factory('demlo', cls)

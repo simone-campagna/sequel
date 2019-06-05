@@ -4,8 +4,6 @@ Traits
 
 import enum
 
-from . import sympy_classes
-
 
 __all__ = [
     'Trait',

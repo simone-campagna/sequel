@@ -5,9 +5,6 @@ First-level algorithms (non recursive)
 import collections
 import time
 
-import numpy as np
-import sympy
-
 from .base import Algorithm
 from ..sequence import (
     Sequence,
@@ -21,7 +18,10 @@ from ..utils import (
     get_base, get_power, lcm, gcd,
     sequence_matches,
     assert_sequence_matches,
+    numpy,
+    sympy,
 )
+
 
 __all__ = [
     "CatalogAlgorithm",
@@ -219,9 +219,11 @@ class PolynomialAlgorithm(Algorithm):
         super().__init__()
         self.min_degree = max(2, min_degree)
         self.max_degree = max_degree
+        self._numpy = numpy()
 
     def iter_sequences(self, manager, items, rank):
         integer = Integer()
+        np = self._numpy
         for degree in range(self.min_degree, min(len(items), self.max_degree + 1)):
             try:
                 m = np.ndarray(dtype=np.int64, shape=(degree, degree))
@@ -282,6 +284,7 @@ class LinearCombinationAlgorithm(Algorithm):
                  min_elapsed=0.2, max_elapsed=2.0, exp_elapsed=-0.8,
                  sequences=None):
         super().__init__()
+        self._sympy = sympy()
         if sequences:
             sequences = [Sequence.compile(s) for s in sequences]
         else:
@@ -325,7 +328,8 @@ class LinearCombinationAlgorithm(Algorithm):
         x_values = list(items)
         all_indices = [i for i, _ in enumerate(all_sequences)]
         zero_sol = [0 for _ in all_sequences]
-        xs = sympy.symbols("x0:{}".format(num_items), integer=True)
+        sympy_module = self._sympy
+        xs = sympy_module.symbols("x0:{}".format(num_items), integer=True)
         max_components = self.max_components
         rationals = self.rationals
         max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
@@ -341,7 +345,7 @@ class LinearCombinationAlgorithm(Algorithm):
                 break
             indices += tuple(i for i in all_indices if i not in indices)
             values = [all_values[index] for index in indices] + [x_values]
-            augmented_matrix = sympy.Matrix(values).T
+            augmented_matrix = sympy_module.Matrix(values).T
             m_rref, pivots = augmented_matrix.rref()
             if last_index in pivots:
                 # x_values is not a linear combination of values

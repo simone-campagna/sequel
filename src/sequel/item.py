@@ -3,9 +3,8 @@
 import abc
 import re
 
-import gmpy2
+from .utils import is_integer, gmpy2
 
-from .utils import is_integer
 
 __all__ = [
     "Item",
@@ -87,7 +86,7 @@ ANY = Any()
 
 class Value(Item):
     def __init__(self, value):
-        self._value = gmpy2.mpz(value)
+        self._value = gmpy2().mpz(value)
 
     @property
     def value(self):
@@ -120,7 +119,7 @@ class Value(Item):
 
 class LowerBound(Item):
     def __init__(self, min_value):
-        self._min_value = gmpy2.mpz(min_value)
+        self._min_value = gmpy2().mpz(min_value)
 
     def __contains__(self, value):
         return self._min_value <= value
@@ -154,7 +153,7 @@ class LowerBound(Item):
 
 class UpperBound(Item):
     def __init__(self, max_value):
-        self._max_value = gmpy2.mpz(max_value)
+        self._max_value = gmpy2().mpz(max_value)
 
     def __contains__(self, value):
         return value <= self._max_value
@@ -188,8 +187,9 @@ class UpperBound(Item):
 
 class Interval(Item):
     def __init__(self, min_value, max_value):
-        self._min_value = gmpy2.mpz(min_value)
-        self._max_value = gmpy2.mpz(max_value)
+        mpz = gmpy2().mpz
+        self._min_value = mpz(min_value)
+        self._max_value = mpz(max_value)
         self._size = max_value + 1 - min_value
 
     def __contains__(self, value):
@@ -236,7 +236,8 @@ class Interval(Item):
 
 class Set(Item):
     def __init__(self, *values):
-        self._values = frozenset(gmpy2.mpz(value) for value in values)
+        mpz = gmpy2().mpz
+        self._values = frozenset(mpz(value) for value in values)
 
     def __hash__(self):
         return hash(self._values)

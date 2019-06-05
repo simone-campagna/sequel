@@ -13,14 +13,16 @@ import itertools
 import uuid
 import weakref
 
-import gmpy2
-import sympy
-
 from ..item import (
     Any, ANY, Interval, Set, Value,
     LowerBound, UpperBound,
 )
-from ..utils import is_integer
+from ..utils import (
+    is_integer, 
+    gmpy2,
+    sympy,
+    # numpy,
+)
 from .trait import Trait
 
 
@@ -34,8 +36,6 @@ __all__ = [
     'StashedFunction',
     'Integer',
     'Natural',
-    'NegInteger',
-    'NegNatural',
     'Const',
     'Compose',
 ]
@@ -58,14 +58,49 @@ class SMeta(abc.ABCMeta):
         init_method = getattr(cls, '__init__')
         sig = inspect.signature(init_method)
         cls.__signature__ = sig
+        cls.register()
         return cls
 
 
+class LazyRegistry(collections.Mapping):
+    class LazyValue(object):
+        def __init__(self, instance, factory):
+            self.instance = instance
+            self.factory = factory
+
+        def get(self, name):
+            if self.instance is None:
+                self.instance = self.factory()
+                self.instance._set_name(name)
+            return self.instance
+
+    def __init__(self):
+        self._data = collections.OrderedDict()
+
+    def register_instance(self, name, instance):
+        self._data[name] = LazyValue(instance=instance, factory=None)
+
+    def register_factory(self, name, factory):
+        self._data[name] = self.LazyValue(instance=None, factory=factory)
+
+    def __getitem__(self, name):
+        return self._data[name].get(name)
+
+    def __iter__(self):
+        yield from self._data
+
+    def __len__(self):
+        return len(self._data)
+        
+        
 class Sequence(metaclass=SMeta):
     __instances__ = weakref.WeakValueDictionary()
-    __registry__ = collections.OrderedDict()
+    __registry__ = LazyRegistry()
     __traits__ = ()
     __ignored_errors__ = (ArithmeticError, OverflowError, ValueError, IndexError, SequenceUnknownValueError)
+    __sympy__ = None
+    __gmpy2__ = None
+    # __numpy__ = None
 
     def __new__(cls, *args, **kwargs):
         bound_args = cls.__signature__.bind(None, *args, **kwargs)
@@ -82,7 +117,17 @@ class Sequence(metaclass=SMeta):
             instance._instance_expr = None
             instance._instance_doc = None
             cls.__instances__[parameters] = instance
+            cls.__init_cache()
             return instance
+
+    @classmethod
+    def __init_cache(cls):
+        if cls.__gmpy2__ is None:
+            cls.__gmpy2__ = gmpy2()
+        # if cls.__numpy__ is None:
+        #     cls.__numpy__ = numpy()
+        if cls.__sympy__ is None:
+            cls.__sympy__ = sympy()
 
     def __init__(self):
         # WARNING: this empty __init__method is needed in order to correctly
@@ -99,7 +144,7 @@ class Sequence(metaclass=SMeta):
 
     def _make_expr(self):
         if self._instance_symbol:
-            return sympy.symbols(self._instance_symbol, integer=True)
+            return self.__sympy__.symbols(self._instance_symbol, integer=True)
 
     def _make_simplify_expr(self, vdict):
         expr = self.expr
@@ -108,7 +153,7 @@ class Sequence(metaclass=SMeta):
         else:
             symbol = "tmp_{}".format(len(vdict))
             vdict[symbol] = self
-            return sympy.symbols(symbol, integer=True)
+            return self.__sympy__.symbols(symbol, integer=True)
 
     @property
     def expr(self):
@@ -131,11 +176,32 @@ class Sequence(metaclass=SMeta):
         self._instance_doc = doc
         return self
 
-    def register(self, name):
-        if name is not None:
-            self._instance_symbol = name
-            self.__registry__[name] = self
-        return self
+    @classmethod
+    def register_factory(cls, name, factory):
+        cls.__registry__.register_factory(name, factory)
+
+    @classmethod
+    def register(cls):
+        pass
+
+    def _set_name(self, name):
+        self._instance_symbol = name
+
+    @abc.abstractmethod
+    def __iter__(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def __call__(self, i):
+        raise NotImplementedError()
+
+    def __getitem__(self, i):
+        return self(i)
+
+    def doc(self):
+        """Returns the documentation"""
+        if self._instance_doc:
+            return self._instance_doc
 
     @abc.abstractmethod
     def __iter__(self):
@@ -333,7 +399,7 @@ class Sequence(metaclass=SMeta):
     def simplify(self):
         expr = self.expr
         if expr is not None:
-            s_expr = sympy.simplify(expr)
+            s_expr = self.__sympy__.simplify(expr)
             try:
                 return self.from_expr(s_expr)
             except NameError:
@@ -416,15 +482,28 @@ def compile_sequence(source, simplify=False):
 class StashMixin(object):
     __stash__ = None
 
+    @classmethod
+    def get_stash(cls):
+        if cls.__stash__ is None:
+            cls.__stash__ = cls._create_stash()
+        return cls.__stash__
+
+    @classmethod
+    @abc.abstractmethod
+    def _create_stash(cls):
+        raise NotImplementedError()
+
     def __getitem__(self, i):
-        if 0 <= i < len(self.__stash__):
-            return self.__stash__[i]
+        stash = self.get_stash()
+        if 0 <= i < len(stash):
+            return stash[i]
         else:
             return super().__getitem__(i)
 
     def __iter__(self):
-        yield from self.__stash__
-        for i in itertools.count(start=len(self.__stash__)):
+        stash = self.get_stash()
+        yield from stash
+        for i in itertools.count(start=len(stash)):
             yield self(i)
 
 
@@ -434,7 +513,7 @@ class EnumeratedSequence(StashMixin, Sequence):
         raise SequenceUnknownValueError("{}[{}]".format(self, i))
 
     def get_values(self, num, *, start=0):
-        return self.__stash__[start:start + num]
+        return self.get_stash()[start:start + num]
 
 
 class Iterator(Sequence):
@@ -488,7 +567,7 @@ class UnOp(Sequence):
         )
 
     def __call__(self, i):
-        return gmpy2.mpz(self._unop(self.operand[i]))
+        return gmpy2().mpz(self._unop(self.operand[i]))
 
     def __iter__(self):
         for value in self.operand:
@@ -539,7 +618,7 @@ class BinOp(Sequence):
         raise NotImplementedError()
 
     def __call__(self, i):
-        return gmpy2.mpz(self._binop(self.left[i], self.right[i]))
+        return gmpy2().mpz(self._binop(self.left[i], self.right[i]))
 
     def __iter__(self):
         for l, r in zip(self.left, self.right):
@@ -700,7 +779,7 @@ class Compose(Sequence):
 
 
 class Integer(Function):
-    __traits__ = frozenset([Trait.POSITIVE])
+    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE])
 
     def __call__(self, i):
         return i
@@ -708,9 +787,13 @@ class Integer(Function):
     def description(self):
         return """f(i) := i"""
 
+    @classmethod
+    def register(cls):
+        cls.register_factory('i', cls)
+
 
 class Natural(Function):
-    __traits__ = frozenset([Trait.POSITIVE])
+    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO])
 
     def __call__(self, i):
         return i + 1
@@ -718,25 +801,9 @@ class Natural(Function):
     def description(self):
         return """f(i) := i + 1"""
 
-
-class NegInteger(Function):
-    __traits__ = frozenset([Trait.POSITIVE])
-
-    def __call__(self, i):
-        return -i
-
-    def description(self):
-        return """f(i) := -i"""
-
-
-class NegNatural(Function):
-    __traits__ = frozenset([Trait.POSITIVE])
-
-    def __call__(self, i):
-        return -(i + 1)
-
-    def description(self):
-        return """f(i) := -(i + 1)"""
+    @classmethod
+    def register(cls):
+        cls.register_factory('n', cls)
 
 
 class Const(Function):
@@ -748,7 +815,7 @@ class Const(Function):
         return self.__value
 
     def _make_expr(self):
-        return sympy.sympify(self.__value)
+        return self.__sympy__.sympify(self.__value)
 
     def __call__(self, i):
         return self.__value
@@ -758,8 +825,3 @@ class Const(Function):
 
     def _str_impl(self):
         return str(self.__value)
-
-Integer().register('i').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
-Natural().register('n').set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO)
-# NegInteger().register('neg_i').set_traits(Trait.INJECTIVE, Trait.NEGATIVE)
-# NegNatural().register('neg_n').set_traits(Trait.INJECTIVE, Trait.NEGATIVE, Trait.NON_ZERO)

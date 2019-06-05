@@ -42,7 +42,8 @@ class Polygonal(Function):
         else:
             return False
 
-
-Polygonal(3).register('triangular').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
-Polygonal(5).register('pentagonal').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
-Polygonal(6).register('hexagonal').set_traits(Trait.INJECTIVE, Trait.POSITIVE)
+    @classmethod
+    def register(cls):
+        cls.register_factory('triangular', lambda: cls(3).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('pentagonal', lambda: cls(5).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('hexagonal', lambda: cls(6).set_traits(Trait.INJECTIVE, Trait.POSITIVE))

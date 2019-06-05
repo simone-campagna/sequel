@@ -24,8 +24,11 @@ class CommonFactorsAlgorithm(RecursiveAlgorithm):
         self.max_value = max_value
         self.max_divisors = max_divisors
 
-    def rank_increase(self):
-        return 1
+    def rank_increase(self, rank):
+        if rank == 0:
+            return rank
+        else:
+            return rank + 1
 
     def sub_search(self, manager, items, rank):
         # try to find lseq matching [items * common_divisor]

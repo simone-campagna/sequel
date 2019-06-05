@@ -6,9 +6,6 @@ import abc
 import collections
 import time
 
-import numpy as np
-import sympy
-
 from .base import SearchAlgorithm
 from ..sequence import (
     Sequence,
@@ -21,6 +18,8 @@ from ..utils import (
     get_base, get_power, lcm, gcd,
     sequence_matches,
     assert_sequence_matches,
+    numpy,
+    sympy,
 )
 
 __all__ = [
@@ -213,6 +212,7 @@ class SearchPolynomial(SearchAlgorithm):
 
     def _impl_call(self, catalog, items, info, options):
         integer = Integer()
+        np = numpy()
         for degree in range(self.min_degree, min(len(items), self.max_degree + 1)):
             try:
                 m = np.ndarray(dtype=np.int64, shape=(degree, degree))
@@ -312,6 +312,7 @@ class SearchLinearCombination(SearchAlgorithm):
     def weighted_combinations(self, items, num, data):
         pool = tuple(items)
         num_items = len(pool)
+        np = numpy()
         while True:
             weights = data['weights']
             np_weights = np.array(weights, dtype=np.float32)
@@ -383,7 +384,8 @@ class SearchLinearCombination(SearchAlgorithm):
         x_values = list(items)
         all_indices = [i for i, _ in enumerate(all_sequences)]
         zero_sol = [0 for _ in all_sequences]
-        xs = sympy.symbols("x0:{}".format(num_items), integer=True)
+        sympy_module = sympy()
+        xs = sympy_module.symbols("x0:{}".format(num_items), integer=True)
         max_components = self.max_components
         rationals = self.rationals
         max_elapsed = self.max_elapsed
@@ -400,17 +402,17 @@ class SearchLinearCombination(SearchAlgorithm):
                 break
             indices += tuple(i for i in all_indices if i not in indices)
             values = [all_values[index] for index in indices] + [x_values]
-            augmented_matrix = sympy.Matrix(values).T
+            augmented_matrix = sympy_module.Matrix(values).T
             m_rref, pivots = augmented_matrix.rref()
             if len(indices) in pivots:
                 # x_values is not a linear combination of values
                 continue
             
             rows = [list(m_rref.col(index)) for index in pivots]
-            matrix = sympy.Matrix(rows)
+            matrix = sympy_module.Matrix(rows)
             vector = m_rref.col(-1)
             solutions = []
-            for coeffs in sympy.linsolve((matrix, vector), xs):
+            for coeffs in sympy_module.linsolve((matrix, vector), xs):
                 denoms = []
                 for coeff in coeffs:
                     if coeff.q != 1:
