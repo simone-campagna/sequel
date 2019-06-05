@@ -100,7 +100,7 @@ class Geometric(Function):
 
 
 class ZeroOne(Function):
-    __trais__ = [Trait.POSITIVE]
+    __traits__ = [Trait.POSITIVE]
 
     def __call__(self, i):
         return i % 2

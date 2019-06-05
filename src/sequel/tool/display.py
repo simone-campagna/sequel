@@ -167,7 +167,7 @@ class Printer(object):
             if num_items is None:
                 num_items = self.num_items
             self(self.bold(str(sequence)) + " : " + sequence.doc())
-            if full and sequence.traits:
+            if full:
                 self(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
             if num_items:
                 items = sequence.get_values(num_items)
