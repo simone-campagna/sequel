@@ -147,32 +147,43 @@ class Manager(object):
         queue = self._queue
         algorithms = self.algorithms
         rec_algorithms = self.rec_algorithms
-        rec_stack = []
-        cur_rank = 0
         timings_dict = {}
         if profiler is not None:
             for algorithm in itertools.chain(self.algorithms, self.rec_algorithms):
                 timings_dict[algorithm] = profiler[type(algorithm).__name__]
-        while queue:
-            entry = queue.pop(0)
-            rank = entry.rank
-            items = entry.items
-            for algorithm in self.algorithms:
-                if timings_dict:
-                    t0 = time.time()
-                sequences = set(algorithm(self, items, rank))
-                if timings_dict:
-                    timings_dict[algorithm].add_timing(time.time() - t0)
-                for sequence in self._set_found(items, rank, sequences, timings_dict):
-                    yield sequence
-                    handler.collector.add(sequence)
-                if handler:
-                    return
-                rec_stack.append(entry)
-            rec_rank = cur_rank
-            while rec_stack and ((not queue) or (rec_stack and rank > rec_rank)):
+        rec_stack = []
+        while queue or rec_stack:
+            # non-rec algorithms:
+            while queue:
+                for algorithm in self.algorithms:
+                    found_idxs = set()
+                    for idx, entry in enumerate(queue):
+                        items = entry.items
+                        rank = entry.rank
+                        if timings_dict:
+                            t0 = time.time()
+                        sequences = set(algorithm(self, items, rank))
+                        if timings_dict:
+                            timings_dict[algorithm].add_timing(time.time() - t0)
+                        found = False
+                        for sequence in self._set_found(items, rank, sequences, timings_dict):
+                            found = True
+                            yield sequence
+                            handler.collector.add(sequence)
+                        if found:
+                            found_idxs.add(idx)
+                        if handler:
+                            return
+                    for idx in sorted(found_idxs, reverse=True):
+                        del queue[idx]
+                    if not queue:
+                        break
+                rec_stack.extend(queue)
+                del queue[:]
+            if rec_stack:
                 entry = rec_stack.pop()
-                rec_rank = entry.rank
+                rank = entry.rank
+                items = entry.items
                 for rec_algorithm in rec_algorithms:
                     if timings_dict:
                         t0 = time.time()
@@ -182,7 +193,6 @@ class Manager(object):
                         timings_dict[rec_algorithm].add_timing(time.time() - t0)
                     if handler:
                         break
-            cur_rank = rank
 
     @classmethod
     def make_dependency(cls, algorithm, callback, items, kwargs):

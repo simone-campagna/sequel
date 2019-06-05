@@ -82,25 +82,6 @@ def function_shell(display_kwargs=None):
     cmd.run()
 
 
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    config = get_config()
-    size = printer.num_items
-    manager = create_manager(size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        items = sequence.get_values(printer.num_items)
-        found_sequences = manager.search(items, handler=handler, profiler=profiler)
-        sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-        printer.print_test(source, sequence, items, sequences)
-    if profile:
-        printer.print_stats(profiler)
-            
-
 def function_config_show(keys=None, sort_keys=False):
     config = get_config()
     show_config(config, keys=keys, sort_keys=sort_keys)
@@ -167,3 +148,24 @@ def function_search(items, limit=None, sort=False, reverse=False, display_kwargs
     printer.print_sequences(sequences, num_known=len(items))
     if profile:
         printer.print_stats(profiler)
+
+
+def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
+    printer = make_printer(display_kwargs)
+    config = get_config()
+    size = printer.num_items
+    manager = create_manager(size, config=config)
+    if profile:
+        profiler = Profiler()
+    else:
+        profiler = None
+    for source in sources:
+        sequence = compile_sequence(source, simplify=simplify)
+        items = sequence.get_values(printer.num_items)
+        found_sequences = manager.search(items, handler=handler, profiler=profiler)
+        sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+        printer.print_test(source, sequence, items, sequences)
+    if profile:
+        printer.print_stats(profiler)
+            
+

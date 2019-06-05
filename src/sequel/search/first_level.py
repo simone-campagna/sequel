@@ -51,8 +51,12 @@ class ConstAlgorithm(Algorithm):
     __min_items__ = 1
 
     def iter_sequences(self, manager, items, rank):
-        if len(set(items.derivative)) <= 1:
-            yield Const(items[0])
+        if items:
+           value = items[0]
+           for item in items[1:]:
+               if item != value:
+                   return
+           yield Const(value)
         
 
 class AffineTransformAlgorithm(Algorithm):
