@@ -30,6 +30,7 @@ from .number_theory import (
     MersenneExponent,
     MersennePrime,
     Euler, Bell, Genocchi,
+    LookAndSay,
 )
 from .repunit import (
     Repunit,

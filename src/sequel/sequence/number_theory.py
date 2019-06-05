@@ -20,6 +20,7 @@ __all__ = [
     'Euler',
     'Bell',
     'Genocchi',
+    'LookAndSay',
 ]
 
 
@@ -124,7 +125,6 @@ class Prime(StashMixin, Iterator):
     @classmethod
     def register(cls):
         cls.register_factory('p', cls)
-
 
 
 _MERSENNE_EXPONENTS = [
@@ -644,3 +644,49 @@ class Mobius(StashedFunction):
     @classmethod
     def register(cls):
         cls.register_factory('mobius', cls)
+
+
+class LookAndSay(StashMixin, Iterator):
+    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.FAST_GROWING]
+    __stash__ = None
+
+    @classmethod
+    def _create_stash(cls):
+        mpz = cls.__gmpy2__.mpz
+        return [mpz(x) for x in (
+	    1, 11, 21, 1211, 111221, 312211, 13112221, 1113213211, 31131211131221, 13211311123113112211,
+            11131221133112132113212221, 3113112221232112111312211312113211,
+            1321132132111213122112311311222113111221131221,
+            11131221131211131231121113112221121321132132211331222113112211,
+            311311222113111231131112132112311321322112111312211312111322212311322113212221)]
+    
+    def __iter__(self):
+        stash = self.get_stash()
+        yield from stash
+        value = stash[-1]
+        mpz = cls.__gmpy2__.mpz
+        while True:
+            digits = value.digits()
+            new_digits = []
+            cur_count = 0
+            cur_digit = digits[0]
+            for digit in digits:
+                if digit == cur_digit:
+                    cur_count = 0
+                else:
+                    new_digits.append((cur_count, cur_digit))
+                    cur_count = 0
+                    cur_digit = digit
+            new_digits.append((cur_count, cur_digit))
+            yield mpz(''.join(new_digits))
+            digits = new_digits
+            
+    def description(self):
+        return """f(n) := the Conway's look-and-say sequence"""
+
+    @classmethod
+    def register(cls):
+        cls.register_factory('look_and_say', cls)
+
+
+

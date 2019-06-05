@@ -19,6 +19,7 @@ from sequel.sequence import (
     Arithmetic,
     Repunit,
     Demlo,
+    LookAndSay,
     verify_traits,
 )
 
@@ -122,6 +123,7 @@ _refs = [
     ["repunit", Repunit(10), [1, 11, 111, 1111, 11111, 111111]],
     ["Repunit(base=2)", Repunit(2), [1, 3, 7, 15, 31, 63]],
     ["demlo", Demlo(), [i ** 2 for i, _ in zip(Repunit(), range(10))]],
+    ["look_and_say", LookAndSay(), [1, 11, 21, 1211, 111221, 312211, 13112221, 1113213211]],
 ]
 
 
