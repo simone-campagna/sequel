@@ -664,7 +664,7 @@ class LookAndSay(StashMixin, Iterator):
         stash = self.get_stash()
         yield from stash
         value = stash[-1]
-        mpz = cls.__gmpy2__.mpz
+        mpz = self.__gmpy2__.mpz
         while True:
             digits = value.digits()
             new_digits = []
@@ -672,13 +672,16 @@ class LookAndSay(StashMixin, Iterator):
             cur_digit = digits[0]
             for digit in digits:
                 if digit == cur_digit:
-                    cur_count = 0
+                    cur_count += 1
                 else:
-                    new_digits.append((cur_count, cur_digit))
-                    cur_count = 0
+                    new_digits.append(str(cur_count))
+                    new_digits.append(cur_digit)
+                    cur_count = 1
                     cur_digit = digit
-            new_digits.append((cur_count, cur_digit))
-            yield mpz(''.join(new_digits))
+            new_digits.append(str(cur_count))
+            new_digits.append(cur_digit)
+            value = mpz(''.join(new_digits))
+            yield value
             digits = new_digits
             
     def description(self):
