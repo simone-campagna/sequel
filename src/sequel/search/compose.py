@@ -45,7 +45,7 @@ class ComposeAlgorithm(RecursiveAlgorithm):
             excluded = {Integer()}
 
             for sequence in Sequence.get_registry().values():
-                if sequence in excluded:
+                if sequence in excluded or sequence.has_traits(Trait.SLOW) or sequence.has_traits(Trait.FAST_GROWING):
                     continue
                 iterator = enumerate(sequence.get_values(self.cache_size))
                 if sequence.has_traits(Trait.INJECTIVE):

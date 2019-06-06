@@ -4,9 +4,10 @@ Prime Sequence
 
 import itertools
 
+from ..lazy import gmpy2, sympy
+from ..utils import divisors
 from .base import Sequence, Iterator, StashMixin, StashedFunction, EnumeratedSequence
 from .trait import Trait
-from ..utils import divisors
 
 
 __all__ = [
@@ -30,8 +31,7 @@ class Prime(StashMixin, Iterator):
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [mpz(x) for x in (
+        return [gmpy2.mpz(x) for x in (
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73,
         79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157,
         163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241,
@@ -114,7 +114,7 @@ class Prime(StashMixin, Iterator):
         stash = self.get_stash()
         yield from stash
         p = stash[-1]
-        next_prime = self.__gmpy2__.next_prime
+        next_prime = gmpy2.next_prime
         while True:
             p = next_prime(p)
             yield int(p)
@@ -142,8 +142,7 @@ class MersenneExponent(EnumeratedSequence):
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [mpz(n) for n in _MERSENNE_EXPONENTS]
+        return [gmpy2.mpz(n) for n in _MERSENNE_EXPONENTS]
 
     def description(self):
         return """f(n) := the n-th Mersenne exponent"""
@@ -159,8 +158,7 @@ class MersennePrime(EnumeratedSequence):
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [(mpz(2) ** n - 1) for n in _MERSENNE_EXPONENTS]
+        return [(gmpy2.mpz(2) ** n - 1) for n in _MERSENNE_EXPONENTS]
 
     def description(self):
         return """f(n) := the n-th Mersenne prime"""
@@ -195,8 +193,7 @@ class Phi(StashedFunction):
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [mpz(n) for n in (
+        return [gmpy2.mpz(n) for n in (
         1, 1, 2, 2, 4, 2, 6, 4, 6, 4, 10, 4, 12, 6, 8, 8, 16, 6, 18, 8, 12, 10, 22, 8,
         20, 12, 18, 12, 28, 8, 30, 16, 20, 16, 24, 12, 36, 18, 24, 16, 40, 12, 42, 20,
         24, 22, 46, 16, 42, 20, 32, 24, 52, 18, 40, 24, 36, 28, 58, 16, 60, 30, 36, 32,
@@ -263,7 +260,7 @@ class Phi(StashedFunction):
     def __call__(self, i):
         n = i + 1  # Phi is defined in [1, inf]
         value = 0
-        gcd = self.__gmpy2__.gcd
+        gcd = gmpy2.gcd
         for i in range(1, n + 1):
             if gcd(n, i) == 1:
                 value += 1
@@ -286,8 +283,7 @@ class Tau(StashedFunction):
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [mpz(n) for n in (
+        return [gmpy2.mpz(n) for n in (
         1, 2, 2, 3, 2, 4, 2, 4, 3, 4, 2, 6, 2, 4, 4, 5, 2, 6, 2, 6, 4, 4, 2, 8, 3, 4,
         4, 6, 2, 8, 2, 6, 4, 4, 4, 9, 2, 4, 4, 8, 2, 8, 2, 6, 6, 4, 2, 10, 3, 6, 4, 6,
         2, 8, 4, 8, 4, 4, 2, 12, 2, 4, 6, 7, 4, 8, 2, 6, 4, 8, 2, 12, 2, 4, 6, 6, 4, 8,
@@ -348,8 +344,7 @@ class Sigma(StashedFunction):
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [mpz(n) for n in (
+        return [gmpy2.mpz(n) for n in (
         1, 3, 4, 7, 6, 12, 8, 15, 13, 18, 12, 28, 14, 24, 24, 31, 18, 39, 20, 42, 32,
         36, 24, 60, 31, 42, 40, 56, 30, 72, 32, 63, 48, 54, 48, 91, 38, 60, 56, 90, 42,
         96, 44, 84, 78, 72, 48, 124, 57, 93, 72, 98, 54, 120, 72, 120, 80, 90, 60, 168,
@@ -633,7 +628,7 @@ class Mobius(StashedFunction):
             1, 1, 0, -1, -1, 1, 0, -1, 0, -1, 0, 0, 1, -1, 0, -1, -1, -1, 0]
 
     def __call__(self, i):
-        return self.__sympy__.mobius(i + 1)  # Mobius is defined in [1, inf]
+        return sympy.mobius(i + 1)  # Mobius is defined in [1, inf]
 
     def priority(self):
         return self.PRIORITY_CALL
@@ -647,13 +642,12 @@ class Mobius(StashedFunction):
 
 
 class LookAndSay(StashMixin, Iterator):
-    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.FAST_GROWING]
+    __traits__ = [Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.FAST_GROWING, Trait.SLOW]
     __stash__ = None
 
     @classmethod
     def _create_stash(cls):
-        mpz = cls.__gmpy2__.mpz
-        return [mpz(x) for x in (
+        return [gmpy2.mpz(x) for x in (
 	    1, 11, 21, 1211, 111221, 312211, 13112221, 1113213211, 31131211131221, 13211311123113112211,
             11131221133112132113212221, 3113112221232112111312211312113211,
             1321132132111213122112311311222113111221131221,
@@ -664,7 +658,7 @@ class LookAndSay(StashMixin, Iterator):
         stash = self.get_stash()
         yield from stash
         value = stash[-1]
-        mpz = self.__gmpy2__.mpz
+        mpz = gmpy2.mpz
         while True:
             digits = value.digits()
             new_digits = []

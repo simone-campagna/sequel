@@ -4,6 +4,7 @@ Fibonacci Sequence
 
 import collections
 
+from ..lazy import gmpy2
 from .base import Sequence, Function, Iterator
 from .trait import Trait
 
@@ -21,7 +22,7 @@ class Fib01(Function):
     __traits__ = [Trait.POSITIVE]
 
     def __call__(self, i):
-        return self.__gmpy2__.fib(i)
+        return gmpy2.fib(i)
 
     def description(self):
         return """f(n) := f(n - 2) + f(n - 1), f(0) := 0, f(1) := 1 (Fibonacci sequence [0, 1, 1, 2, 3, 5, 8, ...])"""
@@ -35,7 +36,7 @@ class Fib11(Function):
     __traits__ = [Trait.POSITIVE, Trait.NON_ZERO]
 
     def __call__(self, i):
-        return self.__gmpy2__.fib(i + 1)
+        return gmpy2.fib(i + 1)
 
     def description(self):
         return """f(n) := f(n - 2) + f(n - 1), f(0) := 1, f(1) := 1 (Fibonacci sequence [1, 1, 2, 3, 5, 8, ...])"""
@@ -49,7 +50,7 @@ class Lucas(Function):
     __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
 
     def __call__(self, i):
-        return self.__gmpy2__.lucas(i)
+        return gmpy2.lucas(i)
 
     @classmethod
     def register(cls):

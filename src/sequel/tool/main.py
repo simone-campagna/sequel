@@ -43,7 +43,7 @@ __all__ = [
 
 
 def sequence_completer(prefix, action, parser, parsed_args):
-    return [str(sequence) for sequence in Sequence.get_registry().values()] 
+    return list(Sequence.get_registry())
 
 
 def type_stop_below_complexity(string):

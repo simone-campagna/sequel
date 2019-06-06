@@ -17,11 +17,9 @@ from ..item import (
     Any, ANY, Interval, Set, Value,
     LowerBound, UpperBound,
 )
-from ..utils import (
-    is_integer, 
+from ..lazy import (
     gmpy2,
     sympy,
-    # numpy,
 )
 from .trait import Trait
 
@@ -98,9 +96,6 @@ class Sequence(metaclass=SMeta):
     __registry__ = LazyRegistry()
     __traits__ = ()
     __ignored_errors__ = (ArithmeticError, OverflowError, ValueError, IndexError, SequenceUnknownValueError)
-    __sympy__ = None
-    __gmpy2__ = None
-    # __numpy__ = None
 
     def __new__(cls, *args, **kwargs):
         bound_args = cls.__signature__.bind(None, *args, **kwargs)
@@ -117,17 +112,7 @@ class Sequence(metaclass=SMeta):
             instance._instance_expr = None
             instance._instance_doc = None
             cls.__instances__[parameters] = instance
-            cls.__init_cache()
             return instance
-
-    @classmethod
-    def __init_cache(cls):
-        if cls.__gmpy2__ is None:
-            cls.__gmpy2__ = gmpy2()
-        # if cls.__numpy__ is None:
-        #     cls.__numpy__ = numpy()
-        if cls.__sympy__ is None:
-            cls.__sympy__ = sympy()
 
     def __init__(self):
         # WARNING: this empty __init__method is needed in order to correctly
@@ -144,7 +129,7 @@ class Sequence(metaclass=SMeta):
 
     def _make_expr(self):
         if self._instance_symbol:
-            return self.__sympy__.symbols(self._instance_symbol, integer=True)
+            return sympy.symbols(self._instance_symbol, integer=True)
 
     def _make_simplify_expr(self, vdict):
         expr = self.expr
@@ -153,7 +138,7 @@ class Sequence(metaclass=SMeta):
         else:
             symbol = "tmp_{}".format(len(vdict))
             vdict[symbol] = self
-            return self.__sympy__.symbols(symbol, integer=True)
+            return sympy.symbols(symbol, integer=True)
 
     @property
     def expr(self):
@@ -377,7 +362,7 @@ class Sequence(metaclass=SMeta):
             locals = {}
         sequence = eval(source, globals, locals)
         if check_type:
-            if is_integer(sequence):
+            if gmpy2.is_integer(sequence):
                 sequence = Const(value=sequence)
             elif isinstance(sequence, float):
                 sequence = Const(value=int(sequence))
@@ -399,7 +384,7 @@ class Sequence(metaclass=SMeta):
     def simplify(self):
         expr = self.expr
         if expr is not None:
-            s_expr = self.__sympy__.simplify(expr)
+            s_expr = sympy.simplify(expr)
             try:
                 return self.from_expr(s_expr)
             except NameError:
@@ -422,7 +407,7 @@ class Sequence(metaclass=SMeta):
     def make_sequence(cls, operand):
         if isinstance(operand, Sequence):
             return operand
-        elif is_integer(operand):
+        elif gmpy2.is_integer(operand):
             return Const(value=operand)
         elif isinstance(operand, float):
             return Const(value=int(operand))
@@ -567,7 +552,7 @@ class UnOp(Sequence):
         )
 
     def __call__(self, i):
-        return gmpy2().mpz(self._unop(self.operand[i]))
+        return gmpy2.mpz(self._unop(self.operand[i]))
 
     def __iter__(self):
         for value in self.operand:
@@ -618,7 +603,7 @@ class BinOp(Sequence):
         raise NotImplementedError()
 
     def __call__(self, i):
-        return gmpy2().mpz(self._binop(self.left[i], self.right[i]))
+        return gmpy2.mpz(self._binop(self.left[i], self.right[i]))
 
     def __iter__(self):
         for l, r in zip(self.left, self.right):
@@ -815,7 +800,7 @@ class Const(Function):
         return self.__value
 
     def _make_expr(self):
-        return self.__sympy__.sympify(self.__value)
+        return sympy.sympify(self.__value)
 
     def __call__(self, i):
         return self.__value

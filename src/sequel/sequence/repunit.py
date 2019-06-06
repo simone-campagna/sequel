@@ -4,6 +4,7 @@ Repunit Sequence
 
 import itertools
 
+from ..lazy import gmpy2
 from .base import Sequence
 from .trait import Trait
 
@@ -17,7 +18,7 @@ class Repunit(Sequence):
     __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
 
     def __init__(self, base=10):
-        self.__base = self.__gmpy2__.mpz(base)
+        self.__base = gmpy2.mpz(base)
 
     def description(self):
         return "f(n) := the repunit sequence in base {}".format(self.__base)

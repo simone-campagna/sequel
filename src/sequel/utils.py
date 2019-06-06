@@ -7,6 +7,9 @@ import itertools
 import os
 import sys
 
+from .lazy import gmpy2, sympy
+
+
 __all__ = [
     'gcd',
     'lcm',
@@ -17,52 +20,7 @@ __all__ = [
     'get_base',
     'sequence_matches',
     'assert_sequence_matches',
-    'is_integer',
-    # 'lazy_loader',
-    'gmpy2',
-    'sympy',
-    'numpy',
 ]
-
-
-# def lazy_loader(name, package=None):
-#     """Lazy module loader"""
-#     if package:
-#         fullname = package + name
-#     else:
-#         fullname = name
-#     try:
-#         return sys.modules[fullname]
-#     except KeyError:
-#         spec = importlib.util.find_spec(name, package=package)
-#         module = importlib.util.module_from_spec(spec)
-#         loader = importlib.util.LazyLoader(spec.loader)
-#         # Make module with proper locking and get it inserted into sys.modules.
-#         loader.exec_module(module)
-#         return module
-
-
-def gmpy2():
-    #print("G")
-    import gmpy2 as _gmpy2
-    return _gmpy2
-
-
-def sympy():
-    #print("S")
-    import sympy as _sympy
-    return _sympy
-
-
-def numpy():
-    #print("N")
-    import numpy as _numpy
-    return _numpy
-
-
-def is_integer(value):
-    mpz_class = type(gmpy2().mpz(1))
-    return isinstance(value, (int, mpz_class))
 
 
 def gcd(item0, *items):
@@ -71,7 +29,7 @@ def gcd(item0, *items):
         return item0
     result = item0
     for item in items:
-        result = gmpy2().gcd(result, item)
+        result = gmpy2.gcd(result, item)
         if result == 1:
             break
     return int(result)
@@ -83,7 +41,7 @@ def lcm(item0, *items):
         return item0
     result = item0
     for item in items:
-        result = gmpy2().lcm(result, item)
+        result = gmpy2.lcm(result, item)
     return int(result)
 
 
@@ -91,12 +49,12 @@ def factorize(n):
     """Yields prime factors and multiplicity"""
     if n in {0, 1}:
         return
-    yield from sorted(sympy().factorint(n).items(), key=lambda x: x[0])
+    yield from sorted(sympy.factorint(n).items(), key=lambda x: x[0])
 
 
 def divisors(n):
     """Yields all divisors of n"""
-    yield from sympy().divisors(n)
+    yield from sympy.divisors(n)
 
 
 def affine_transformation(x, y):
@@ -133,7 +91,7 @@ def get_power(x):
     """Returns p | i ** p == x[i], or None"""
     x = tuple(x)
     if len(x) > 2 and x[0] == 0 and x[1] == 1:
-        f, power = gmpy2().remove(x[2], 2)
+        f, power = gmpy2.remove(x[2], 2)
         if f != 1:
             return
         for i, xi in enumerate(x):
@@ -161,7 +119,7 @@ def sequence_matches(sequence, items):
 
 
 def item_repr(item):
-    if is_integer(item):
+    if gmpy2.is_integer(item):
         return int(item)
     else:
         return item

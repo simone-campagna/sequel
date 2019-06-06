@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 
-from .utils import numpy
+from .lazy import numpy
 
 
 __all__ = [
@@ -70,7 +70,7 @@ def _setup_sequel_config(name, config):
     sequel_config = config[name]
     random_seed = sequel_config["random_seed"]
     random.seed(random_seed)
-    numpy().random.seed(random_seed)
+    numpy.module().random.seed(random_seed)
 
 
 register_config(

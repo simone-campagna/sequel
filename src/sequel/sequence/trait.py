@@ -19,6 +19,7 @@ class Trait(enum.Enum):
     ALTERNATING = 5
     PARTIALLY_KNOWN = 6
     FAST_GROWING = 7
+    SLOW = 8
 
 
 def verify_injective(items):

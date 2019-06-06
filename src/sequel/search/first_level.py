@@ -5,7 +5,10 @@ First-level algorithms (non recursive)
 import collections
 import time
 
-from .base import Algorithm
+from ..lazy import (
+    numpy,
+    sympy,
+)
 from ..sequence import (
     Sequence,
     Const, Integer,
@@ -18,9 +21,8 @@ from ..utils import (
     get_base, get_power, lcm, gcd,
     sequence_matches,
     assert_sequence_matches,
-    numpy,
-    sympy,
 )
+from .base import Algorithm
 
 
 __all__ = [
@@ -43,7 +45,10 @@ class CatalogAlgorithm(Algorithm):
     __min_items__ = 1
 
     def iter_sequences(self, manager, items, rank):
-        yield from manager.catalog.iter_matching_sequences(items)
+        for x in manager.catalog.iter_matching_sequences(items):
+            print("   ccc", items, x)
+            yield x
+        #yield from manager.catalog.iter_matching_sequences(items)
 
 
 class ConstAlgorithm(Algorithm):
@@ -223,11 +228,10 @@ class PolynomialAlgorithm(Algorithm):
         super().__init__()
         self.min_degree = max(2, min_degree)
         self.max_degree = max_degree
-        self._numpy = numpy()
 
     def iter_sequences(self, manager, items, rank):
         integer = Integer()
-        np = self._numpy
+        np = numpy.module()
         for degree in range(self.min_degree, min(len(items), self.max_degree + 1)):
             try:
                 m = np.ndarray(dtype=np.int64, shape=(degree, degree))
@@ -288,7 +292,6 @@ class LinearCombinationAlgorithm(Algorithm):
                  min_elapsed=0.2, max_elapsed=2.0, exp_elapsed=-0.8,
                  sequences=None):
         super().__init__()
-        self._sympy = sympy()
         if sequences:
             sequences = [Sequence.compile(s) for s in sequences]
         else:
@@ -332,7 +335,7 @@ class LinearCombinationAlgorithm(Algorithm):
         x_values = list(items)
         all_indices = [i for i, _ in enumerate(all_sequences)]
         zero_sol = [0 for _ in all_sequences]
-        sympy_module = self._sympy
+        sympy_module = sympy.module()
         xs = sympy_module.symbols("x0:{}".format(num_items), integer=True)
         max_components = self.max_components
         rationals = self.rationals
