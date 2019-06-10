@@ -2,6 +2,7 @@
 Print utils
 """
 
+import collections
 import contextlib
 import functools
 import sys
@@ -139,13 +140,15 @@ class Printer(object):
         data = "    {} ...".format(self.separator.join(known_items + unknown_items))
         return data
 
-    def print_items(self, items, num_known=0):
-        if self.item_mode == "oneline":
+    def print_items(self, items, num_known=0, item_mode=None):
+        if item_mode is None:
+            item_mode = self.item_mode
+        if item_mode == "oneline":
             data = self._oneline_items(items, num_known=num_known)
             if False and self.wraps:
                 data = textwrap.fill(data, subsequent_indent='    ', break_long_words=False)
             self(data)
-        elif self.item_mode == "multiline":
+        elif item_mode == "multiline":
             for index, item in enumerate(items):
                 if index < num_known:
                    fn = self.bold
@@ -162,7 +165,10 @@ class Printer(object):
             if not first:
                 self()
             first = False
-            sequence = Sequence.compile(source, simplify=simplify)
+            if isinstance(source, Sequence):
+                sequence = source
+            else:
+                sequence = Sequence.compile(source, simplify=simplify)
             if num_items is None:
                 num_items = self.num_items
             self(self.bold(str(sequence)) + " : " + sequence.doc())
@@ -283,3 +289,94 @@ class Printer(object):
         finally:
             self.num_items = old_num_items
             self.base = old_base
+
+    def print_quiz(self, source):
+        item_format = "    {index:4d}: {item:20s}"
+        def show_items(items):
+            for index, item in enumerate(items):
+                item = self.bold(self.repr_item(item))
+                self(item_format.format(index=index, item=item))
+        items_format = "    {index:4d}: {item:20s} {user_item:20s} {equals}"
+        def compare_items(items, user_items):
+            nexact = 0
+            ndiff = 0
+            for index, (item, user_item) in enumerate(zip(items, user_items)):
+                s_item = self.bold(self.repr_item(item))
+                s_user_item = self.repr_item(user_item)
+                if user_item == item:
+                    s_user_item = self.blue(s_user_item)
+                    equals = "[ok]"
+                    nexact += 1
+                else:
+                    s_user_item = self.red(s_user_item)
+                    equals = "!!!"
+                    ndiff += 1
+                self(items_format.format(index=index, item=s_item, user_item=s_user_item, equals=equals))
+            return nexact, ndiff
+
+        if isinstance(source, str):
+            sequence = Sequence.compile(source, simplify=True)
+        else:
+            sequence = source
+       
+        commands = collections.OrderedDict()
+        
+        def _show_help(command, items, sequence):
+            for key, (doc, function) in commands.items():
+                self("{:20s} {}".format(self.bold(key), doc))
+
+        def _get_tag(command, items, sequence):
+            return command[1:]
+
+        def _print_doc(command, items, sequence):
+            self.print_doc()
+
+        def _spoiler(command, items, sequence):
+            self("The hidden sequence is: " + self.bold(sequence))
+
+        def _show_items(command, items, sequence):
+            show_items(items)
+
+        commands[':quit'] = ("quit", _get_tag)
+        commands[':items'] = ("items", _show_items)
+        commands[':spoiler'] = ("show the hidden sequences", _spoiler)
+        commands[':doc'] = ("show available sequences", _print_doc)
+        commands[':help'] = ("show available commands", _show_help)
+
+        # self(str(sequence))
+        num_items = self.num_items
+        item_mode = 'multiline'
+        items = []
+        ntries = 0
+        self("(enter ':help' to show commands)")
+        while True:
+            if len(items) != num_items:
+                items = sequence.get_values(num_items)
+            show_items(items)
+            while True:
+                hdr = "[{}] ".format(ntries)
+                ans = input(hdr + "sequence > ")
+                if ans in commands:
+                    fn = commands[ans][1]
+                    result = fn(ans, items, sequence)
+                    if result == 'quit':
+                        return
+                else:
+                    ntries += 1
+                    hdr = "[{}] ".format(ntries)
+                    try:
+                        user_sequence = Sequence.compile(ans, simplify=True)
+                    except Exception as err:
+                        self(hdr + self.red("ERROR:") + str(err))
+                        continue
+                    user_items = user_sequence.get_values(num_items)
+                    nexact, ndiff = compare_items(items, user_items)
+                    if ndiff:
+                        self(hdr + "{} errors - try again".format(ndiff))
+                    else:
+                        if user_sequence == sequence:
+                            self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
+                        else:
+                            self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
+                        return
+      

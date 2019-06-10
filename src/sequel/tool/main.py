@@ -35,6 +35,8 @@ from .subcommands import (
     function_config_write,
     function_config_reset,
     function_config_edit,
+    function_generate,
+    function_quiz,
 )
 
 __all__ = [
@@ -54,6 +56,23 @@ def type_config_key_value(string):
     key, value = string.split("=", 1)
     value = eval(value)
     return (key, value)
+
+
+def type_range(string):
+    if ':'  in string:
+        left, right = string.split(":", 1)
+        if left:
+            left = int(left)
+        else:
+            left = None
+        if right:
+            right = int(right)
+        else:
+            right = None
+    else:
+        left = int(string)
+        right = left + 1
+    return (left, right)
 
 
 def main():
@@ -160,6 +179,24 @@ Compile a sequence""",
         function=function_compile,
         function_args=['sources', 'simplify', 'tree'] + ['display_kwargs'])
 
+    generate_parser = subparsers.add_parser(
+        'generate',
+        description="""\
+Generate a random sequence""",
+        **common_parser_kwargs)
+    generate_parser.set_defaults(
+        function=function_generate,
+        function_args=['level', 'algorithm'] + ['display_kwargs'])
+
+    quiz_parser = subparsers.add_parser(
+        'quiz',
+        description="""\
+Generate a random sequence and make a quiz""",
+        **common_parser_kwargs)
+    quiz_parser.set_defaults(
+        function=function_quiz,
+        function_args=['level', 'algorithm'] + ['display_kwargs'])
+
     tree_parser = subparsers.add_parser(
         'tree',
         description="""\
@@ -245,7 +282,7 @@ Compile a sequence and tries to search it""",
             default=False,
             help="simplify expression")
 
-    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser:
+    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser, generate_parser, quiz_parser:
         parser.add_argument(
             "-n", "--num-items",
             metavar="N",
@@ -408,6 +445,18 @@ Compile a sequence and tries to search it""",
             dest="handler", default=None, metavar='C',
             type=type_stop_below_complexity,
             help="stop when below complexity")
+
+    for parser in generate_parser, quiz_parser:
+        parser.add_argument(
+            "--level",
+            default=None,
+            type=type_range,
+            help="set level, e.g. '2', ':3', '2:5'")
+        parser.add_argument(
+            "--algorithm",
+            default=None,
+            type=str,
+            help="set algorithm name")
 
     argcomplete.autocomplete(top_level_parser)
     namespace = top_level_parser.parse_args()

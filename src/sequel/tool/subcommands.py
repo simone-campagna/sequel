@@ -31,7 +31,7 @@ from ..search import (
     # StopAtNum,
     StopBelowComplexity,
 )
-from ..sequence import compile_sequence, Sequence
+from ..sequence import compile_sequence, Sequence, generate
 from ..profiler import Profiler
 from ..utils import assert_sequence_matches
 
@@ -169,3 +169,15 @@ def function_test(sources, simplify=False, sort=False, reverse=False, limit=None
         printer.print_stats(profiler)
             
 
+def function_generate(level, algorithm, display_kwargs=None):
+    printer = make_printer(display_kwargs)
+    sequence = generate(level=level, algorithm=algorithm)
+    if sequence is not None:
+        printer.print_doc(sources=[sequence])
+
+
+def function_quiz(level, algorithm, display_kwargs=None):
+    printer = make_printer(display_kwargs)
+    sequence = generate(level=level, algorithm=algorithm)
+    if sequence is not None:
+        printer.print_quiz(source=sequence)
