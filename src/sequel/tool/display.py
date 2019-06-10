@@ -355,7 +355,13 @@ class Printer(object):
             show_items(items)
             while True:
                 hdr = "[{}] ".format(ntries)
-                ans = input(hdr + "sequence > ")
+                try:
+                    ans = input(hdr + "sequence > ").strip()
+                except EOFError:
+                    self('')
+                    return
+                if not ans:
+                    continue
                 if ans in commands:
                     fn = commands[ans][1]
                     result = fn(ans, items, sequence)
