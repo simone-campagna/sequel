@@ -46,7 +46,6 @@ class CatalogAlgorithm(Algorithm):
 
     def iter_sequences(self, manager, items, rank):
         for x in manager.catalog.iter_matching_sequences(items):
-            print("   ccc", items, x)
             yield x
         #yield from manager.catalog.iter_matching_sequences(items)
 
@@ -421,5 +420,3 @@ class RepunitAlgorithm(Algorithm):
             sequence = (it0 - 1) + Repunit(base=base)
         if sequence_matches(sequence, items):
             yield sequence
-
-
