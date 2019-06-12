@@ -31,6 +31,7 @@ from .number_theory import (
     MersennePrime,
     Euler, Bell, Genocchi,
     LookAndSay,
+    VanEck,
 )
 from .repunit import (
     Repunit,
