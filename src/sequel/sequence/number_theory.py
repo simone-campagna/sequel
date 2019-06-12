@@ -22,6 +22,7 @@ __all__ = [
     'Bell',
     'Genocchi',
     'LookAndSay',
+    'VanEck',
 ]
 
 
@@ -686,4 +687,45 @@ class LookAndSay(StashMixin, Iterator):
         cls.register_factory('look_and_say', cls)
 
 
+class VanEck(StashMixin, Iterator):
+    __traits__ = [Trait.POSITIVE]
+    __stash__ = None
 
+    @classmethod
+    def _create_stash(cls):
+        return [0, 0, 1, 0, 2, 0, 2, 2, 1, 6, 0, 5, 0, 2, 6, 5, 4, 0, 5, 3, 0, 3, 2, 9, 0, 4, 9, 3, 6, 14, 0, 6, 3, 5, 15, 0, 5, 3, 5, 2, 17, 0, 6, 11, 0, 3, 8, 0, 3, 3, 1, 42, 0, 5, 15, 20, 0, 4, 32, 0, 3, 11, 18, 0, 4, 7, 0, 3, 7, 3, 2, 31, 0, 6, 31, 3, 6, 3, 2, 8, 33, 0, 9, 56, 0, 3, 8, 7, 19, 0, 5, 37, 0, 3, 8, 8, 1]
+
+    def __iter__(self):
+        stash = self.get_stash()
+        index_dct = {}
+        if stash:
+            last_value, last_index = stash[0], 0
+            yield last_value
+            for index, value in enumerate(stash[1:]):
+                index_dct[last_value] = last_index
+                yield value
+                last_value, last_index = value, index + 1
+            #print(last_index, last_value, index_dct)
+        else:
+            yield 0
+            last_value, last_index = 0, 0
+
+        while True:
+            prev_index = index_dct.get(last_value, None)
+            index_dct[last_value] = last_index
+            if prev_index is None:
+                new_value = 0
+            else:
+                new_value = last_index - prev_index
+            new_index = last_index + 1
+            #print(":::", (last_index, last_value), prev_index, (new_index, new_value), index_dct)
+            last_value = new_value
+            last_index = new_index
+            yield last_value
+
+    def description(self):
+        return """f(n) := the Van Eck sequence"""
+
+    @classmethod
+    def register(cls):
+        cls.register_factory('vaneck', cls)
