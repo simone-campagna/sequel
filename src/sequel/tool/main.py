@@ -26,7 +26,6 @@ from ..sequence import (
 )
 from .subcommands import (
     function_search,
-    function_shell,
     function_test,
     function_compile,
     function_doc,
@@ -72,7 +71,7 @@ To enable completion run the following command:
         **common_parser_kwargs)
 
     top_level_parser.set_defaults(
-        function=function_shell,
+        function=top_level_parser.print_help,
         function_args=[])
 
     top_level_parser.add_argument(

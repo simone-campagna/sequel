@@ -75,12 +75,6 @@ def iter_selected_sequences(found_sequences, sort=False, limit=None):
         for sequence, _ in zip(found_sequences, range(limit)):
             yield sequence
 
-    
-def function_shell(display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    cmd = SequelShell(printer=printer)
-    cmd.run()
-
 
 def function_config_show(keys=None, sort_keys=False):
     config = get_config()

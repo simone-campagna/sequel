@@ -166,7 +166,7 @@ _simplify_tests = [
     [Integer() | Const(value=5), '5'],
     [Const(5) | Integer(), '5'],
     [Const(value=5) - (-Integer()), 'i + 5'],
-    [Const(value=5) + (-Integer()), '-i + 5'],
+    [Const(value=5) + (-Integer()), '5 - i'],
     [0 - Integer(), '-i'],
     [0 - (-Integer()), 'i'],
     [0 * Integer(), '0'],
