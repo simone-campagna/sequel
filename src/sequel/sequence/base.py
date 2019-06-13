@@ -373,9 +373,25 @@ class Sequence(metaclass=SMeta):
         return sequence
 
     def __repr__(self):
+        plist = []
+        parameters = self.__signature__.parameters
+        def mkrepr(obj):
+            if isinstance(obj, Sequence):
+                return str(obj)
+            else:
+                return repr(obj)
+        for key, val in self._instance_parameters[1:]:
+            par = parameters[key]
+            if par.kind == par.VAR_POSITIONAL:
+                for x in val:
+                    plist.append(mkrepr(x))
+            elif par.kind == par.KEYWORD_ONLY:
+                plist.append("{}={}".format(key, mkrepr(val)))
+            else:
+                plist.append(mkrepr(val))
         return "{}({})".format(
             type(self).__name__,
-            ", ".join("{}={!r}".format(key, val) for key, val in self._instance_parameters[1:]))
+            ", ".join(plist))
 
     @classmethod
     def from_expr(cls, expr, locals=None):

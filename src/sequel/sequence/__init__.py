@@ -24,6 +24,7 @@ from .polygonal import (
 from .functional import (
     derivative, integral,
     summation, product,
+    merge, join,
 )
 from .number_theory import (
     Prime, Phi, Sigma, Tau, Pi,
