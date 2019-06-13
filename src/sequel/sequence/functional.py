@@ -66,7 +66,7 @@ class derivative(Functional):
                 if isinstance(r_op, Const):
                     return Const(0)
                 else:
-                    if isinstance(instance, Sub):
+                    if isinstance(operand, Sub):
                         return self.__class__(-r_op)
                     else:
                         return self.__class__(r_op)
