@@ -24,6 +24,8 @@ from .polygonal import (
 from .functional import (
     derivative, integral,
     summation, product,
+)
+from .merge_join import (
     merge, join,
 )
 from .number_theory import (
