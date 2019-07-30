@@ -14,6 +14,7 @@ from .catalan import Catalan
 from .factorial import Factorial
 from .fibonacci import (
     Fib01, Fib11, Lucas, Fib, make_fibonacci,
+    Trib, make_tribonacci,
 )
 from .miscellanea import (
     Power, Geometric, Arithmetic,

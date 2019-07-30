@@ -15,6 +15,8 @@ __all__ = [
     'Lucas',
     'Fib',
     'make_fibonacci',
+    'Trib',
+    'make_tribonacci',
 ]
 
 
@@ -58,9 +60,10 @@ class Lucas(Function):
 
 
 class Fib(Iterator):
-    def __init__(self, first=0, second=1):
+    def __init__(self, first=0, second=1, scale=1):
         self.__first = first
         self.__second = second
+        self.__scale = scale
 
     @property
     def first(self):
@@ -70,29 +73,81 @@ class Fib(Iterator):
     def second(self):
         return self.__second
 
+    @property
+    def scale(self):
+        return self.__scale
+
     def __iter__(self):
-        f, s = self.__first, self.__second
+        f, s, scale = self.__first, self.__second, self.__scale
         while True:
             yield f
-            f, s = s, f + s
+            f, s = s, f + scale * s
 
     def description(self):
-        return """f(n) := f(n - 2) + f(n - 1), f(0) := 2, f(1) := 1 (Fibonacci sequence [2, 1, 3, 4, 7, ...])"""
+        return """f(n) := {obj.scale} * f(n - 1) + f(n - 2), f(0) := {obj.first}, f(1) := {obj.second}""".format(
+            obj=self)
 
     def equals(self, other):
         if super().equals(other):
-            return self.first == other.first and self.second == other.second
+            return self.first == other.first and self.second == other.second and self.scale == other.scale
         else:
             return False
 
+    @classmethod
+    def register(cls):
+        cls.register_factory('pell', lambda: cls(0, 1, 2))
 
-def make_fibonacci(first=0, second=1):
-    fs = (first, second)
-    if fs == (0, 1):
+
+class Trib(Iterator):
+    def __init__(self, first=0, second=1, third=1):
+        self.__first = first
+        self.__second = second
+        self.__third = third
+
+    @property
+    def first(self):
+        return self.__first
+
+    @property
+    def second(self):
+        return self.__second
+
+    @property
+    def third(self):
+        return self.__third
+
+    def __iter__(self):
+        f, s, t = self.__first, self.__second, self.__third
+        while True:
+            yield f
+            f, s, t = s, t, t + f + s
+
+    def description(self):
+        return """f(n) := f(n - 1) + f(n - 2) + f(n - 3), f(0) := {obj.first}, f(1) := {obj.second}, f(2) := {obj.third}""".format(
+            obj=self)
+
+    def equals(self, other):
+        if super().equals(other):
+            return self.first == other.first and self.second == other.second and self.third == other.third
+        else:
+            return False
+
+    @classmethod
+    def register(cls):
+        cls.register_factory('tribonacci', lambda: cls(0, 1, 1))
+
+
+def make_tribonacci(first=0, second=1, third=1):
+    return Trib(first, second, third)
+
+
+def make_fibonacci(first=0, second=1, scale=1):
+    key = (first, second, scale)
+    if key == (0, 1, 1):
         return Sequence.get_registry()['fib01']
-    elif fs == (1, 1):
+    elif key == (1, 1, 1):
         return Sequence.get_registry()['fib11']
-    elif fs == (2, 1):
+    elif key == (2, 1, 1):
         return Sequence.get_registry()['lucas']
     else:
-        return Fib(first, second)
+        return Fib(first, second, scale)

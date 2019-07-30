@@ -206,6 +206,7 @@ class FibonacciAlgorithm(Algorithm):
     __min_items__ = 3
 
     def iter_sequences(self, manager, items, rank):
+        # f0, f1, (s*f1 + f0), (s*(s*f1 + f0) + f1)
         if items.derivative[1:] == items[:-2]:
             first, second = items[:2]
             fs_gcd = gcd(first, second)
@@ -216,6 +217,19 @@ class FibonacciAlgorithm(Algorithm):
             if fs_gcd != 1:
                 fib = fs_gcd * fib
             yield fib
+        elif len(items) >= 4:
+            idiffs = []
+            icmp = []
+            for idx in range(2, len(items)):
+                idiffs.append(items[idx] - items[idx - 1] - items[idx - 2])
+                icmp.append(items[idx - 1])
+            result = affine_transformation(icmp, idiffs)
+            if result is not None:
+                m, q = result
+                if q == 0:
+                    sq = make_fibonacci(first=items[0], second=items[1], scale=m + 1)
+                    assert_sequence_matches(sq, items)
+                    yield sq
 
 
 class PolynomialAlgorithm(Algorithm):
