@@ -14,6 +14,7 @@ from .catalan import Catalan
 from .factorial import Factorial
 from .fibonacci import (
     Fib01, Fib11, Lucas, Fib, make_fibonacci,
+    Trib, make_tribonacci,
 )
 from .miscellanea import (
     Power, Geometric, Arithmetic,
@@ -24,6 +25,9 @@ from .polygonal import (
 from .functional import (
     derivative, integral,
     summation, product,
+)
+from .merge_join import (
+    merge, join,
 )
 from .number_theory import (
     Prime, Phi, Sigma, Tau, Pi,

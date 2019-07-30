@@ -32,6 +32,3 @@ class roundrobin(Iterator):
 
     def children(self):
         yield from self.operands
-
-    def __repr__(self):
-        return "{}({})".format(type(self).__name__, ", ".join(str(op) for op in self.operands))

@@ -200,21 +200,24 @@ class Printer(object):
     
     
     def print_sequences(self, sequences, num_items=None, num_known=0, header="", target_sequence=None):
+        best_match, best_match_complexity = None, 1000000
         if target_sequence is not None:
-            best_match, best_match_complexity = None, 1000000
             found = False
-        for count, sequence in enumerate(sequences):
-            header = "{:>5d}] ".format(count)
-            if target_sequence is not None:
-                if sequence.equals(target_sequence):
-                    found = True
-                    header += "[*] "
-                else:
-                    header += "    "
+        try:
+            for count, sequence in enumerate(sequences):
+                header = "{:>5d}] ".format(count)
+                if target_sequence is not None:
+                    if sequence.equals(target_sequence):
+                        found = True
+                        header += "[*] "
+                    else:
+                        header += "    "
                 complexity = sequence.complexity()
                 if best_match_complexity > complexity:
                     best_match, best_match_complexity = sequence, complexity
-            self.print_sequence(sequence, header=header, num_known=num_known)
+                self.print_sequence(sequence, header=header, num_known=num_known)
+        except KeyboardInterrupt:
+            self(self.red("[search interrupted]"))
         if target_sequence is not None:
             if found:
                 self("sequence {}: found".format(target_sequence))
@@ -223,6 +226,8 @@ class Printer(object):
                     self("sequence {}: found as {}".format(target_sequence, best_match))
                 else:
                     self("sequence {}: *not* found".format(target_sequence))
+        else:
+            self("best match: {}".format(self.bold(str(best_match))))
 
 
     def print_tree(self, sequence):
