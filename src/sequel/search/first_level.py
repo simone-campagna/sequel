@@ -144,11 +144,14 @@ class TribonacciAlgorithm(Algorithm):
     __min_items__ = 4
 
     def iter_sequences(self, manager, items, rank):
-        icmp = []
-        for idx in range(2, len(items)):
-            icmp.append(items[idx - 1] + items[idx - 2])
-        if all(x == y for x, y in zip(items.derivative[2:], icmp)):
-            yield make_tribonacci(items[0], items[1], items[2])
+        tri = make_tribonacci(items[0], items[1], items[2])
+        if sequence_matches(tri, items):
+            yield tri
+        # icmp = []
+        # for idx in range(2, len(items)):
+        #     icmp.append(items[idx - 1] + items[idx - 2])
+        # if all(x == y for x, y in zip(items.derivative[2:], icmp)):
+        #     yield make_tribonacci(items[0], items[1], items[2])
 
 
 class GeometricAlgorithm(Algorithm):
