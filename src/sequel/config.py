@@ -210,7 +210,7 @@ def yield_config_items(value, key, prefix):
     yield (key, value)
 
 
-@yield_config_items.register(collections.Mapping)
+@yield_config_items.register(collections.abc.Mapping)
 def _(value, key, prefix):
     for skey, svalue in value.items():
         sk = prefix + skey

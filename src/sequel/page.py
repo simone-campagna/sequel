@@ -165,7 +165,7 @@ class Page(object):
         return "{}({!r})".format(type(self).__name__, self._name)
 
 
-class Navigator(collections.Mapping):
+class Navigator(collections.abc.Mapping):
     def __init__(self, *pages, index_name='index', printer=None):
         if printer is None:
             printer = Printer()

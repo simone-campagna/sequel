@@ -262,7 +262,7 @@ def _(obj, macros):
     return obj
 
 
-@_expand_macros.register(collections.Mapping)
+@_expand_macros.register(collections.abc.Mapping)
 def _(obj, macros):
     newobj = obj
     for key, value in obj.items():
@@ -274,7 +274,7 @@ def _(obj, macros):
     return newobj
 
 
-@_expand_macros.register(collections.Sequence)
+@_expand_macros.register(collections.abc.Sequence)
 def _(obj, macros):
     newobj = obj
     for idx, value in enumerate(obj):

@@ -60,7 +60,7 @@ class SMeta(abc.ABCMeta):
         return cls
 
 
-class LazyRegistry(collections.Mapping):
+class LazyRegistry(collections.abc.Mapping):
     class LazyValue(object):
         def __init__(self, instance, factory):
             self.instance = instance

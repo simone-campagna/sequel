@@ -5,6 +5,7 @@ Fibonacci Sequence
 import collections
 
 from ..lazy import gmpy2
+from ..utils import gcd
 from .base import Sequence, Function, Iterator
 from .trait import Trait
 
@@ -137,17 +138,33 @@ class Trib(Iterator):
         cls.register_factory('tribonacci', lambda: cls(0, 1, 1))
 
 
-def make_tribonacci(first=0, second=1, third=1):
-    return Trib(first, second, third)
-
-
 def make_fibonacci(first=0, second=1, scale=1):
+    g = gcd(first, second,)
+    if g != 1:
+        first //= g
+        second //= g
     key = (first, second, scale)
     if key == (0, 1, 1):
-        return Sequence.get_registry()['fib01']
+        seq = Sequence.get_registry()['fib01']
     elif key == (1, 1, 1):
-        return Sequence.get_registry()['fib11']
+        seq = Sequence.get_registry()['fib11']
     elif key == (2, 1, 1):
-        return Sequence.get_registry()['lucas']
+        seq = Sequence.get_registry()['lucas']
     else:
-        return Fib(first, second, scale)
+        seq = Fib(first, second, scale)
+    if g != 1:
+        return g * seq
+    else:
+        return seq
+
+
+def make_tribonacci(first=0, second=1, third=1):
+    g = gcd(first, second,)
+    if g != 1:
+        first //= g
+        second //= g
+        return g * Trib(first, second, third)
+    else:
+        return Trib(first, second, third)
+
+
