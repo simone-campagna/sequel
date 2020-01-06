@@ -39,6 +39,14 @@ __all__ = [
 ]
 
 
+def simplify_expr(s_expr):
+    try:
+        simplified_expr = sympy.simplify(s_expr)
+        return str(simplified_expr)
+    except:
+        return s_expr
+
+
 class SequenceError(Exception):
     pass
 
@@ -91,6 +99,7 @@ class LazyRegistry(collections.abc.Mapping):
         return len(self._data)
         
         
+
 class Sequence(metaclass=SMeta):
     __instances__ = weakref.WeakValueDictionary()
     __registry__ = LazyRegistry()
@@ -354,6 +363,7 @@ class Sequence(metaclass=SMeta):
             "UpperBound": UpperBound,
             "Set": Set,
             "Value": Value,
+            "__": AFIndex,
         }
         for sequence_type in Sequence.sequence_types():
             globals[sequence_type.__name__] = sequence_type
@@ -362,7 +372,9 @@ class Sequence(metaclass=SMeta):
             locals = {}
         sequence = eval(source, globals, locals)
         if check_type:
-            if gmpy2.is_integer(sequence):
+            if isinstance(sequence, (list, tuple)):
+                sequence = AutoSequence(tuple(sequence[:-1]), sequence[-1])
+            elif gmpy2.is_integer(sequence):
                 sequence = Const(value=sequence)
             elif isinstance(sequence, float):
                 sequence = Const(value=int(sequence))
@@ -826,3 +838,237 @@ class Const(Function):
 
     def _str_impl(self):
         return str(self.__value)
+
+
+class AutoSequence(Sequence):
+    def __init__(self, known_values, fun_def):
+        self._known_values = tuple(known_values)
+        self._next = AFBase.coerce(fun_def)
+        indices = set(self._next.indices())
+        if indices:
+            max_index = max(indices)
+            if max_index >= 0:
+                raise ValueError("index {} is not valid".format(max_index))
+            self._length = -min(indices)
+
+    def __iter__(self):
+        for value in self._known_values:
+            yield value
+        values = collections.deque(self._known_values, maxlen=self._length)
+        next_value = self._next
+        while True:
+            value = next_value(values)
+            values.append(value)
+            yield value
+
+    def __call__(self, i):
+        values = collections.deque(self._known_values, maxlen=self._length)
+        next_value = self._next
+        while len(self._value) < i:
+            values.append(next_value(values))
+        return values[-1]
+            
+    def __str__(self):
+        lst = list(self._known_values)
+        lst.append(self._next)
+        return str(lst)
+
+    
+class AFBase(abc.ABC):
+    @classmethod
+    def coerce(cls, item):
+        if gmpy2.is_integer(item):
+            return AFConst(item)
+        elif isinstance(item, AFBase):
+            return item
+        elif isinstance(item, Sequence):
+            return item
+        else:
+            raise TypeError("{!r}: invalid type".format(type(item).__name__))
+
+    def children(self):
+        yield from ()
+
+    def _iterindices(self):
+        yield from ()
+
+    def indices(self):
+        yield from self._iterindices()
+        for child in self.children():
+            yield from child.indices()
+        
+    def __add__(self, other):
+        return AFAdd(self, self.coerce(other))
+
+    def __radd__(self, other):
+        return AFAdd(self.coerce(other), self)
+
+    def __sub__(self, other):
+        return AFSub(self, self.coerce(other))
+
+    def __rsub__(self, other):
+        return AFSub(self.coerce(other), self)
+
+    def __mul__(self, other):
+        return AFMul(self, self.coerce(other))
+
+    def __rmul__(self, other):
+        return AFMul(self.coerce(other), self)
+
+    def __truediv__(self, other):
+        return AFDiv(self, self.coerce(other))
+
+    def __rtruediv__(self, other):
+        return AFDiv(self.coerce(other), self)
+
+    def __floordiv__(self, other):
+        return AFDiv(self, self.coerce(other))
+
+    def __rfloordiv__(self, other):
+        return AFDiv(self.coerce(other), self)
+
+    def __mod__(self, other):
+        return AFMod(self, self.coerce(other))
+
+    def __rmod__(self, other):
+        return AFMod(self.coerce(other), self)
+
+    def __pow__(self, other):
+        return AFPow(self, self.coerce(other))
+
+    def __rpow__(self, other):
+        return AFPow(self.coerce(other), self)
+
+    def __pos__(self):
+        return AFPos(self)
+
+    def __neg__(self):
+        return AFNeg(self)
+
+    def __abs__(self):
+        return AFabs(self)
+
+    @abc.abstractmethod
+    def __call__(self, values):
+        raise NotImplementedError()
+
+
+class AFConst(AFBase):
+    def __init__(self, value):
+        self.value = gmpy2.mpz(value)
+
+    def __call__(self, values):
+        return self.value
+
+    def __repr__(self):
+        return str(self.value)
+
+
+class AFBinOp(AFBase):
+    __symbol__ = None
+    def __init__(self, left, right):
+        self.left = self.coerce(left)
+        self.right = self.coerce(right)
+
+    def children(self):
+        yield self.left
+        yield self.right
+
+    @abc.abstractmethod
+    def binop(self, left, right):
+        raise NotImplementedError()
+
+    def __call__(self, values):
+        return self.binop(self.left(values), self.right(values))
+
+    def __repr__(self):
+        return simplify_expr("({} {} {})".format(str(self.left), self.__symbol__, str(self.right)))
+
+
+class AFAdd(AFBinOp):
+    __symbol__ = '+'
+    def binop(self, left, right):
+        return left + right
+
+
+class AFSub(AFBinOp):
+    __symbol__ = '-'
+    def binop(self, left, right):
+        return left - right
+
+
+class AFMul(AFBinOp):
+    __symbol__ = '*'
+    def binop(self, left, right):
+        return left * right
+
+
+class AFDiv(AFBinOp):
+    __symbol__ = '/'
+    def binop(self, left, right):
+        return left // right
+
+
+class AFMod(AFBinOp):
+    __symbol__ = '%'
+    def binop(self, left, right):
+        return left % right
+
+
+class AFPow(AFBinOp):
+    __symbol__ = '**'
+    def binop(self, left, right):
+        return left ** right
+
+
+class AFUnOp(AFBase):
+    def __init__(self, operand):
+        self.operand = self.coerce(operand)
+
+    def children(self):
+        yield self.operand
+
+    @abc.abstractmethod
+    def unop(self, operand):
+        raise NotImplementedError()
+
+    def __call__(self, values):
+        return self.unop(self.operand(values))
+
+
+class AFPos(AFUnOp):
+    def unop(self, operand):
+        return operand
+
+    def __repr__(self):
+        return str(self.operand)
+
+
+class AFNeg(AFUnOp):
+    def unop(self, operand):
+        return -operand
+
+    def __repr__(self):
+        return simplify_expr('(-{})'.format(self.operand))
+
+
+class AFAbs(AFUnOp):
+    def unop(self, operand):
+        return abs(operand)
+
+    def __repr__(self):
+        return simplify_expr('abs({})'.format(self.operand))
+
+
+class AFIndex(AFBase):
+    def __init__(self, index):
+        self.index = index
+
+    def __call__(self, values):
+        return values[self.index]
+
+    def _iterindices(self):
+        yield self.index
+
+    def __repr__(self):
+        return '__({})'.format(self.index)
