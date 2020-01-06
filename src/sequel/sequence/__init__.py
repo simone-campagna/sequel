@@ -4,6 +4,7 @@ Sequence module
 
 from .base import (
     Sequence, Function, Iterator,
+    AutoSequence, AutoSequenceIndexer, autosequence,
     Integer, Natural,
     Const,
     Compose,

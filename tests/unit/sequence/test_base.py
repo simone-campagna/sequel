@@ -2,6 +2,7 @@ import pytest
 
 from sequel.sequence import (
     Sequence,
+    AutoSequence, AutoSequenceIndexer, autosequence,
     Compose,
     Integer, Natural,
     Const,
@@ -136,6 +137,8 @@ _refs = [
     ["merge(p, 5, p, 8, p)", merge(Prime(), 5, Prime(), 8, Prime()), [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]],
     ["merge(p, 5, -1, 8, p)", merge(Prime(), 5, -1, 8, Prime()), [2, 3, 5, 7, 11, -1, -1, -1, 23, 29]],
     ["join(p, 5, -1, 8, p)", join(Prime(), 5, -1, 8, Prime()), [2, 3, 5, 7, 11, -1, -1, -1, 2, 3]],
+    ["__([0, 1], __(-1) ** 2 - __(-2))", AutoSequence((0, 1), AutoSequenceIndexer(-1) ** 2 - AutoSequenceIndexer(-2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["__([0, 1], __(-1) ** 2 - __(-2))", autosequence(0, 1, autosequence(-1) ** 2 - autosequence(-2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
 ]
 
 

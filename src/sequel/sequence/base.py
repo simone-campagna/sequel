@@ -26,6 +26,9 @@ from .trait import Trait
 
 __all__ = [
     'Sequence',
+    'AutoSequence',
+    'AutoSequenceIndexer',
+    'autosequence',
     'compile_sequence',
     'StashMixin',
     'EnumeratedSequence',
@@ -354,6 +357,7 @@ class Sequence(metaclass=SMeta):
             "UpperBound": UpperBound,
             "Set": Set,
             "Value": Value,
+            "__": autosequence,
         }
         for sequence_type in Sequence.sequence_types():
             globals[sequence_type.__name__] = sequence_type
@@ -826,3 +830,101 @@ class Const(Function):
 
     def _str_impl(self):
         return str(self.__value)
+
+
+class ItemsIndex(Sequence):
+    def __init__(self, items):
+        self.__items = items
+
+    def __call__(self, i):
+        return self.__items[i]
+
+
+class AutoSequenceIndexer(Sequence):
+    __items__ = None
+
+    def __init__(self, index):
+        self._index = index
+
+    @property
+    def index(self):
+        return self._index
+
+    @classmethod
+    @contextlib.contextmanager
+    def set_items(cls, items):
+        old_items = cls.__items__
+        cls.__items__ = items
+        try:
+            yield
+        finally:
+            cls.__items__ = old_items
+
+    def __call__(self, i):
+        items = self.__items__
+        if items is None:
+            raise SequenceError("unbound {}".format(self))
+        return items[self._index]
+
+    def __iter__(self):
+        items = self.__items__
+        index = self.index
+        while True:
+            yield items[index]
+
+    def __repr__(self):
+        return "__({})".format(self._index)
+
+
+class AutoSequence(Sequence):
+    def __init__(self, known_items, next_sequence):
+        self._known_items = tuple(gmpy2.mpz(x) for x in known_items)
+        if isinstance(next_sequence, str):
+            next_sequence = compile_sequence(next_sequence)
+        self._next_sequence = next_sequence
+        indices = set()
+        for depth, seq in self.walk():
+            if isinstance(seq, AutoSequenceIndexer):
+                indices.add(seq.index)
+        if indices:
+            max_index = min(indices)
+            if max_index >= 0:
+                raise SequenceError("non-negative indices")
+            maxlen = max(100, -min(indices))
+        else:
+            maxlen = 100
+        self.__items = collections.deque(maxlen=maxlen)
+        self.__items.extend(self._known_items)
+
+    def __call__(self, i):
+        items = self.__items
+        if i < len(items):
+            return items[i]
+        next_sequence = self._next_sequence
+        with AutoSequenceIndexer.set_items(items):
+            for j in range(len(items), i + 1):
+                items.append(next_sequence(j))
+        return items[-1]
+
+    def __iter__(self):
+        items = self.__items
+        yield from items
+        next_sequence = self._next_sequence
+        with AutoSequenceIndexer.set_items(items):
+            for i in itertools.count(start=len(items)):
+                item = next_sequence(i)
+                yield item
+                items.append(item)
+
+    def __repr__(self):
+        return "__({}, {})".format([int(x) for x in self._known_items], self._next_sequence)
+
+
+def autosequence(arg0, *args):
+    if len(args) == 0:
+        return AutoSequenceIndexer(arg0)
+    else:
+        return AutoSequence(
+            known_items=(arg0,) + args[:-1],
+            next_sequence=args[-1],
+        )
