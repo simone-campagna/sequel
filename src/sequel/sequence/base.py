@@ -26,9 +26,9 @@ from .trait import Trait
 
 __all__ = [
     'Sequence',
-    'AutoSequence',
-    'AutoSequenceIndexer',
-    'autosequence',
+    'RecursiveSequence',
+    'RecursiveSequenceIndexer',
+    'rseq',
     'compile_sequence',
     'StashMixin',
     'EnumeratedSequence',
@@ -41,6 +41,8 @@ __all__ = [
     'Compose',
 ]
 
+
+_NUM_INDEXERS = 10
 
 class SequenceError(Exception):
     pass
@@ -357,8 +359,10 @@ class Sequence(metaclass=SMeta):
             "UpperBound": UpperBound,
             "Set": Set,
             "Value": Value,
-            "_": autosequence,
+            "rseq": rseq,
         }
+        for index in range(_NUM_INDEXERS):
+            globals["_{}".format(index)] = RecursiveSequenceIndexer(index)
         for sequence_type in Sequence.sequence_types():
             globals[sequence_type.__name__] = sequence_type
         globals.update(Sequence.__registry__)
@@ -840,10 +844,14 @@ class ItemsIndex(Sequence):
         return self.__items[i]
 
 
-class AutoSequenceIndexer(Sequence):
+class RecursiveSequenceIndexer(Sequence):
     __items__ = None
 
     def __init__(self, index):
+        if not isinstance(index, int):
+            raise TypeError("{!r} is not a valid index".format(index))
+        if index < 0:
+            raise ValueError("{!r} is not a valid index".format(index))
         self._index = index
 
     @property
@@ -864,79 +872,101 @@ class AutoSequenceIndexer(Sequence):
         items = self.__items__
         if items is None:
             raise SequenceError("unbound {}".format(self))
-        return items[self._index]
+        return items[len(items) - 1 - self._index]
 
     def __iter__(self):
         items = self.__items__
         index = self.index
         while True:
-            yield items[index]
+            yield items[len(items) - 1 - index]
 
     def __repr__(self):
-        return "_[{}]".format(self._index)
+        if self._index < _NUM_INDEXERS:
+            return "_{}".format(self._index)
+        else:
+            return "rseq[{}]".format(self._index)
 
 
-class AutoSequence(Sequence):
-    def __init__(self, known_items, next_sequence):
+class RecursiveSequence(Sequence):
+    def __init__(self, known_items, generating_sequence):
         self._known_items = tuple(gmpy2.mpz(x) for x in known_items)
-        if isinstance(next_sequence, str):
-            next_sequence = compile_sequence(next_sequence)
-        self._next_sequence = next_sequence
+        if isinstance(generating_sequence, str):
+            generating_sequence = compile_sequence(generating_sequence)
+        self._generating_sequence = generating_sequence
         indices = set()
         for depth, seq in self.walk():
-            if isinstance(seq, AutoSequenceIndexer):
+            if isinstance(seq, RecursiveSequenceIndexer):
                 indices.add(seq.index)
         if indices:
-            max_index = min(indices)
-            if max_index >= 0:
-                raise SequenceError("non-negative indices")
-            maxlen = max(100, -min(indices))
+            max_index = max(indices)
         else:
-            maxlen = 100
+            max_index = -1
+        maxlen = max(100, max_index)
         self.__items = collections.deque(maxlen=maxlen)
         self.__items.extend(self._known_items)
+        if len(self._known_items) <= max_index:
+            raise ValueError("sequence {}: too few known items: {} < {}".format(self, len(self._known_items), max_index + 1))
+
+    @property
+    def known_items(self):
+        return self._known_items
+
+    @property
+    def generating_sequence(self):
+        return self._generating_sequence
+
+    def children(self):
+        yield self._generating_sequence
+
+    def doc(self):
+        lst = [str(x) for x in self._known_items]
+        lst.append("...")
+        lst.append(str(self._generating_sequence))
+        return """\
+recursive function {}""".format(
+            ", ".join(lst))
 
     def __call__(self, i):
         items = self.__items
         if i < len(items):
             return items[i]
-        next_sequence = self._next_sequence
-        with AutoSequenceIndexer.set_items(items):
+        generating_sequence = self._generating_sequence
+        with RecursiveSequenceIndexer.set_items(items):
             for j in range(len(items), i + 1):
-                items.append(next_sequence(j))
+                items.append(generating_sequence(j))
         return items[-1]
 
     def __iter__(self):
         items = self.__items
         yield from items
-        next_sequence = self._next_sequence
-        with AutoSequenceIndexer.set_items(items):
+        generating_sequence = self._generating_sequence
+        with RecursiveSequenceIndexer.set_items(items):
             for i in itertools.count(start=len(items)):
-                item = next_sequence(i)
+                item = generating_sequence(i)
                 yield item
                 items.append(item)
 
     def __repr__(self):
         lst = [str(x) for x in self._known_items]
-        lst.append(str(self._next_sequence))
-        return "_({})".format(', '.join(lst))
+        lst.append(str(self._generating_sequence))
+        return "rseq({})".format(', '.join(lst))
 
 
-class AutoSequenceMaker(object):
+class RecursiveSequenceMaker(object):
     def __call__(self, arg0, arg1, *args):
         if args:
             known_items = (arg0, arg1) + args[:-1]
-            next_sequence = args[-1]
+            generating_sequence = args[-1]
         else:
             known_items = (arg0,)
-            next_sequence = arg1
-        return AutoSequence(
+            generating_sequence = arg1
+        return RecursiveSequence(
             known_items=known_items,
-            next_sequence=next_sequence,
+            generating_sequence=generating_sequence,
         )
         
     def __getitem__(self, index):
-        return AutoSequenceIndexer(index)
+        return RecursiveSequenceIndexer(index)
 
 
-autosequence = AutoSequenceMaker()
+rseq = RecursiveSequenceMaker()

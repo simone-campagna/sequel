@@ -2,7 +2,7 @@ import pytest
 
 from sequel.sequence import (
     Sequence,
-    AutoSequence, AutoSequenceIndexer, autosequence,
+    RecursiveSequence, RecursiveSequenceIndexer, rseq,
     Compose,
     Integer, Natural,
     Const,
@@ -137,8 +137,9 @@ _refs = [
     ["merge(p, 5, p, 8, p)", merge(Prime(), 5, Prime(), 8, Prime()), [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]],
     ["merge(p, 5, -1, 8, p)", merge(Prime(), 5, -1, 8, Prime()), [2, 3, 5, 7, 11, -1, -1, -1, 23, 29]],
     ["join(p, 5, -1, 8, p)", join(Prime(), 5, -1, 8, Prime()), [2, 3, 5, 7, 11, -1, -1, -1, 2, 3]],
-    ["_(0, 1, _[-1] ** 2 - _[-2])", AutoSequence((0, 1), AutoSequenceIndexer(-1) ** 2 - AutoSequenceIndexer(-2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
-    ["_(0, 1, _[-1] ** 2 - _[-2])", autosequence(0, 1, autosequence[-1] ** 2 - autosequence[-2]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(0, 1, _0 ** 2 - _1)", RecursiveSequence((0, 1), RecursiveSequenceIndexer(0) ** 2 - RecursiveSequenceIndexer(1)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(0, 1, _0 ** 2 - _1)", rseq(0, 1, rseq[0] ** 2 - rseq[1]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(1001, 0, 1, _0 ** 2 - _1)", rseq(1001, 0, 1, rseq[0] ** 2 - rseq[1]), [1001, 0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
 ]
 
 
@@ -242,3 +243,35 @@ def test_verify_traits(sequence):
     items = sequence.get_values(20)
     for trait in sequence.traits:
         assert verify_traits(items, trait)
+
+
+@pytest.mark.parametrize("index, exc", [
+    ['abc', TypeError("'abc' is not a valid index")],
+    [-1, ValueError("-1 is not a valid index")],
+])
+def test_RecursiveSequenceIndexer_error(index, exc):
+    with pytest.raises(type(exc)) as exc_info:
+        RecursiveSequenceIndexer(index)
+    assert str(exc_info.value) == str(exc)
+
+
+@pytest.mark.parametrize("known_args, generating_sequence, exc", [
+    [(0, 1), rseq[2] ** 3, ValueError("sequence rseq(0, 1, _2 ** 3): too few known items: 2 < 3")],
+])
+def test_RecursiveSequence_error(known_args, generating_sequence, exc):
+    with pytest.raises(type(exc)) as exc_info:
+        RecursiveSequence(known_args, generating_sequence)
+    assert str(exc_info.value) == str(exc)
+
+
+def test_rseq_index_maker():
+    v = rseq[2]
+    assert isinstance(v, RecursiveSequenceIndexer)
+    assert v.index == 2
+
+
+def test_rseq_maker():
+    v = rseq(1001, 0, 1, rseq[0] ** 2 - rseq[1])
+    assert isinstance(v, RecursiveSequence)
+    assert v.known_items == (1001, 0, 1)
+    assert v.generating_sequence == rseq[0] ** 2 - rseq[1]

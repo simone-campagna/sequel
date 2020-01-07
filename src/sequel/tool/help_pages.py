@@ -7,9 +7,9 @@ import shlex
 
 from .display import Printer
 from .page import Navigator, Paragraph
-from .sequence import compile_sequence
-from .items import make_items
-from .utils import assert_sequence_matches
+from ..sequence import compile_sequence
+from ..items import make_items, ANY
+from ..utils import assert_sequence_matches
 
 __all__ = [
     'create_help',
@@ -283,6 +283,31 @@ The polygonal numbers are also available:
 """,
             CompileExample(printer=printer,
                            sources=['triangular', 'square', 'pentagonal', 'hexagonal', 'Polygonal(8)']),
+            """\
+Additionally, a generic RECURSIVE-SEQUENCE can be defined.
+""",
+        ],
+    )
+
+    ### RECURSIVE-SEQUENCE_EXPRESSIONS
+    navigator.new_page(
+        name="recursive sequence",
+        parent="expressions",
+        elements=[
+            """\
+Generic recursive sequences can be defined using the "rseq" function: it takes a list of known values and a generating sequence. The generating sequence is a special sequence that, given the last generated items, generates the next one; it can access the last item as _0, the second to last item as _1, and so on. 
+For instance, 'rseq(0, 1, _0 + _1)' defines a new sequence starting with 0 and 1, and producing new items as the sum of the last item ('_0') and the second to last item ('_1'); this is clearly the same as the fib01 sequence:
+""",
+            CompileExample(printer=printer,
+                           sources=['rseq(0, 1, _0 + _1)']),
+            """\
+More complex recursive functions can be created, for instance this is defined as the squared last item minus the second to last item:
+""",
+            CompileExample(printer=printer,
+                           sources=['rseq(0, 1, _0 ** 2 - _1)']),
+            """\
+When defining the generating sequence, the last ten produced items can be accessed by using the _0, _1, ..., _9 indices. In general, 'rseq[n]' can be used to access the n-th to last generated item.
+""",
         ],
     )
 
@@ -331,22 +356,22 @@ If no known sequence matches the given values, sequel applies some ALGORITHMS to
                           sequences=[compile_sequence('roundrobin(p, 100 + Geometric(base=7))'),
                                      compile_sequence('roundrobin(m_exp, 100 + Geometric(base=7))')]),
             """\
-Search accepts patterns instead of integer values. For instance, '%' matches with any value:
+Search accepts patterns instead of integer values. For instance, ANY matches with any value:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, '%', 7, 11],
+                          items=[2, 3, ANY, 7, 11],
                           sequences=[compile_sequence('p')]),
             """\
 A range of suitable values can be passed as 'first..last': any integer value with first <= value <= last is then matched:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, '%', 7, '10..20'],
+                          items=[2, 3, ANY, 7, '10..20'],
                           sequences=[compile_sequence('p'), compile_sequence('m_exp')]),
             """\
 A set of values can be passed as 'v0,v1,v2', for instance:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, '%', 7, '10,13'],
+                          items=[2, 3, ANY, 7, '10,13'],
                           sequences=[compile_sequence('m_exp')]),
             """\
 Notice that using patterns can inhibit some search algorithms.

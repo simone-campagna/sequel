@@ -36,6 +36,7 @@ from ..profiler import Profiler
 from ..utils import assert_sequence_matches
 
 from .display import Printer
+from .help_pages import create_help
 
 __all__ = [
     'main',
@@ -175,3 +176,8 @@ def function_quiz(level, algorithm, display_kwargs=None):
     sequence = generate(level=level, algorithm=algorithm)
     if sequence is not None:
         printer.print_quiz(source=sequence)
+
+
+def function_help():
+    help_pages = create_help()
+    help_pages.navigate()

@@ -305,9 +305,11 @@ class Navigator(collections.abc.Mapping):
             for page_name in opages:
                 page = self._pages[page_name]
                 if page.level == 0:
-                    bullet = "●"
+                    #bullet = "●"
+                    bullet = "▸"
                 else:
-                    bullet = "○"
+                    #bullet = "○"
+                    bullet = "▹"
                 lst.append(
                     " {}{} {}".format("  " * page.level, bullet, transform_link(page.name)),
                 )

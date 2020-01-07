@@ -36,6 +36,7 @@ from .subcommands import (
     function_config_edit,
     function_generate,
     function_quiz,
+    function_help,
 )
 
 __all__ = [
@@ -126,6 +127,17 @@ To enable completion run the following command:
     common_search_args = [
         'handler', 'profile',
     ]
+
+    help_parser = subparsers.add_parser(
+        'help',
+        description="show help",
+        **common_parser_kwargs,
+    )
+    help_parser.set_defaults(
+        function=function_help,
+        function_args=[],
+    )
+
     search_description="""\
 Search sequence matching items {}
 

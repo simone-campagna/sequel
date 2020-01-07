@@ -4,7 +4,7 @@ Sequence module
 
 from .base import (
     Sequence, Function, Iterator,
-    AutoSequence, AutoSequenceIndexer, autosequence,
+    RecursiveSequence, RecursiveSequenceIndexer, rseq,
     Integer, Natural,
     Const,
     Compose,
