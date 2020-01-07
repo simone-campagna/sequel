@@ -357,7 +357,7 @@ class Sequence(metaclass=SMeta):
             "UpperBound": UpperBound,
             "Set": Set,
             "Value": Value,
-            "__": autosequence,
+            "_": autosequence,
         }
         for sequence_type in Sequence.sequence_types():
             globals[sequence_type.__name__] = sequence_type
@@ -873,7 +873,7 @@ class AutoSequenceIndexer(Sequence):
             yield items[index]
 
     def __repr__(self):
-        return "__({})".format(self._index)
+        return "_[{}]".format(self._index)
 
 
 class AutoSequence(Sequence):
@@ -917,14 +917,26 @@ class AutoSequence(Sequence):
                 items.append(item)
 
     def __repr__(self):
-        return "__({}, {})".format([int(x) for x in self._known_items], self._next_sequence)
+        lst = [str(x) for x in self._known_items]
+        lst.append(str(self._next_sequence))
+        return "_({})".format(', '.join(lst))
 
 
-def autosequence(arg0, *args):
-    if len(args) == 0:
-        return AutoSequenceIndexer(arg0)
-    else:
+class AutoSequenceMaker(object):
+    def __call__(self, arg0, arg1, *args):
+        if args:
+            known_items = (arg0, arg1) + args[:-1]
+            next_sequence = args[-1]
+        else:
+            known_items = (arg0,)
+            next_sequence = arg1
         return AutoSequence(
-            known_items=(arg0,) + args[:-1],
-            next_sequence=args[-1],
+            known_items=known_items,
+            next_sequence=next_sequence,
         )
+        
+    def __getitem__(self, index):
+        return AutoSequenceIndexer(index)
+
+
+autosequence = AutoSequenceMaker()
