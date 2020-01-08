@@ -29,6 +29,7 @@ from .first_level import (
     PolynomialAlgorithm,
     LinearCombinationAlgorithm,
     RepunitAlgorithm,
+    RecursiveSequenceAlgorithm,
 )
 from .common_factors import (
     CommonFactorsAlgorithm,
@@ -48,6 +49,7 @@ from .binary import (
     MulAlgorithm,
     DivAlgorithm,
     PowAlgorithm,
+    ConstPowAlgorithm,
 )
 from .roundrobin import (
     RoundrobinAlgorithm,
@@ -74,7 +76,9 @@ def search_config(defaults=True):
         TribonacciAlgorithm,
         PolynomialAlgorithm,
         RepunitAlgorithm,
+        RecursiveSequenceAlgorithm,
         LinearCombinationAlgorithm,
+        ConstPowAlgorithm,
         AddAlgorithm,
         SubAlgorithm,
         MulAlgorithm,

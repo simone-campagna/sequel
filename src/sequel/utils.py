@@ -6,6 +6,7 @@ import importlib.util
 import itertools
 import os
 import sys
+import time
 
 from .lazy import gmpy2, sympy
 
@@ -20,6 +21,10 @@ __all__ = [
     'get_base',
     'sequence_matches',
     'assert_sequence_matches',
+    'perfect_power',
+    'linear_combination',
+    'make_linear_combination',
+    'make_power',
 ]
 
 
@@ -135,3 +140,143 @@ def assert_sequence_matches(sequence, items):
     if not result:
         raise AssertionError("sequence {} does not match items {}".format(
             str(sequence), [item_repr(x) for x in items]))
+
+
+def perfect_power(n):
+    if n < 0:
+        result = sympy.perfect_power(-n)
+        if result is not False:
+            root, power = result
+            if power % 2 == 1:
+                return (-root, power)
+            else:
+                return False
+    else:
+        return sympy.perfect_power(n)
+
+
+def linear_combination(items, input_items_list, min_components=1, max_components=4, rationals=True, max_elapsed=2.0, max_solutions=1):
+    t0 = time.time()
+    num_items = len(items)
+    # creates cache:
+    num_items = min(len(values) for values in input_items_list)
+    all_values = [x[:num_items] for x in input_items_list]
+
+    x_values = list(items)
+    all_indices = [i for i, _ in enumerate(all_values)]
+    zero_sol = [0 for _ in all_values]
+    sympy_module = sympy.module()
+    xs = sympy_module.symbols("x0:{}".format(num_items), integer=True)
+    weights = [1.0 for _ in all_indices]
+
+    last_index = len(all_indices)
+    indices = all_indices[:]
+    #niter = 0
+    found_solutions = set()
+    while True:
+        #niter += 1
+        if max_elapsed is not None and time.time() - t0 >= max_elapsed:
+            break
+        indices += tuple(i for i in all_indices if i not in indices)
+        values = [all_values[index] for index in indices] + [x_values]
+        augmented_matrix = sympy_module.Matrix(values).T
+        m_rref, pivots = augmented_matrix.rref()
+        if last_index in pivots:
+            # x_values is not a linear combination of values
+            return
+
+        num = len(pivots)
+        num_components = 0
+        coeffs = []
+        for c, pivot_c in enumerate(pivots):
+            coeff = 0
+            for r in range(num):
+                if c < r:
+                    assert m_rref[r, pivot_c] == 0
+                coeff += m_rref[r, pivot_c] * m_rref[c, last_index]
+            if coeff != 0:
+                num_components += 1
+            coeffs.append(coeff)
+        #print("niter:", niter, num_components, "/", num)
+        if max_components is None or num_components <= max_components:
+            denoms = []
+            for coeff in coeffs:
+                if coeff.q != 1:
+                    if rationals:
+                        denoms.append(int(coeff.q))
+                    else:
+                        break
+            else:
+                if denoms:
+                    denom = lcm(*denoms)
+                else:
+                    denom = 1
+                coeffs = [int(coeff * denom) for coeff in coeffs]
+                solution = zero_sol[:]
+                for pivot, coeff in zip(pivots, coeffs):
+                    solution[indices[pivot]] = coeff
+                solution = tuple(solution)
+                if solution not in found_solutions:
+                    found_solutions.add(solution)
+                    yield solution, denom
+                    if max_solutions is not None and len(found_solutions) >= max_solutions:
+                        return
+                if num_components <= min_components:
+                    return
+        # recompute weights
+        for i, index in enumerate(indices):
+            if i in pivots:
+                weights[index] += num_components / num
+            else:
+                weights[index] -= sum([1 for r in range(num) if m_rref[r, i] != 0]) / num
+
+        #for pivot in pivots:
+        indices = sorted(indices[:-1], key=lambda x: weights[x]) + indices[-1:]
+
+
+def make_linear_combination(coeffs, items, denom=1):
+    result = None
+    if denom < 0:
+        denom = -denom
+        coeffs = [-c for c in coeffs]
+    if denom > 1:
+        g = gcd(denom, *coeffs)
+        # print("<<<", denom, coeffs, g)
+        if g > 1:
+            denom //= g
+            coeffs = [c // g for c in coeffs]
+        # print(">>>", denom, coeffs)
+    for coeff, item in zip(coeffs, items):
+        if coeff != 0:
+            sign = +1
+            if coeff == 1:
+                token = item
+            elif coeff == -1:
+                token = item
+                sign = -1
+            else:
+                c = int(coeff)
+                if result is not None and c < 0:
+                    c = -c
+                    sign = -1
+                token = c * item
+            if result is None:
+                if sign >= 0:
+                    result = token
+                else:
+                    result = -token
+            else:
+                if sign >= 0:
+                    result += token
+                else:
+                    result -= token
+    if denom != 1:
+        result //= denom
+    return result
+
+
+def make_power(expr, power):
+    if power == 1:
+        return expr
+    else:
+        return expr ** power

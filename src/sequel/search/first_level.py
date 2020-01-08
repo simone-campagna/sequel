@@ -3,7 +3,6 @@ First-level algorithms (non recursive)
 """
 
 import collections
-import time
 
 from ..lazy import (
     numpy,
@@ -15,12 +14,16 @@ from ..sequence import (
     Arithmetic, Geometric,
     Power, make_fibonacci, make_tribonacci,
     Repunit,
+    RecursiveSequence,
+    RecursiveSequenceIndexer,
 )
 from ..utils import (
     affine_transformation,
     get_base, get_power, lcm, gcd,
     sequence_matches,
-    # assert_sequence_matches,
+    linear_combination,
+    make_linear_combination,
+    make_power,
 )
 from .base import Algorithm
 
@@ -144,14 +147,11 @@ class TribonacciAlgorithm(Algorithm):
     __min_items__ = 4
 
     def iter_sequences(self, manager, items, rank):
-        tri = make_tribonacci(items[0], items[1], items[2])
-        if sequence_matches(tri, items):
-            yield tri
-        # icmp = []
-        # for idx in range(2, len(items)):
-        #     icmp.append(items[idx - 1] + items[idx - 2])
-        # if all(x == y for x, y in zip(items.derivative[2:], icmp)):
-        #     yield make_tribonacci(items[0], items[1], items[2])
+        icmp = []
+        for idx in range(2, len(items)):
+            icmp.append(items[idx - 1] + items[idx - 2])
+        if all(x == y for x, y in zip(items.derivative[2:], icmp)):
+            yield make_tribonacci(items[0], items[1], items[2])
 
 
 class GeometricAlgorithm(Algorithm):
@@ -226,11 +226,11 @@ class FibonacciAlgorithm(Algorithm):
         if items.derivative[1:] == items[:-2]:
             first, second = items[:2]
             fs_gcd = gcd(first, second)
-            if fs_gcd > 1:
+            if abs(fs_gcd) > 1:
                 first //= fs_gcd
                 second //= fs_gcd
             fib = make_fibonacci(first=first, second=second)
-            if fs_gcd != 1:
+            if abs(fs_gcd) != 1:
                 fib = fs_gcd * fib
             yield fib
         elif len(items) >= 4:
@@ -293,25 +293,6 @@ class PolynomialAlgorithm(Algorithm):
                 pass
 
 
-def _make_linear_combination(coeffs, sequences, denom):
-    result = None
-    for coeff, sequence in zip(coeffs, sequences):
-        if coeff != 0:
-            if coeff == 1:
-                token = sequence
-            elif coeff == -1:
-                token = -sequence
-            else:
-                token = int(coeff) * sequence
-            if result is None:
-                result = token
-            else:
-                result += token
-    if denom != 1:
-        result //= denom
-    return result
-
-
 class LinearCombinationAlgorithm(Algorithm):
     """Search for s = a * s1 + b * s2 + c * s3 + ..."""
     __init_keys__ = ["max_items", "min_components", "max_components", "rationals",
@@ -341,11 +322,9 @@ class LinearCombinationAlgorithm(Algorithm):
         self.max_items = max_items
 
     def iter_sequences(self, manager, items, rank):
-        t0 = time.time()
         num_items = len(items)
         if num_items > self.max_items:
             return
-        # creates cache:
         all_values = []
         for sequence in self._sequences:
             values = sequence.get_values(num_items)
@@ -353,90 +332,23 @@ class LinearCombinationAlgorithm(Algorithm):
         num_items = min(len(values) for values in all_values)
         if num_items < self.min_items():
             return
-
+        
         all_sequences = self._sequences
 
         if len(items) > self.max_items:
             # not enough items
             return
 
-        all_values = [values[:num_items] for values in all_values]
-        x_values = list(items)
-        all_indices = [i for i, _ in enumerate(all_sequences)]
-        zero_sol = [0 for _ in all_sequences]
-        sympy_module = sympy.module()
-        xs = sympy_module.symbols("x0:{}".format(num_items), integer=True)
-        max_components = self.max_components
-        rationals = self.rationals
         max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
-        weights = [1.0 for _ in all_indices]
 
-        last_index = len(all_indices)
-        indices = all_indices[:]
-        #niter = 0
-        found_solutions = set()
-        while True:
-            #niter += 1
-            if time.time() - t0 >= max_elapsed:
-                break
-            indices += tuple(i for i in all_indices if i not in indices)
-            values = [all_values[index] for index in indices] + [x_values]
-            augmented_matrix = sympy_module.Matrix(values).T
-            m_rref, pivots = augmented_matrix.rref()
-            if last_index in pivots:
-                # x_values is not a linear combination of values
-                return
-            
-            num = len(pivots)
-            num_components = 0
-            coeffs = []
-            for c, pivot_c in enumerate(pivots):
-                coeff = 0
-                for r in range(num):
-                    if c < r:
-                        assert m_rref[r, pivot_c] == 0
-                    coeff += m_rref[r, pivot_c] * m_rref[c, last_index]
-                if coeff != 0:
-                    num_components += 1
-                coeffs.append(coeff)
-            #print("niter:", niter, num_components, "/", num)
-            if max_components is None or num_components <= max_components:
-                denoms = []
-                for coeff in coeffs:
-                    if coeff.q != 1:
-                        if rationals:
-                            denoms.append(int(coeff.q))
-                        else:
-                            break
-                else:
-                    if denoms:
-                        denom = lcm(*denoms)
-                    else:
-                        denom = 1
-                    coeffs = [int(coeff * denom) for coeff in coeffs]
-                    solution = zero_sol[:]
-                    for pivot, coeff in zip(pivots, coeffs):
-                        solution[indices[pivot]] = coeff
-                    solution = tuple(solution)
-                    if solution not in found_solutions:
-                        found_solutions.add(solution)
-                        sequence = _make_linear_combination(solution, all_sequences, denom)
-                        # can fail if len(items) > 
-                        if sequence_matches(sequence, items):
-                            yield sequence
-                    if num_components <= self.min_components:
-                        return
-            # recompute weights
-            for i, index in enumerate(indices):
-                if i in pivots:
-                    weights[index] += num_components / num
-                else:
-                    weights[index] -= sum([1 for r in range(num) if m_rref[r, i] != 0]) / num
-                   
-            #for pivot in pivots:
-            indices = sorted(indices[:-1], key=lambda x: weights[x]) + indices[-1:]
+        all_values = [values[:num_items] for values in all_values]
+        for solution, denom in linear_combination(items, all_values, min_components=self.min_components, max_components=self.max_components,
+                                      max_elapsed=max_elapsed, rationals=self.rationals):
+            sequence = make_linear_combination(solution, all_sequences, denom)
+            if sequence_matches(sequence, items):
+                yield sequence
 
-
+         
 class RepunitAlgorithm(Algorithm):
     """Search for repunit sequences"""
     __min_items__ = 3
@@ -450,3 +362,53 @@ class RepunitAlgorithm(Algorithm):
             sequence = (it0 - 1) + Repunit(base=base)
         if sequence_matches(sequence, items):
             yield sequence
+
+
+class RecursiveSequenceAlgorithm(Algorithm):
+    __init_keys__ = ["max_items", "min_components", "max_components", "rationals",
+                     "min_elapsed", "max_elapsed", "exp_elapsed", "max_depth", "max_power"]
+
+    def __init__(self, max_items=19, min_components=3, max_components=4, rationals=True,
+                 min_elapsed=0.2, max_elapsed=2.0, exp_elapsed=-0.8,
+                 max_depth=2, max_power=3):
+        self.min_components = min_components
+        self.max_components = max_components
+        self.min_elapsed = min_elapsed
+        self.max_elapsed = max_elapsed
+        self.exp_elapsed = -abs(exp_elapsed)
+        self.rationals = rationals
+        self.max_items = max_items
+        self.max_depth = max_depth
+        self.max_power = max_power
+
+    def iter_sequences(self, manager, items, rank):
+        if rank > 1:
+            return
+        max_depth = self.max_depth
+        max_power = self.max_power
+        max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
+        indexers = [RecursiveSequenceIndexer(i) for i in range(max_depth)]
+        for depth in range(2, max_depth + 1):
+            d_indexers = list(reversed(indexers[:depth]))
+            i_items_list = []
+            d_items = items[depth:]
+            for i in range(depth):
+                i_items = items[i:i + len(d_items)]
+                i_items_list.append(i_items)
+            num_found = 0
+            i_list = []
+            i_indexers = []
+            for power in range(1, max_power + 1):
+                i_list.extend([make_power(x, power) for x in i_items] for i_items in i_items_list)
+                i_indexers.extend(make_power(ind, power) for ind in d_indexers)
+                for solution, denom in linear_combination(d_items, i_list, min_components=self.min_components, max_components=self.max_components,
+                                                          max_elapsed=max_elapsed, rationals=self.rationals):
+                    generating_sequence = make_linear_combination(solution, i_indexers, denom)
+                    sequence = RecursiveSequence(
+                        known_items=tuple(items[:depth]),
+                        generating_sequence=generating_sequence)
+                    if sequence_matches(sequence, items):
+                        yield sequence
+                        num_found += 1
+                if num_found > 0:
+                    return

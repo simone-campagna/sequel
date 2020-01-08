@@ -140,7 +140,7 @@ class Trib(Iterator):
 
 def make_fibonacci(first=0, second=1, scale=1):
     g = gcd(first, second,)
-    if g != 1:
+    if abs(g) > 1:
         first //= g
         second //= g
     key = (first, second, scale)
@@ -160,7 +160,7 @@ def make_fibonacci(first=0, second=1, scale=1):
 
 def make_tribonacci(first=0, second=1, third=1):
     g = gcd(first, second,)
-    if g != 1:
+    if abs(g) > 1:
         first //= g
         second //= g
         return g * Trib(first, second, third)

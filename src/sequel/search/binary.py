@@ -9,6 +9,7 @@ from ..items import make_items
 from ..utils import (
     factorize, gcd, divisors,
     assert_sequence_matches, sequence_matches,
+    perfect_power,
 )
 
 from .base import RecursiveAlgorithm
@@ -21,6 +22,7 @@ __all__ = [
     "MulAlgorithm",
     "DivAlgorithm",
     "PowAlgorithm",
+    "ConstPowAlgorithm",
 ]
 
 
@@ -205,3 +207,47 @@ class PowAlgorithm(RecursiveAlgorithm):
                 sequence = l_sequence ** r_sequence
                 if sequence_matches(sequence, orig_items):
                     yield sequence
+
+
+class ConstPowAlgorithm(RecursiveAlgorithm):
+    """Search for s1 ** C"""
+
+    __init_keys__ = ["max_value"]
+
+    def rank_increase(self, rank):
+        return rank + 1
+
+    def __init__(self, max_value=2**50):
+        self.max_value = abs(max_value)
+
+    def sub_search(self, manager, items, rank):
+        cur_gcd = None
+        p_items = []
+        for item in items:
+            ppower = perfect_power(item)
+            if ppower is False:
+                return
+            root, power = ppower
+            if cur_gcd is None:
+                cur_gcd = power
+            else:
+                cur_gcd = gcd(cur_gcd, power)
+            if cur_gcd <= 1:
+                return
+            p_items.append(ppower)
+        for divisor in reversed(list(divisors(cur_gcd))):
+            if divisor > 1:
+                sub_items = []
+                for root, power in p_items:
+                    sub_items.append(root ** (power // divisor))
+                self.sub_queue(
+                    manager, rank, items, sub_items, self._found_left,
+                    {'power': divisor})
+        #for p_value, p_power in factorize(cur_gcd):
+        return
+
+    def _found_left(self, manager, items, sequences, power):
+        for l_sequence in sequences:
+            sequence = l_sequence ** power
+            assert_sequence_matches(sequence, items)
+            yield sequence
