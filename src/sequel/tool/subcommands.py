@@ -178,6 +178,6 @@ def function_quiz(level, algorithm, display_kwargs=None):
         printer.print_quiz(source=sequence)
 
 
-def function_help():
+def function_help(link=None):
     help_pages = create_help()
-    help_pages.navigate()
+    help_pages.navigate(start_links=link)

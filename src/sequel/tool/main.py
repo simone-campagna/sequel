@@ -135,8 +135,14 @@ To enable completion run the following command:
     )
     help_parser.set_defaults(
         function=function_help,
-        function_args=[],
+        function_args=['link'],
     )
+    help_parser.add_argument(
+        'link',
+        type=str,
+        default=None,
+        nargs="*",
+        help='start from link')
 
     search_description="""\
 Search sequence matching items {}

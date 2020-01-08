@@ -292,7 +292,19 @@ class Navigator(collections.abc.Mapping):
         order(l0, dct, olist)
         return olist
 
-    def navigate(self):
+    def navigate(self, start_links=()):
+        def make_get_link(start_links):
+            start_links = list(start_links)
+            def get_link(prompt):
+                if start_links:
+                    link_text = start_links.pop(0)
+                    print(prompt + link_text)
+                else:
+                    link_text = input(prompt)
+                return link_text
+            return get_link
+        get_link = make_get_link(start_links)
+            
         printer = self.printer
         page = self.home_page()
         self._crono.clear()
@@ -354,7 +366,7 @@ class Navigator(collections.abc.Mapping):
             printer("─" * 70)
             while True:
                 try:
-                    link_text = input(self.printer.color("HELP", "bold") + "> ")
+                    link_text = get_link(self.printer.color("HELP", "bold") + "> ")
                 except (KeyboardInterrupt, EOFError):
                     return
                 if not link_text:
