@@ -466,7 +466,13 @@ sequence, or a polynomial sequence such as '2 + i - i**3', or a repunit sequence
 
 If no sequence is found, sequel applies some recursive algorithms: for instance it tries to subtract the core sequence 'p' to the given values, and to find the
 sequence 's' matching the resulting values; the sequence 'p + s' is then a solution.
+
+For instance:
 """,
+            SearchExample(printer=printer,
+                          items=[4, 3, 20, 0, 77, -52, 238, -285, 736, -1276],
+                          sequences=[compile_sequence('rseq(2, 1, _1 - _0 + 3) * p')]),
+
         ],
         parent="search",
     )

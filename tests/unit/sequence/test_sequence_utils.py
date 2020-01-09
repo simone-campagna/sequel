@@ -9,12 +9,12 @@ from sequel.sequence.sequence_utils import (
 _p = sequence.compile_sequence('p')
 _fib01 = sequence.compile_sequence('fib01')
 _m_exp = sequence.compile_sequence('m_exp')
-_p_5 = sequence.compile_sequence('5')
-_m_5 = sequence.compile_sequence('-5')
-_p_10 = sequence.compile_sequence('10')
-_m_10 = sequence.compile_sequence('-10')
-_p_20 = sequence.compile_sequence('20')
-_m_20 = sequence.compile_sequence('-20')
+_p_5 = sequence.Const(5)
+_m_5 = sequence.Const(-5)
+_p_10 = sequence.Const(10)
+_m_10 = sequence.Const(-10)
+_p_20 = sequence.Const(20)
+_m_20 = sequence.Const(-20)
 
 @pytest.mark.parametrize("coeffs, items, denom, result", [
     [[1, 2, 3], [_p, _fib01, _m_exp], 1, _p + 2 * _fib01 + 3 * _m_exp],
@@ -43,10 +43,11 @@ _m_20 = sequence.compile_sequence('-20')
     [[1, -2], [_p, _p_10], 1, _p - _p_20],
     [[1, 2], [_p, _m_10], 1, _p - _p_20],
     [[1, -2], [_p, _m_10], 1, _p + _p_20],
+    [[-12, 1, 0], [sequence.Const(1), 7, 0], 1, sequence.Const(-5)],
 ])
 def test_make_linear_combination(coeffs, items, denom, result):
     r = make_linear_combination(coeffs, items, denom)
-    #print(coeffs, items, "|||", r, "|||", result)
+    print(coeffs, items, "|||", r, "|||", result)
     assert r.equals(result)
     assert str(r) == str(result)
 

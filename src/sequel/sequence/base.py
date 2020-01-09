@@ -1005,7 +1005,7 @@ class RecursiveSequence(Sequence):
                 yield item
                 items.append(item)
 
-    def __str__(self):
+    def __repr__(self):
         lst = [str(x) for x in self._known_items]
         lst.append(str(self._generating_sequence))
         return "rseq({})".format(', '.join(lst))
