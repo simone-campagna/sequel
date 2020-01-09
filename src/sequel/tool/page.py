@@ -17,7 +17,7 @@ from .display import Printer
 
 __all__ = [
     'Paragraph',
-    'RawParagraph',
+    'Quotation',
     'WrappedParagraph',
     'Page',
 ]
@@ -88,6 +88,10 @@ class Paragraph(Element):
 
     def get_text(self):
         return self._text
+
+
+class Quotation(Paragraph):
+    pass
 
 
 class WrappedParagraph(Paragraph):
@@ -199,6 +203,14 @@ class Navigator(collections.abc.Mapping):
         home_page = self[home_name]
         return home_page
         
+    def get_page(self, page_name):
+        for page in self._pages:
+            if page.name == page_name:
+                return page
+        if page_name == 'home':
+            return self.home_page()
+        raise KeyError("page {} not found".format(page_name))
+
     def _add_link(self, link):
         self._links[transform_link(link.text)] = link
 
@@ -292,21 +304,12 @@ class Navigator(collections.abc.Mapping):
         order(l0, dct, olist)
         return olist
 
-    def navigate(self, start_links=()):
-        def make_get_link(start_links):
-            start_links = list(start_links)
-            def get_link(prompt):
-                if start_links:
-                    link_text = start_links.pop(0)
-                    print(prompt + link_text)
-                else:
-                    link_text = input(prompt)
-                return link_text
-            return get_link
-        get_link = make_get_link(start_links)
-            
+    def navigate(self, start_links=(), interactive=None):
+        start_links = list(start_links)
+        if interactive is None:
+            interactive = not bool(start_links)
+
         printer = self.printer
-        page = self.home_page()
         self._crono.clear()
         opages = self.ordered_pages()
         if self.index_name is not None and self.index_name not in opages:
@@ -315,15 +318,15 @@ class Navigator(collections.abc.Mapping):
             opages.append(index_page.name)
             lst = []
             for page_name in opages:
-                page = self._pages[page_name]
-                if page.level == 0:
+                opage = self._pages[page_name]
+                if opage.level == 0:
                     #bullet = "●"
                     bullet = "▸"
                 else:
                     #bullet = "○"
                     bullet = "▹"
                 lst.append(
-                    " {}{} {}".format("  " * page.level, bullet, transform_link(page.name)),
+                    " {}{} {}".format("  " * opage.level, bullet, transform_link(opage.name)),
                 )
             index_page.add_element(Paragraph("\n".join(lst)))
         olink_pages = [transform_link(page_name) for page_name in opages]
@@ -338,35 +341,47 @@ class Navigator(collections.abc.Mapping):
             nmin[ol0] = max(nmin[ol0], num + 1)
             nmin[ol1] = max(nmin[ol1], num + 1)
        
-        while page is not None:
-            lsub = []
-            for transformed_link_text, link in self._links.items():
-                text = link.text
-                rendered_link_text = termcolor.colored(text, "blue", attrs=["underline"])
-                if link.text == page.name:
-                    color = "red"
-                    attrs = ["underline"]
-                else:
-                    color = "blue"
-                    attrs = ["underline"]
-                menu_rendered_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
-                                          termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
-                link_re = re.compile(r'\b(?<!-){}\b'.format(re.escape(transformed_link_text)))
-                lsub.append((link_re, rendered_link_text, menu_rendered_link_text))
-            
-            text = page.render(printer)
-            rendered_text = text
-            rendered_menu = menu
-            for link_re, rendered_link_text, menu_rendered_link_text in lsub:
-                rendered_text = link_re.sub(rendered_link_text, rendered_text)
-                rendered_menu = link_re.sub(menu_rendered_link_text, rendered_menu)
-            printer(rendered_text)
-            printer("─" * 70)
-            printer(rendered_menu)
-            printer("─" * 70)
+        if start_links:
+            page = None
+        else:
+            page = self.home_page()
+        while True:
+            if page is not None:
+                lsub = []
+                for transformed_link_text, link in self._links.items():
+                    text = link.text
+                    rendered_link_text = termcolor.colored(text, "blue", attrs=["underline"])
+                    if link.text == page.name:
+                        color = "red"
+                        attrs = ["underline"]
+                    else:
+                        color = "blue"
+                        attrs = ["underline"]
+                    menu_rendered_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
+                                              termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
+                    link_re = re.compile(r'\b(?<!-){}\b'.format(re.escape(transformed_link_text)))
+                    lsub.append((link_re, rendered_link_text, menu_rendered_link_text))
+                
+                text = page.render(printer)
+                rendered_text = text
+                rendered_menu = menu
+                for link_re, rendered_link_text, menu_rendered_link_text in lsub:
+                    rendered_text = link_re.sub(rendered_link_text, rendered_text)
+                    rendered_menu = link_re.sub(menu_rendered_link_text, rendered_menu)
+                printer(rendered_text)
+                if interactive:
+                    printer("─" * 70)
+                    printer(rendered_menu)
+                    printer("─" * 70)
             while True:
                 try:
-                    link_text = get_link(self.printer.color("HELP", "bold") + "> ")
+                    if start_links:
+                        link_text = start_links.pop(0)
+                    else:
+                        if interactive:
+                            link_text = input(self.printer.color("HELP", "bold") + "> ")
+                        else:
+                            link_text = 'quit'
                 except (KeyboardInterrupt, EOFError):
                     return
                 if not link_text:

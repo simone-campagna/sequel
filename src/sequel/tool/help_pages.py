@@ -6,7 +6,7 @@ from io import StringIO
 import shlex
 
 from .display import Printer
-from .page import Navigator, Paragraph
+from .page import Navigator, Paragraph, Quotation
 from ..sequence import compile_sequence
 from ..items import make_items, ANY
 from ..utils import assert_sequence_matches
@@ -148,7 +148,7 @@ class TestExample(Example):
         args = []
         if self.simplify:
             args.append("--simplify")
-        args.extend(shlex.quote(self.source))
+        args.append(shlex.quote(self.source))
         lines = []
         lines.append("$ sequel test " + " ".join(args))
         lines.extend(self._output_lines(ios.getvalue()))
@@ -157,7 +157,7 @@ class TestExample(Example):
 
 def create_help():
     printer = Printer()
-    wip_text = printer.red("Work in progress")
+    # wip_text = printer.red("Work in progress")
 
     navigator = Navigator()
     ### HOME
@@ -300,18 +300,59 @@ Additionally, a generic RECURSIVE-SEQUENCE can be defined.
         elements=[
             """\
 Generic recursive sequences can be defined using the "rseq" function: it takes a list of known values and a generating sequence. The generating sequence is a special sequence that, given the last generated items, generates the next one; it can access the last item as _0, the second to last item as _1, and so on. 
-For instance, 'rseq(0, 1, _0 + _1)' defines a new sequence starting with 0 and 1, and producing new items as the sum of the last item ('_0') and the second to last item ('_1'); this is clearly the same as the fib01 sequence:
+""",
+            """\
+For instance, 'rseq(1, _0 * i)' defines a new sequence starting with 0 and producing new items as the product of the last item ('_0') with the value of the sequence 'i' ([0, 1, 2, 3, ...]). The values are:
+""",
+            Quotation("""\
+  rseq(1, _0 * i):
+    [0] ->                                   1  (the initial value)
+    [1] -> _0 * i(1) == [0] * 1 == 1 * 1 ==  1
+    [2] -> _0 * i(2) == [1] * 2 == 1 * 2 ==  2
+    [3] -> _0 * i(3) == [2] * 3 == 2 * 3 ==  6
+    [4] -> _0 * i(4) == [3] * 4 == 6 * 4 == 24
+    ...
+"""),
+            """\
+This is the same as the factorial sequence.
+""",
+            CompileExample(printer=printer,
+                           sources=['rseq(1, _0 * i)']),
+            """\
+As a second example, consider 'rseq(0, 1, _0 + _1)'; in this case the known items are two (0 and 1) and the next items are generated as the sum of the two previous values (_0 and _1):
+""",
+
+            Quotation("""\
+  rseq(0, 1, _0 + _1):
+    [0] ->                                   0  (the first known item)
+    [1] ->                                   1  (the second known item)
+    [2] -> _0 + _1 == [1] + [0] == 1 + 0 ==  1
+    [3] -> _0 + _1 == [2] + [1] == 1 + 1 ==  2
+    [4] -> _0 + _1 == [3] + [2] == 2 + 1 ==  3
+    [5] -> _0 + _1 == [4] + [3] == 3 + 2 ==  5
+    [6] -> _0 + _1 == [5] + [4] == 5 + 3 ==  8
+    ...
+"""),
+
+            """\
+This is the same as the fib01 sequence.
 """,
             CompileExample(printer=printer,
                            sources=['rseq(0, 1, _0 + _1)']),
             """\
-More complex recursive functions can be created, for instance this is defined as the squared last item minus the second to last item:
+More complex recursive sequences can easily be generated, for instance:
 """,
             CompileExample(printer=printer,
-                           sources=['rseq(0, 1, _0 ** 2 - _1)']),
+                           sources=['rseq(-1, 0, _0 ** 2 - 2 * _1 - 1)']),
             """\
 When defining the generating sequence, the last ten produced items can be accessed by using the _0, _1, ..., _9 indices. In general, 'rseq[n]' can be used to access the n-th to last generated item.
 """,
+            """\
+A recursive sequence definition must contain at least N+1 known elements, where N is the max used index in the generating expression; so, if the generating expression is '_0 + 3 * _2', N is 2 and the
+recursive sequence definition must contain at least 3 values. Anyway, it is accepted to define more than N+1 known values, for instance:
+""",
+            CompileExample(printer=printer,
+                           sources=['rseq(1000, 999, 998, _0 + 1)']),
         ],
     )
 
@@ -335,12 +376,26 @@ When one or more arguments are passed, the arguments are compiled and the docume
     ### TEST
     navigator.new_page(
         name="test",
-        elements=[wip_text],
+        elements=[
+            """\
+The TEST command can be used to test the search algorithm. It accepts a sequence definition; the sequence is compiled and its values are passed to the search algorithm. 
+For instance:
+""",
+            TestExample(printer=printer,
+                        source='p * zero_one', sequences=None),
+        ],
     )
     ### COMPILE
     navigator.new_page(
         name="compile",
-        elements=[wip_text],
+        elements=[
+            """\
+The COMPILE command compiles a sequence and shows its first items:
+For instance:
+""",
+            CompileExample(printer=printer,
+                        sources=['p * zero_one']),
+        ],
     )
 
     ### SEARCH
