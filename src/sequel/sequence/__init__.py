@@ -3,6 +3,7 @@ Sequence module
 """
 
 from .base import (
+    SequenceError, SequenceUnknownValueError, SequenceUnboundError,
     Sequence, Function, Iterator,
     RecursiveSequence, RecursiveSequenceIndexer, rseq,
     Integer, Natural,

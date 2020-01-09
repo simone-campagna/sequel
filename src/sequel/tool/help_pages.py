@@ -53,9 +53,13 @@ class Example(Paragraph):
         lines = text.split('\n')
         max_lines = self.max_lines
         if max_lines is not None:
+            if isinstance(max_lines, (list, tuple)):
+                max_lines, end_lines = max_lines
+            else:
+                max_lines, end_lines = max_lines, 0
             if len(lines) > max_lines:
-                del lines[max_lines:]
-                lines.append("...")
+                del lines[max_lines:len(lines) - end_lines]
+                lines.insert(max_lines, "...")
         return lines
 
     def _format_lines(self, lines):
@@ -185,7 +189,7 @@ Sequel knows many CORE-SEQUENCES; the DOC subcommand can be used to get informat
 If no sequence name is specified, the doc subcommand shows all the known sequences:
 """,
             DocExample(printer=printer,
-                       sources=None, max_lines=5),
+                       sources=None, max_lines=(5, 3)),
             """\
 The COMPILE subcommand can be used to compile sequence EXPRESSIONS:
 """,
@@ -314,7 +318,19 @@ When defining the generating sequence, the last ten produced items can be access
     ### DOC
     navigator.new_page(
         name="doc",
-        elements=[wip_text],
+        elements=[
+            """\
+Without arguments the DOC command shows the available core sequences.
+""",
+            DocExample(printer=printer,
+                       sources=None, max_lines=(5, 3)),
+            """\
+When one or more arguments are passed, the arguments are compiled and the documentation about the resulting sequence is shown:
+""",
+
+            DocExample(printer=printer,
+                       sources=['m_exp', 'p', 'm_exp * (p - 2)']),
+        ],
     )
     ### TEST
     navigator.new_page(

@@ -145,6 +145,17 @@ _refs = [
 
 @pytest.mark.parametrize("string, sequence, reference", _refs)
 def test_sequence_values(string, sequence, reference):
+    print(sequence)
+    if False and isinstance(sequence, RecursiveSequence):
+        print(sequence.known_items)
+        print(sequence.generating_sequence)
+        print(repr(sequence.generating_sequence))
+        for d, c in sequence.generating_sequence.walk():
+            print(":::", "  " * d, c, repr(c), type(c))
+        for i in range(10):
+            print(i, sequence(i))
+        for i, v in zip(range(10), sequence):
+            print(i, v, "[]->", sequence[i])
     indices = list(range(len(reference)))
     assert list(sequence[i] for i in indices) == reference
     assert list(zip(sequence, indices)) == list(zip(reference, indices))
@@ -275,3 +286,16 @@ def test_rseq_maker():
     assert isinstance(v, RecursiveSequence)
     assert v.known_items == (1001, 0, 1)
     assert v.generating_sequence == rseq[0] ** 2 - rseq[1]
+
+
+def test_RecursiveSequence():
+    r = rseq(0, 1, rseq[0] * 3 - rseq[1] * 2)
+    n = 20
+    values = [int(v) for _, v in zip(range(n), r)]
+    print(values)
+    for i in range(n):
+        r._reset_items()
+        ri = r(i)
+        print(i, values[i], int(ri))
+        assert ri == values[i]
+

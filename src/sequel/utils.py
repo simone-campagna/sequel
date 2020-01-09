@@ -23,8 +23,6 @@ __all__ = [
     'assert_sequence_matches',
     'perfect_power',
     'linear_combination',
-    'make_linear_combination',
-    'make_power',
 ]
 
 
@@ -232,51 +230,3 @@ def linear_combination(items, input_items_list, min_components=1, max_components
 
         #for pivot in pivots:
         indices = sorted(indices[:-1], key=lambda x: weights[x]) + indices[-1:]
-
-
-def make_linear_combination(coeffs, items, denom=1):
-    result = None
-    if denom < 0:
-        denom = -denom
-        coeffs = [-c for c in coeffs]
-    if denom > 1:
-        g = gcd(denom, *coeffs)
-        # print("<<<", denom, coeffs, g)
-        if g > 1:
-            denom //= g
-            coeffs = [c // g for c in coeffs]
-        # print(">>>", denom, coeffs)
-    for coeff, item in zip(coeffs, items):
-        if coeff != 0:
-            sign = +1
-            if coeff == 1:
-                token = item
-            elif coeff == -1:
-                token = item
-                sign = -1
-            else:
-                c = int(coeff)
-                if result is not None and c < 0:
-                    c = -c
-                    sign = -1
-                token = c * item
-            if result is None:
-                if sign >= 0:
-                    result = token
-                else:
-                    result = -token
-            else:
-                if sign >= 0:
-                    result += token
-                else:
-                    result -= token
-    if denom != 1:
-        result //= denom
-    return result
-
-
-def make_power(expr, power):
-    if power == 1:
-        return expr
-    else:
-        return expr ** power

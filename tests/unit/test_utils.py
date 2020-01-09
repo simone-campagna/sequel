@@ -7,8 +7,6 @@ from sequel.utils import (
     gcd, lcm, factorize, divisors, affine_transformation,
     get_power, get_base, perfect_power,
     linear_combination,
-    make_linear_combination,
-    make_power,
 )
 
 import pytest
@@ -173,42 +171,3 @@ def test_linear_combination(input_items_list, solution, denom, kwargs, found):
         result = []
     #print("result:", result)
     assert list(linear_combination(items, input_items_list, **kwargs)) == result
-
-
-_p = sequence.compile_sequence('p')
-_fib01 = sequence.compile_sequence('fib01')
-_m_exp = sequence.compile_sequence('m_exp')
-
-@pytest.mark.parametrize("coeffs, items, denom, result", [
-    [[1, 2, 3], [_p, _fib01, _m_exp], 1, _p + 2 * _fib01 + 3 * _m_exp],
-    [[1, -2, 0], [_p, _fib01, _m_exp], 1, _p - 2 * _fib01],
-    [[-1, -2, 0], [_p, _fib01, _m_exp], 1, -_p - 2 * _fib01],
-    [[-3, -2, 0], [_p, _fib01, _m_exp], 1, -3 * _p - 2 * _fib01],
-    [[1, -2, 0], [_p, _fib01, _m_exp], -1, -_p + 2 * _fib01],
-    [[1, -2, 0], [_p, _fib01, _m_exp], -2, (-_p + 2 * _fib01) // 2],
-    [[2, -2, 4], [_p, _fib01, _m_exp], -2, -_p + _fib01 - 2 * _m_exp],
-    [[12, -15, 6], [_p, _fib01, _m_exp], -3, -4 * _p + 5 * _fib01 - 2 * _m_exp],
-    [[12, -15, 6], [_p, _fib01, _m_exp], -6, (-4 * _p + 5 * _fib01 - 2 * _m_exp) // 2],
-    [[12, -18, 60], [_p, _fib01, _m_exp], -30, (-2 * _p + 3 * _fib01 - 10 * _m_exp) // 5],
-])
-def test_make_linear_combination(coeffs, items, denom, result):
-    r = make_linear_combination(coeffs, items, denom)
-    #print(r)
-    #print(result)
-    assert r.equals(result)
-    assert str(r) == str(result)
-
-
-@pytest.mark.parametrize("item, power, result", [
-    [_p, 0, _p ** 0],
-    [_p, 1, _p],
-    [-_p, 1, -_p],
-    [_p, 2, _p ** 2],
-    [-_p, 2, (-_p) ** 2],
-])
-def test_make_power(item, power, result):
-    r = make_power(item, power)
-    #print(r)
-    #print(result)
-    assert r.equals(result)
-    assert str(r) == str(result)

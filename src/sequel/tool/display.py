@@ -12,7 +12,7 @@ import termcolor
 
 from ..config import get_config, register_config
 from ..lazy import gmpy2
-from ..sequence import Sequence
+from ..sequence import Sequence, SequenceUnboundError
 
 
 
@@ -159,9 +159,9 @@ class Printer(object):
                 
     def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
         if sources is None:
-            sources = [str(sequence) for sequence in Sequence.get_registry().values()]
+            sources = sorted([str(sequence) for sequence in Sequence.get_registry().values() if sequence.is_bound()])
         first = True
-        for source in sorted(sources):
+        for source in sources:
             if not first:
                 self()
             first = False
@@ -175,10 +175,12 @@ class Printer(object):
             if full:
                 self(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
             if num_items:
-                items = sequence.get_values(num_items)
-                self.print_items(items)
+                try:
+                    items = sequence.get_values(num_items)
+                    self.print_items(items)
+                except SequenceUnboundError:
+                    pass
 
-    
     def print_sequence(self, sequence, num_items=None, num_known=0, header=""):
         """Print a sequence.
     
@@ -195,8 +197,11 @@ class Printer(object):
         s_sequence = self.bold(str(sequence))
         self("{}{}".format(header, s_sequence))
         if num_items:
-            items = sequence.get_values(num_items)
-            self.print_items(items, num_known=num_known)
+            try:
+                items = sequence.get_values(num_items)
+                self.print_items(items, num_known=num_known)
+            except SequenceUnboundError:
+                pass
     
     
     def print_sequences(self, sequences, num_items=None, num_known=0, header="", target_sequence=None):

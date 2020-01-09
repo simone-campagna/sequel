@@ -17,13 +17,15 @@ from ..sequence import (
     RecursiveSequence,
     RecursiveSequenceIndexer,
 )
+from ..sequence.sequence_utils import (
+    make_linear_combination,
+    make_power,
+)
 from ..utils import (
     affine_transformation,
     get_base, get_power, lcm, gcd,
     sequence_matches,
     linear_combination,
-    make_linear_combination,
-    make_power,
 )
 from .base import Algorithm
 
@@ -388,6 +390,7 @@ class RecursiveSequenceAlgorithm(Algorithm):
         max_power = self.max_power
         max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
         indexers = [RecursiveSequenceIndexer(i) for i in range(max_depth)]
+        one = Sequence.compile('1')
         for depth in range(2, max_depth + 1):
             d_indexers = list(reversed(indexers[:depth]))
             i_items_list = []
@@ -396,8 +399,8 @@ class RecursiveSequenceAlgorithm(Algorithm):
                 i_items = items[i:i + len(d_items)]
                 i_items_list.append(i_items)
             num_found = 0
-            i_list = []
-            i_indexers = []
+            i_list = [[1 for _ in i_items]]  # for const term in linear combination
+            i_indexers = [one]
             for power in range(1, max_power + 1):
                 i_list.extend([make_power(x, power) for x in i_items] for i_items in i_items_list)
                 i_indexers.extend(make_power(ind, power) for ind in d_indexers)
