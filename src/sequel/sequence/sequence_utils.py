@@ -65,10 +65,11 @@ def make_linear_combination(coeffs, items, denom=1):
                     result += token
                 else:
                     result -= token
-    if denom != 1:
+    if result is None:
+        result = Const(0)
+    elif denom != 1:
         result //= denom
     return Sequence.make_sequence(result)
-    return result
 
 
 def make_power(expr, power):
