@@ -9,6 +9,7 @@ import itertools
 import os
 import re
 import textwrap
+import types
 
 import termcolor
 
@@ -16,8 +17,12 @@ from .display import Printer
 
 
 __all__ = [
+    'Element',
+    'Title',
+    'Separator',
+    'Break',
     'Paragraph',
-    'RawParagraph',
+    'Quotation',
     'WrappedParagraph',
     'Page',
 ]
@@ -52,7 +57,7 @@ def transform_link(text):
 
 
 class Element(abc.ABC):
-    def render(self, printer):
+    def render(self, printer, interactive=True):
         return self.get_text()
 
     @abc.abstractmethod
@@ -70,8 +75,22 @@ class Title(Element):
         text += "━" * (70 - len(text))
         return text
 
-    def render(self, printer):
+    def render(self, printer, interactive=True):
         return printer.color(self.get_text(), "bold", "blue")
+
+
+class Break(Element):
+    def get_text(self):
+        return None
+
+    def render(self, printer, interactive=True):
+        # print(":::", interactive)
+        # input("--------------------")
+        if interactive:
+            printer.pager().interrupt()
+        return self.get_text()
+        # input(printer.red(text))
+        # return '\r' + ' ' * len(text) + '\r'
 
 
 class Separator(Element):
@@ -84,10 +103,29 @@ class Separator(Element):
 
 class Paragraph(Element):
     def __init__(self, text):
+        self.set_text(text)
+
+    def set_text(self, text):
         self._text = text
 
     def get_text(self):
         return self._text
+
+
+class Quotation(Paragraph):
+    pass
+
+
+class NavigatorParagraphMixin(object):
+    def __init__(self, navigator, interactive=False):
+        self._navigator = navigator
+        self.interactive = interactive
+        super().__init__(None)
+
+    def get_text(self):
+        if self._text is None:
+            self.set_text(self._create_text())
+        return super().get_text()
 
 
 class WrappedParagraph(Paragraph):
@@ -96,6 +134,35 @@ class WrappedParagraph(Paragraph):
 
     def get_text(self):
         return wrap(self._text)
+
+
+class IndexParagraph(NavigatorParagraphMixin, Paragraph):
+    def _create_text(self):
+        lst = []
+        navigator = self._navigator
+        for page_name in navigator.ordered_pages():
+            page = navigator.get_page(page_name)
+            if page.level == 0:
+                #bullet = "●"
+                bullet = "▸"
+            else:
+                #bullet = "○"
+                bullet = "▹"
+            lst.append(
+                " {}{} {}".format("  " * page.level, bullet, transform_link(page.name)),
+            )
+        return '\n'.join(lst)
+
+
+class MenuParagraph(NavigatorParagraphMixin, WrappedParagraph):
+    def _create_text(self):
+        links = self._navigator.links()
+        lines = [
+            "─── navigation ───────────────────────────────────────────────────────",
+            " | ".join("{}".format(transform_link(link)) for link in links),
+            "──────────────────────────────────────────────────────────────────────",
+        ]
+        return '\n'.join(lines)
 
 
 def split_text(text):
@@ -150,19 +217,13 @@ class Page(object):
     def elements(self):
         yield from self._elements
 
-    def render(self, printer):
-        # header = "━━━┫ " + printer.color(self._name, "blue", "bold") + " ┣"
-        # header += "━" * (70 - len(header))
-        # self.printer(header)
-        # #menu = "navigation: " + " | ".join("{}".format(transform_link(link)) for link in self._links)
-        lst = []
-        for element in self._elements:
-            lst.append(element.render(printer))
-        text = '\n\n'.join(lst)
-        return text
-
     def __repr__(self):
         return "{}({!r})".format(type(self).__name__, self._name)
+
+
+class IndexPage(Page):
+    def __init__(self, name, navigator):
+        super().__init__(name=name, elements=[IndexParagraph(navigator)])
 
 
 class Navigator(collections.abc.Mapping):
@@ -172,6 +233,7 @@ class Navigator(collections.abc.Mapping):
         self.printer = printer
         self._pages = collections.OrderedDict()
         self._links = collections.OrderedDict()
+        self._links_proxy = types.MappingProxyType(self._links)
         self.home_name = None
         self.index_name = index_name
         for page in pages:
@@ -190,6 +252,9 @@ class Navigator(collections.abc.Mapping):
     def __len__(self):
         return len(self._pages)
 
+    def links(self):
+        return self._links_proxy
+
     def home_page(self):
         if not self._pages:
             return
@@ -199,6 +264,9 @@ class Navigator(collections.abc.Mapping):
         home_page = self[home_name]
         return home_page
         
+    def get_page(self, page_name):
+        return self._pages[page_name]
+
     def _add_link(self, link):
         self._links[transform_link(link.text)] = link
 
@@ -272,6 +340,22 @@ class Navigator(collections.abc.Mapping):
         else:
             return LinkResult(status=NavigationStatus.FAILURE, link=None, page=None)
 
+    def add_index(self):
+        if self.index_name is not None:
+            root_pages = set(self.root_pages())
+            if self.index_name not in root_pages:
+                self.add_page(IndexPage(self.index_name, self))
+                
+    def pages(self, condition=lambda page: True):
+        page_names = []
+        for page in self._pages.values():
+            if condition(page):
+                page_names.append(page.name)
+        return page_names
+
+    def root_pages(self):
+        return self.pages(condition=lambda page: page.parent is None)
+
     def ordered_pages(self):
         def order(page_names, dct, lst):
             for page_name in page_names:
@@ -292,88 +376,47 @@ class Navigator(collections.abc.Mapping):
         order(l0, dct, olist)
         return olist
 
-    def navigate(self, start_links=()):
-        def make_get_link(start_links):
-            start_links = list(start_links)
-            def get_link(prompt):
-                if start_links:
-                    link_text = start_links.pop(0)
-                    print(prompt + link_text)
-                else:
-                    link_text = input(prompt)
-                return link_text
-            return get_link
-        get_link = make_get_link(start_links)
-            
+    def navigate(self, start_links=(), interactive=None):
+        start_links = list(start_links)
+        if interactive is None:
+            interactive = not bool(start_links)
+
+        if interactive:
+            menu = MenuParagraph(self)
+        else:
+            menu = None
+        self.add_index()
+
         printer = self.printer
-        page = self.home_page()
         self._crono.clear()
-        opages = self.ordered_pages()
-        if self.index_name is not None and self.index_name not in opages:
-            #self.index_page = self.new_page(self.index_name)
-            index_page = self.new_page(self.index_name)
-            opages.append(index_page.name)
-            lst = []
-            for page_name in opages:
-                page = self._pages[page_name]
-                if page.level == 0:
-                    #bullet = "●"
-                    bullet = "▸"
-                else:
-                    #bullet = "○"
-                    bullet = "▹"
-                lst.append(
-                    " {}{} {}".format("  " * page.level, bullet, transform_link(page.name)),
-                )
-            index_page.add_element(Paragraph("\n".join(lst)))
-        olink_pages = [transform_link(page_name) for page_name in opages]
-        olinks = [link for link in self._links if link not in set(olink_pages)] + olink_pages
-        menu = " | ".join("{}".format(transform_link(link)) for link in olinks)
-        menu = wrap(menu)
-        nmin = {olink: 1 for olink in olinks}
-        for ol0, ol1 in itertools.combinations(olinks, 2):
-            for num, (ch0, ch1) in enumerate(itertools.zip_longest(ol0, ol1)):
-                if ch0 != ch1:
-                    break
-            nmin[ol0] = max(nmin[ol0], num + 1)
-            nmin[ol1] = max(nmin[ol1], num + 1)
        
-        while page is not None:
-            lsub = []
-            for transformed_link_text, link in self._links.items():
-                text = link.text
-                rendered_link_text = termcolor.colored(text, "blue", attrs=["underline"])
-                if link.text == page.name:
-                    color = "red"
-                    attrs = ["underline"]
-                else:
-                    color = "blue"
-                    attrs = ["underline"]
-                menu_rendered_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
-                                          termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
-                link_re = re.compile(r'\b(?<!-){}\b'.format(re.escape(transformed_link_text)))
-                lsub.append((link_re, rendered_link_text, menu_rendered_link_text))
-            
-            text = page.render(printer)
-            rendered_text = text
-            rendered_menu = menu
-            for link_re, rendered_link_text, menu_rendered_link_text in lsub:
-                rendered_text = link_re.sub(rendered_link_text, rendered_text)
-                rendered_menu = link_re.sub(menu_rendered_link_text, rendered_menu)
-            printer(rendered_text)
-            printer("─" * 70)
-            printer(rendered_menu)
-            printer("─" * 70)
+        if start_links:
+            page = None
+        else:
+            page = self.home_page()
+        while True:
+            if page is not None:
+                renderer = Renderer(self, printer, current_page_name=page.name, interactive=interactive)
+                renderer(page)
+                # text = page.render(printer)
+                if interactive:
+                    renderer(menu)
             while True:
                 try:
-                    link_text = get_link(self.printer.color("HELP", "bold") + "> ")
+                    if start_links:
+                        link_text = start_links.pop(0)
+                    else:
+                        if interactive:
+                            link_text = input(self.printer.color("HELP", "bold") + "> ")
+                        else:
+                            link_text = 'quit'
                 except (KeyboardInterrupt, EOFError):
                     return
                 if not link_text:
                     continue
                 link_result = self.follow_link(link_text)
                 if link_result.status == NavigationStatus.FAILURE:
-                    self.printer(self.printer.red("ERR: invalid choice {!r}".format(link_text)))
+                    self.printer(self.printer.red("ERR: no such page: {!r}".format(link_text)))
                 else:
                     if link_result.link.action is NavigationAction.QUIT:
                         return
@@ -385,3 +428,53 @@ class Navigator(collections.abc.Mapping):
                     page = next_page
                     break
 
+
+class Renderer(object):
+    def __init__(self, navigator, printer, current_page_name=None, interactive=True):
+        self.printer = printer
+        self.interactive = interactive
+        self.pager = self.printer.pager(interactive=self.interactive)
+        opages = navigator.ordered_pages()
+        olink_pages = [transform_link(page_name) for page_name in opages]
+        olinks = [link for link in navigator.links() if link not in set(olink_pages)] + olink_pages
+        nmin = {olink: 1 for olink in olinks}
+        for ol0, ol1 in itertools.combinations(olinks, 2):
+            for num, (ch0, ch1) in enumerate(itertools.zip_longest(ol0, ol1)):
+                if ch0 != ch1:
+                    break
+            nmin[ol0] = max(nmin[ol0], num + 1)
+            nmin[ol1] = max(nmin[ol1], num + 1)
+
+        lsub = []
+        for transformed_link_text, link in navigator.links().items():
+            text = link.text
+            if link.text == current_page_name:
+                color = "blue"
+                attrs = ["bold", "underline"]
+            else:
+                color = "blue"
+                attrs = ["underline"]
+            # print(link.text, current_page_name, color, attrs)
+            # rendered_link_text = termcolor.colored(text, color, attrs=attrs)
+            rendered_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
+                                 termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
+
+            link_re = re.compile(r'\b(?<!-){}\b'.format(re.escape(transformed_link_text)))
+            lsub.append((link_re, rendered_link_text))
+        self._lsub = lsub
+
+    def __call__(self, obj):
+       if isinstance(obj, Page):
+           for element in obj.elements:
+               self(element)
+       elif isinstance(obj, Element):
+           self.render(obj.render(self.printer, interactive=self.interactive))
+       else:
+           self.render(obj, interactive=self.interactive)
+
+    def render(self, text):
+       if text is not None:
+           rendered_text = text
+           for link_re, rendered_link_text in self._lsub:
+               rendered_text = link_re.sub(rendered_link_text, rendered_text)
+           self.pager(rendered_text)

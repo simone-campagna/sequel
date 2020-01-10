@@ -5,6 +5,8 @@ Print utils
 import collections
 import contextlib
 import functools
+import os
+import shutil
 import sys
 import textwrap
 
@@ -395,4 +397,32 @@ class Printer(object):
                         else:
                             self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
                         return
+    def pager(self, *args, **kwargs):
+        return Pager(self, *args, **kwargs)
       
+
+class Pager(object):
+    def __init__(self, printer, max_lines=None, interactive=True, continue_text=None):
+        self.printer = printer
+        if max_lines is None:
+            max_lines = shutil.get_terminal_size((80, 20)).lines
+        self.max_lines = max_lines
+        self.num_lines = 0
+        self.interactive = interactive
+        if continue_text is None:
+            continue_text = printer.bold("⟪ press ") + printer.blue("ENTER") + printer.bold(" to continue ⟫") + ' '
+        self.continue_text = continue_text
+
+    def interrupt(self):
+        input(self.continue_text)
+        self.printer('\r' + ' ' * len(self.continue_text) + '\r')
+
+    def __call__(self, text):
+        num_new_lines = text.count('\n') + 1
+        if self.interactive:
+            if self.num_lines > 0 and self.num_lines + num_new_lines >= self.max_lines:
+                self.interrupt()
+                self.num_lines = 0
+        printer = self.printer
+        printer(text)
+        self.num_lines += num_new_lines
