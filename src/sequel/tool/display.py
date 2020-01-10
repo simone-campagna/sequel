@@ -4,7 +4,9 @@ Print utils
 
 import collections
 import contextlib
+import enum
 import functools
+import itertools
 import os
 import shutil
 import sys
@@ -13,6 +15,7 @@ import textwrap
 import termcolor
 
 from ..config import get_config, register_config
+from ..item import Item
 from ..lazy import gmpy2
 from ..sequence import Sequence, SequenceUnboundError
 
@@ -41,6 +44,31 @@ register_config(
     })
 
 
+class ItemType(enum.Enum):
+    KNOWN = 0
+    PATTERN = 1
+    GUESS = 2
+
+
+KNOWN = lambda : itertools.repeat(ItemType.KNOWN)
+GUESS = lambda : itertools.repeat(ItemType.GUESS)
+PATTERN = lambda : itertools.repeat(ItemType.PATTERN)
+
+
+def iter_item_types(items):
+    def item_types():
+        for item in items:
+            if isinstance(item, Item):
+                if item.is_known():
+                    yield ItemType.KNOWN
+                else:
+                    yield ItemType.PATTERN
+            else:
+                yield ItemType.KNOWN
+        yield from GUESS()
+    return item_types
+
+    
 class Printer(object):
     def __init__(self, base=None, max_full_digits=None, max_compact_digits=None,
                  big_int=None, ellipsis=None, item_mode=None, num_items=None,
@@ -92,6 +120,10 @@ class Printer(object):
     def red(self, string):
         return self._colored(string, "red")
 
+    def guess(self, string):
+        return string
+        #return termcolor.colored(string, attrs=["underline"])
+
     def bold(self, string):
         if self.colored:
             return termcolor.colored(string, attrs=["bold"])
@@ -114,6 +146,15 @@ class Printer(object):
     def repr_items(self, items):
         return [self.repr_item(i) for i in items]
 
+    def colorize_item(self, item, item_type):
+        if item_type is ItemType.KNOWN:
+            fn_color = self.blue
+        elif item_type is ItemType.GUESS:
+            fn_color = self.red
+        else:
+            fn_color = self.guess
+        return fn_color(self.repr_item(item))
+
     def repr_item(self, item):
         item = gmpy2.mpz(item)
         num_digits = item.num_digits(self.base)
@@ -131,33 +172,30 @@ class Printer(object):
             else:
                 return digits
 
-    def _oneline_items(self, items, num_known=0):
-        known_items = [
-            self.blue(self.repr_item(item)) for item in items[:num_known]
-        ]
-        unknown_items = [
-            self.red(self.repr_item(item)) for item in items[num_known:]
-        ]
-        r_items = known_items + unknown_items
-        data = "    {} ...".format(self.separator.join(known_items + unknown_items))
+    def _oneline_items(self, items, item_types=KNOWN):
+        r_items = []
+        for item, item_type in zip(items, item_types()):
+            r_items.append(self.colorize_item(item, item_type))
+        data = "    {} ...".format(self.separator.join(r_items))
         return data
 
-    def print_items(self, items, num_known=0, item_mode=None):
+    def print_items(self, items, item_types=KNOWN, item_mode=None):
         if item_mode is None:
             item_mode = self.item_mode
         if item_mode == "oneline":
-            data = self._oneline_items(items, num_known=num_known)
+            data = self._oneline_items(items, item_types=item_types)
             if False and self.wraps:
                 data = textwrap.fill(data, subsequent_indent='    ', break_long_words=False)
             self(data)
         elif item_mode == "multiline":
-            for index, item in enumerate(items):
-                if index < num_known:
-                   fn = self.bold
-                else:
-                   fn = self.blue
-                item = fn(self.repr_item(item))
-                self(self.item_format.format(index=index, item=item))
+            for index, (item, item_type) in enumerate(zip(items, item_types())):
+                # if index < num_known:
+                #    fn = self.bold
+                # else:
+                #    fn = self.blue
+                # item = fn(self.repr_item(item))
+                # self(self.item_format.format(index=index, item=item))
+                self(self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
                 
     def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
         if sources is None:
@@ -183,7 +221,7 @@ class Printer(object):
                 except SequenceUnboundError:
                     pass
 
-    def print_sequence(self, sequence, num_items=None, num_known=0, header=""):
+    def print_sequence(self, sequence, num_items=None, item_types=KNOWN, header=""):
         """Print a sequence.
     
            Parameters
@@ -201,12 +239,12 @@ class Printer(object):
         if num_items:
             try:
                 items = sequence.get_values(num_items)
-                self.print_items(items, num_known=num_known)
+                self.print_items(items, item_types=item_types)
             except SequenceUnboundError:
                 pass
     
     
-    def print_sequences(self, sequences, num_items=None, num_known=0, header="", target_sequence=None):
+    def print_sequences(self, sequences, num_items=None, item_types=KNOWN, header="", target_sequence=None):
         best_match, best_match_complexity = None, 1000000
         if target_sequence is not None:
             found = False
@@ -222,7 +260,7 @@ class Printer(object):
                 complexity = sequence.complexity()
                 if best_match_complexity > complexity:
                     best_match, best_match_complexity = sequence, complexity
-                self.print_sequence(sequence, header=header, num_known=num_known)
+                self.print_sequence(sequence, header=header, item_types=item_types)
         except KeyboardInterrupt:
             self(self.red("[search interrupted]"))
         if target_sequence is not None:
@@ -286,7 +324,7 @@ class Printer(object):
         self(self.bold("###") + " compiling " + self.bold(str(source)) + " ...")
         self.print_sequence(sequence)
         self(self.bold("###") + " searching " + self.bold(" ".join(self.repr_items(items))) + " ...")
-        self.print_sequences(sequences, num_items=0, num_known=0, target_sequence=sequence)
+        self.print_sequences(sequences, num_items=0, target_sequence=sequence)
 
     @contextlib.contextmanager
     def overwrite(self, base=None, num_items=None):

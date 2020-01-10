@@ -35,7 +35,7 @@ from ..sequence import compile_sequence, Sequence, generate
 from ..profiler import Profiler
 from ..utils import assert_sequence_matches
 
-from .display import Printer
+from .display import Printer, iter_item_types
 from .help_pages import create_help
 
 __all__ = [
@@ -140,7 +140,7 @@ def function_search(items, limit=None, sort=False, reverse=False, display_kwargs
     manager = create_manager(size, config=config)
     found_sequences = manager.search(items, handler=handler, profiler=profiler)
     sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-    printer.print_sequences(sequences, num_known=len(items))
+    printer.print_sequences(sequences, item_types=iter_item_types(items))
     if profile:
         printer.print_stats(profiler)
 

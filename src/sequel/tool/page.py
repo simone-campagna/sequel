@@ -40,8 +40,12 @@ class NavigationAction(enum.Enum):
     LINK = 3
 
 
-Link = collections.namedtuple(
-    "Link", "text action data")
+class Link(collections.namedtuple("_Link", "name text action data")):
+    def __new__(cls, name, action, data):
+        return super().__new__(cls, name, transform_link(name), action, data)
+
+    def matches(self, text):
+        return self.text.startswith(transform_link(text))
 
 
 LinkResult = collections.namedtuple(
@@ -63,6 +67,9 @@ class Element(abc.ABC):
     @abc.abstractmethod
     def get_text(self):
         raise NotImplementedError()
+
+    def is_menu_element(self):
+        return False
 
 
 class Title(Element):
@@ -140,8 +147,7 @@ class IndexParagraph(NavigatorParagraphMixin, Paragraph):
     def _create_text(self):
         lst = []
         navigator = self._navigator
-        for page_name in navigator.ordered_pages():
-            page = navigator.get_page(page_name)
+        for page in navigator.ordered_pages():
             if page.level == 0:
                 #bullet = "●"
                 bullet = "▸"
@@ -153,6 +159,9 @@ class IndexParagraph(NavigatorParagraphMixin, Paragraph):
             )
         return '\n'.join(lst)
 
+    def is_menu_element(self):
+        return True
+
 
 class MenuParagraph(NavigatorParagraphMixin, WrappedParagraph):
     def _create_text(self):
@@ -163,6 +172,9 @@ class MenuParagraph(NavigatorParagraphMixin, WrappedParagraph):
             "──────────────────────────────────────────────────────────────────────",
         ]
         return '\n'.join(lines)
+
+    def is_menu_element(self):
+        return True
 
 
 def split_text(text):
@@ -181,6 +193,7 @@ class Page(object):
             level = self._parent.level + 1
         self._level = level
         self._name = name
+        self._link = transform_link(self._name)
         if title is None:
             title = name.title()
         self._title = title
@@ -208,6 +221,10 @@ class Page(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def link(self):
+        return self._link
 
     @property
     def title(self):
@@ -238,13 +255,13 @@ class Navigator(collections.abc.Mapping):
         self.index_name = index_name
         for page in pages:
             self.add_page(page)
-        self._add_link(Link(text='quit', action=NavigationAction.QUIT, data={}))
-        self._add_link(Link(text='home', action=NavigationAction.HOME, data={}))
-        self._add_link(Link(text='back', action=NavigationAction.BACK, data={}))
+        self._add_link(Link(name='quit', action=NavigationAction.QUIT, data={}))
+        self._add_link(Link(name='home', action=NavigationAction.HOME, data={}))
+        self._add_link(Link(name='back', action=NavigationAction.BACK, data={}))
         self._crono = []
 
     def __getitem__(self, name):
-        return self._pages[name]
+        return self._pages[transform_link(name)]
 
     def __iter__(self):
         yield from self._pages
@@ -264,11 +281,8 @@ class Navigator(collections.abc.Mapping):
         home_page = self[home_name]
         return home_page
         
-    def get_page(self, page_name):
-        return self._pages[page_name]
-
     def _add_link(self, link):
-        self._links[transform_link(link.text)] = link
+        self._links[link.text] = link
 
     ### actions:
     def do_quit(self, link):
@@ -292,19 +306,18 @@ class Navigator(collections.abc.Mapping):
     def add_page(self, page, is_home=False):
         if page.name in self._pages:
             raise ValueError("page {!r} already inserted".format(page.name))
-        self._pages[page.name] = page
+        self._pages[page.link] = page
         if is_home:
             self.home_name = page.name
-        link_text = page.name
         link = Link(
-            text=link_text,
+            name=page.name,
             action=NavigationAction.LINK,
             data={'page': page})
         self._add_link(link)
 
     def new_page(self, name, elements=(), title=None, parent=None, is_home=False):
         if isinstance(parent, str):
-            parent = self._pages[parent]
+            parent = self[parent]
         page = Page(name=name, elements=elements, title=title, parent=parent)
         self.add_page(page, is_home=is_home)
         return page
@@ -323,10 +336,11 @@ class Navigator(collections.abc.Mapping):
         return do_function(link)
 
     def follow_link(self, text):
+        text = transform_link(text)
         link = self._links.get(text, None)
         if link is None:
             # start
-            matching_links = [link for link in self._links.values() if link.text.startswith(text)]
+            matching_links = [link for link in self._links.values() if link.matches(text)]
             if len(matching_links) == 1:
                 link = matching_links[0]
             elif len(matching_links) > 1:
@@ -347,30 +361,30 @@ class Navigator(collections.abc.Mapping):
                 self.add_page(IndexPage(self.index_name, self))
                 
     def pages(self, condition=lambda page: True):
-        page_names = []
+        page_links = []
         for page in self._pages.values():
             if condition(page):
-                page_names.append(page.name)
-        return page_names
+                page_links.append(page.link)
+        return page_links
 
     def root_pages(self):
         return self.pages(condition=lambda page: page.parent is None)
 
     def ordered_pages(self):
-        def order(page_names, dct, lst):
-            for page_name in page_names:
-                lst.append(page_name)
-                if page_name in dct:
-                    order(dct[page_name], dct, lst)
+        def order(pages, dct, lst):
+            for page in pages:
+                lst.append(page)
+                if page.link in dct:
+                    order(dct[page.link], dct, lst)
             return lst
 
         dct = collections.defaultdict(list)
         l0 = []
         for page in self._pages.values():
             if page.parent is not None:
-                dct[page.parent.name].append(page.name)
+                dct[page.parent.link].append(page)
             else:
-                l0.append(page.name)
+                l0.append(page)
         
         olist = []
         order(l0, dct, olist)
@@ -396,11 +410,11 @@ class Navigator(collections.abc.Mapping):
             page = self.home_page()
         while True:
             if page is not None:
-                renderer = Renderer(self, printer, current_page_name=page.name, interactive=interactive)
+                renderer = Renderer(self, printer, current_page=page, interactive=interactive)
                 renderer(page)
                 # text = page.render(printer)
                 if interactive:
-                    renderer(menu)
+                    renderer(menu, is_menu=True)
             while True:
                 try:
                     if start_links:
@@ -430,51 +444,61 @@ class Navigator(collections.abc.Mapping):
 
 
 class Renderer(object):
-    def __init__(self, navigator, printer, current_page_name=None, interactive=True):
+    def __init__(self, navigator, printer, current_page=None, interactive=True):
         self.printer = printer
         self.interactive = interactive
         self.pager = self.printer.pager(interactive=self.interactive)
-        opages = navigator.ordered_pages()
-        olink_pages = [transform_link(page_name) for page_name in opages]
-        olinks = [link for link in navigator.links() if link not in set(olink_pages)] + olink_pages
-        nmin = {olink: 1 for olink in olinks}
-        for ol0, ol1 in itertools.combinations(olinks, 2):
-            for num, (ch0, ch1) in enumerate(itertools.zip_longest(ol0, ol1)):
+        pages = navigator.ordered_pages()
+        page_links = [page.link for page in navigator.ordered_pages()]
+        links = [link for link in navigator.links() if link not in set(page_links)] + page_links
+        nmin = {link: 1 for link in links}
+        for l0, l1 in itertools.combinations(links, 2):
+            for num, (ch0, ch1) in enumerate(itertools.zip_longest(l0, l1)):
                 if ch0 != ch1:
                     break
-            nmin[ol0] = max(nmin[ol0], num + 1)
-            nmin[ol1] = max(nmin[ol1], num + 1)
+            nmin[l0] = max(nmin[l0], num + 1)
+            nmin[l1] = max(nmin[l1], num + 1)
 
         lsub = []
+        if current_page is None:
+            current_page_link = None
+        else:
+            current_page_link = current_page.link
         for transformed_link_text, link in navigator.links().items():
-            text = link.text
-            if link.text == current_page_name:
+            text = link.name
+            if link.text == current_page_link:
                 color = "blue"
                 attrs = ["bold", "underline"]
             else:
                 color = "blue"
                 attrs = ["underline"]
             # print(link.text, current_page_name, color, attrs)
-            # rendered_link_text = termcolor.colored(text, color, attrs=attrs)
-            rendered_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
-                                 termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
-
+            page_link_text = termcolor.colored(text, color, attrs=attrs)
+            menu_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
+                                               termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
             link_re = re.compile(r'\b(?<!-){}\b'.format(re.escape(transformed_link_text)))
-            lsub.append((link_re, rendered_link_text))
+            lsub.append((link_re, page_link_text, menu_link_text))
         self._lsub = lsub
 
-    def __call__(self, obj):
+    def __call__(self, obj, **kwargs):
        if isinstance(obj, Page):
            for element in obj.elements:
-               self(element)
+               self(element, **kwargs)
        elif isinstance(obj, Element):
-           self.render(obj.render(self.printer, interactive=self.interactive))
+           kwargs = {}
+           if obj.is_menu_element():
+               kwargs['is_menu'] = True
+           self.render(obj.render(self.printer, interactive=self.interactive), **kwargs)
        else:
-           self.render(obj, interactive=self.interactive)
+           self.render(obj)
 
-    def render(self, text):
+    def render(self, text, is_menu=False):
        if text is not None:
            rendered_text = text
-           for link_re, rendered_link_text in self._lsub:
+           for link_re, page_link_text, menu_link_text in self._lsub:
+               if is_menu:
+                   rendered_link_text = menu_link_text
+               else:
+                   rendered_link_text = page_link_text
                rendered_text = link_re.sub(rendered_link_text, rendered_text)
            self.pager(rendered_text)

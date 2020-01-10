@@ -153,9 +153,9 @@ $ sequel search 2 3 5 7 11
     0] p
     2 3 5 7 11 13 17 19 23 29 ...
 
-The '??' symbol matches with any value:
+The 'ANY' symbol matches with any value:
 
-$ sequel search 2 3 5 7 ??
+$ sequel search 2 3 5 7 ANY
     0] p
     2 3 5 7 11 13 17 19 23 29 ...
     1] m_exp
