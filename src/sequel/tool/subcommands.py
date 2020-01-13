@@ -22,6 +22,8 @@ from ..config import (
     show_config,
     edit_config,
 )
+from ..declaration import declared
+
 from ..item import make_item
 from ..items import make_items
 from ..search import (
@@ -129,39 +131,45 @@ def function_doc(sources, simplify=False, full=False, display_kwargs=None):
     printer.print_doc(sources=sources, simplify=simplify, full=full)
 
 
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    config = get_config()
-    size = len(items)
-    manager = create_manager(size, config=config)
-    found_sequences = manager.search(items, handler=handler, profiler=profiler)
-    sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-    printer.print_sequences(sequences, item_types=iter_item_types(items))
-    if profile:
-        printer.print_stats(profiler)
-
-
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    config = get_config()
-    size = printer.num_items
-    manager = create_manager(size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        items = sequence.get_values(printer.num_items)
+def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False, declarations=None):
+    if declarations is None:
+        declarations = ()
+    with declared(*declarations):
+        printer = make_printer(display_kwargs)
+        if profile:
+            profiler = Profiler()
+        else:
+            profiler = None
+        config = get_config()
+        size = len(items)
+        manager = create_manager(size, config=config)
         found_sequences = manager.search(items, handler=handler, profiler=profiler)
         sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-        printer.print_test(source, sequence, items, sequences)
-    if profile:
-        printer.print_stats(profiler)
+        printer.print_sequences(sequences, item_types=iter_item_types(items))
+        if profile:
+            printer.print_stats(profiler)
+
+
+def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False, declarations=None):
+    if declarations is None:
+        declarations = ()
+    with declared(*declarations):
+        printer = make_printer(display_kwargs)
+        config = get_config()
+        size = printer.num_items
+        manager = create_manager(size, config=config)
+        if profile:
+            profiler = Profiler()
+        else:
+            profiler = None
+        for source in sources:
+            sequence = compile_sequence(source, simplify=simplify)
+            items = sequence.get_values(printer.num_items)
+            found_sequences = manager.search(items, handler=handler, profiler=profiler)
+            sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+            printer.print_rsearch(source, sequence, items, sequences)
+        if profile:
+            printer.print_stats(profiler)
             
 
 def function_generate(level, algorithm, display_kwargs=None):

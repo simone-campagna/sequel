@@ -24,9 +24,13 @@ from ..search import (
 from ..sequence import (
     Sequence,
 )
+from ..declaration import (
+    sequence_declaration,
+    catalog_declaration,
+)
 from .subcommands import (
     function_search,
-    function_test,
+    function_rsearch,
     function_compile,
     function_doc,
     function_tree,
@@ -125,7 +129,7 @@ To enable completion run the following command:
         'max_compact_digits', 'max_full_digits', 'colored',
     ]
     common_search_args = [
-        'handler', 'profile',
+        'handler', 'profile', 'declarations',
     ]
 
     help_parser = subparsers.add_parser(
@@ -283,23 +287,23 @@ Reset config file""",
         function=function_config_reset,
         function_args=[])
 
-    test_parser = subparsers.add_parser(
-        'test',
+    rsearch_parser = subparsers.add_parser(
+        'rsearch',
         description="""\
-Compile a sequence and tries to search it""",
+Reverse search: compile a sequence and tries to search it""",
         **common_parser_kwargs)
-    test_parser.set_defaults(
-        function=function_test,
+    rsearch_parser.set_defaults(
+        function=function_rsearch,
         function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_search_args + ['display_kwargs'])
 
-    for parser in compile_parser, test_parser, doc_parser, tree_parser:
+    for parser in compile_parser, rsearch_parser, doc_parser, tree_parser:
         parser.add_argument(
             "-s", "--simplify",
             action="store_true",
             default=False,
             help="simplify expression")
 
-    for parser in search_parser, compile_parser, test_parser, doc_parser, tree_parser, generate_parser, quiz_parser:
+    for parser in search_parser, compile_parser, rsearch_parser, doc_parser, tree_parser, generate_parser, quiz_parser:
         parser.add_argument(
             "-n", "--num-items",
             metavar="N",
@@ -381,7 +385,7 @@ Compile a sequence and tries to search it""",
             default=None,
             help="maximum number of digits for full item display")
 
-    for parser in search_parser, test_parser:
+    for parser in search_parser, rsearch_parser:
         parser.add_argument(
             "-l", "--limit",
             metavar="L",
@@ -401,7 +405,23 @@ Compile a sequence and tries to search it""",
             default=False,
             help="reverse sorting")
 
-    for parser in search_parser, test_parser:
+        parser.add_argument(
+            "-d", "--declare-sequence",
+            dest="declarations",
+            metavar="[N:=]SEQ",
+            action="append",
+            type=sequence_declaration,
+            help="declare a new sequence, i.e. newseq=ifelse(pentagonal%%2==0, p, 1000-m_exp)")
+
+        parser.add_argument(
+            "-c", "--catalog-file",
+            dest="declarations",
+            metavar="FILE",
+            action="append",
+            type=catalog_declaration,
+            help="add a catalog file containing additional sequence declarations")
+
+    for parser in search_parser, rsearch_parser:
         parser.add_argument(
             "-p", "--profile",
             action="store_true",
@@ -421,7 +441,7 @@ Compile a sequence and tries to search it""",
         default=False,
         help="show sequence tree")
 
-    for parser in test_parser, compile_parser, tree_parser:
+    for parser in rsearch_parser, compile_parser, tree_parser:
         parser.add_argument(
             "sources",
             type=str,
@@ -441,7 +461,7 @@ Compile a sequence and tries to search it""",
             action="store_true",
             help="full output")
 
-    for parser in search_parser, test_parser:
+    for parser in search_parser, rsearch_parser:
         handler_group = parser.add_mutually_exclusive_group()
         handler_group.add_argument(
             "--first",

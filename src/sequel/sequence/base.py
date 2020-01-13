@@ -11,7 +11,6 @@ import functools
 import inspect
 import itertools
 import operator
-import uuid
 import weakref
 
 from ..item import (
@@ -82,17 +81,27 @@ class LazyRegistry(collections.abc.Mapping):
         def get(self, name):
             if self.instance is None:
                 self.instance = self.factory()
-                self.instance._set_name(name)
+            self.instance._set_name(name)
             return self.instance
 
     def __init__(self):
         self._data = collections.OrderedDict()
 
     def register_instance(self, name, instance):
-        self._data[name] = LazyValue(instance=instance, factory=None)
+        # assert name not in self._data
+        self._data[name] = self.LazyValue(instance=instance, factory=None)
+        # assert name in self._data
 
     def register_factory(self, name, factory):
+        # assert name not in self._data
         self._data[name] = self.LazyValue(instance=None, factory=factory)
+        # assert name in self._data
+
+    def unregister(self, name):
+        # assert name in self._data
+        if name in self._data:
+            del self._data[name]
+        # assert name not in self._data
 
     def __getitem__(self, name):
         return self._data[name].get(name)
@@ -188,6 +197,18 @@ class Sequence(metaclass=SMeta):
     @classmethod
     def register_factory(cls, name, factory):
         cls.__registry__.register_factory(name, factory)
+
+    @classmethod
+    def register_instance(cls, name, sequence):
+        cls.__registry__.register_instance(name, sequence)
+
+    @classmethod
+    def unregister(cls, name):
+        cls.__registry__.unregister(name)
+
+    def forget(self):
+        self.__class__.__instances__.pop(self._instance_parameters)
+        self.__class__.unregister(self._instance_symbol)
 
     @classmethod
     def register(cls):
@@ -898,7 +919,9 @@ class RecursiveSequenceIndexer(Sequence):
 
     def __iter__(self):
         self._check_bound()
-        raise SequenceUnknownValueError()
+        while True:
+            yield self(None)
+        #raise SequenceUnknownValueError()
 
     @classmethod
     def register(cls):
@@ -937,14 +960,15 @@ class RecursiveSequence(Sequence):
         if len(self._known_items) <= max_index:
             raise ValueError("sequence {}: too few known items: {} < {}".format(self, len(self._known_items), max_index + 1))
         self.__items = collections.deque(maxlen=maxlen)
-        self.__items.extend(self._known_items)
-        self.__last_item_index = len(self._known_items) - 1
+        self.__last_item_index = None
+        self._reset_items()
         super().__init__()
 
     def _reset_items(self):
         self.__items.clear()
         self.__items.extend(self._known_items)
         self.__last_item_index = len(self._known_items) - 1
+        assert len(self.__items) == self.__last_item_index + 1
 
     def simplify(self):
         o = type(self)(self._known_items, self._generating_sequence.simplify())
@@ -979,16 +1003,13 @@ class RecursiveSequence(Sequence):
         with RecursiveSequenceIndexer.bind(self):
             items = self.__items
             if i < self.__last_item_index - items.maxlen:
-                #print("ARGH0!!!", i, self.__last_item_index, items.maxlen, items)
                 self._reset_items()
             if i <= self.__last_item_index:
                 idx = len(items) - 1 - (self.__last_item_index - i)
-                #print("ARGH1!!!", i, self.__last_item_index, items.maxlen, items, idx)
                 return items[idx]
             generating_sequence = self._generating_sequence
             for j in range(self.__last_item_index + 1, i + 1):
                 item = generating_sequence(j)
-                #print("...", j, item)
                 items.append(item)
                 self.__last_item_index += 1
             return items[-1]
@@ -1004,6 +1025,7 @@ class RecursiveSequence(Sequence):
                 item = generating_sequence(j)
                 yield item
                 items.append(item)
+                self.__last_item_index += 1
 
     def __repr__(self):
         lst = [str(x) for x in self._known_items]

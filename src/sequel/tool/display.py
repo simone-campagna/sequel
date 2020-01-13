@@ -320,7 +320,7 @@ class Printer(object):
         for row in table:
             self(fmt.format(*row))
 
-    def print_test(self, source, sequence, items, sequences):
+    def print_rsearch(self, source, sequence, items, sequences):
         self(self.bold("###") + " compiling " + self.bold(str(source)) + " ...")
         self.print_sequence(sequence)
         self(self.bold("###") + " searching " + self.bold(" ".join(self.repr_items(items))) + " ...")
