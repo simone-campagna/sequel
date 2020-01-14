@@ -39,7 +39,7 @@ from .subcommands import (
     function_config_reset,
     function_config_edit,
     function_generate,
-    function_quiz,
+    function_play,
     function_help,
 )
 
@@ -209,13 +209,13 @@ Generate a random sequence""",
         function=function_generate,
         function_args=['level', 'algorithm'] + ['display_kwargs'])
 
-    quiz_parser = subparsers.add_parser(
-        'quiz',
+    play_parser = subparsers.add_parser(
+        'play',
         description="""\
-Generate a random sequence and make a quiz""",
+Play the sequence game. Sequel will generate a random sequence and make you a quiz""",
         **common_parser_kwargs)
-    quiz_parser.set_defaults(
-        function=function_quiz,
+    play_parser.set_defaults(
+        function=function_play,
         function_args=['level', 'algorithm'] + ['display_kwargs'])
 
     tree_parser = subparsers.add_parser(
@@ -303,7 +303,7 @@ Reverse search: compile a sequence and tries to search it""",
             default=False,
             help="simplify expression")
 
-    for parser in search_parser, compile_parser, rsearch_parser, doc_parser, tree_parser, generate_parser, quiz_parser:
+    for parser in search_parser, compile_parser, rsearch_parser, doc_parser, tree_parser, generate_parser, play_parser:
         parser.add_argument(
             "-n", "--num-items",
             metavar="N",
@@ -483,7 +483,7 @@ Reverse search: compile a sequence and tries to search it""",
             type=type_stop_below_complexity,
             help="stop when below complexity")
 
-    for parser in generate_parser, quiz_parser:
+    for parser in generate_parser, play_parser:
         parser.add_argument(
             "--level",
             default=None,

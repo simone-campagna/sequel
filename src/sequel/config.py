@@ -69,15 +69,16 @@ def get_config_filename():
 def _setup_sequel_config(name, config):
     sequel_config = config[name]
     random_seed = sequel_config["random_seed"]
-    random.seed(random_seed)
-    numpy.module().random.seed(random_seed)
+    if random_seed is not None:
+        random.seed(random_seed)
+        numpy.module().random.seed(random_seed)
 
 
 register_config(
     name="sequel",
     default={
         "editor": "vim",
-        "random_seed": 2,
+        "random_seed": None,
     },
     setup_callback=_setup_sequel_config)
 

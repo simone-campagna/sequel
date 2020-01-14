@@ -27,36 +27,6 @@ DummyCatalogDeclaration = collections.namedtuple(
     'DummyCatalogDeclaration', 'filename sources')
     
 
-# def create_help(help_source_filename=None):
-#     if help_source_filename is None:
-#         help_source_filename = os.path.join(os.path.dirname(__file__), 'help.json')
-#     with open(help_source_filename, "r") as f_in:
-#         help_config = json.loads(f_in)
-#         pages = collections.OrderedDict()
-#         links = {}
-#         for page_num, page_config = enumerate(help_config["pages"]):
-#             page_name = page_config.get('name', 'page_{}'.format(page_num))
-#             page = Page(name=page_name, text=page_config['text'])
-#             page_links = page_config.get('links', [])
-#             links[page] = page_links
-#         for page, link_names in links.items():
-#             for link_name in link_names:
-#                 if not link_name in pages:
-#                     raise ValueError("page {} links missing page {}".format(page.name, link_name))
-#                 page.add_link_page(link_name, pages[link_name])
-#         home_page_name = help_config.get('home', None)
-#         if home_page_name is None and pages:
-#             home_page_name = tuple(pages)[0]
-#         if home_page_name is None:
-#             raise ValueError("no home page")
-#         if home_page_name not in pages:
-#             raise ValueError("home page {!r} not defined".format(home_page_name))
-#         home_page = pages[home_page_name]
-#         for page in pages.values():
-#             page.set_home(home_page)
-#         return home_page
-
-
 class Example(Element):
     def __init__(self, *, printer, max_lines=None, **kwargs):
         self.printer = printer
@@ -115,20 +85,6 @@ class DeclarationsMixIn(object):
                 declarations.append(declaration)
         with declared(*declarations):
             yield
-        # REM cache = []
-        # REM try:
-        # REM     for name, sequence_def in self._declarations:
-        # REM         sequence = compile_sequence(sequence_def)
-        # REM         if name is None:
-        # REM             sequence_name = str(sequence)
-        # REM         else:
-        # REM             sequence_name = name
-        # REM         Sequence.register_instance(sequence_name, sequence)
-        # REM         cache.append((name, sequence_def, sequence_name, sequence))
-        # REM     yield cache
-        # REM finally:
-        # REM     for name, sequence_def, sequence_name, sequence in cache:
-        # REM         sequence.forget()
 
     def example_args(self):
         args = super().example_args()
@@ -238,6 +194,23 @@ class ReverseSearchExample(SimplifyMixIn, DeclarationsMixIn, Example):
         return self._format_lines(lines)
 
 
+class PlayExample(Example):
+    def __init__(self, printer, source, tries, max_lines=None):
+        super().__init__(printer=printer, max_lines=max_lines)
+        self.source = source
+        self.tries = list(tries) + [":quit"]
+
+    def get_text(self):
+        ios = StringIO()
+        with self.printer.set_file(ios):
+            self.printer.print_quiz(self.source, tries=self.tries)
+        args = self.example_args()
+        args.append(shlex.quote(self.source))
+        lines = []
+        lines.append("$ sequel play ")
+        lines.extend(self._output_lines(ios.getvalue()))
+        return self._format_lines(lines)
+
 def create_help():
     printer = Printer()
     # wip_text = printer.red("Work in progress")
@@ -284,6 +257,11 @@ and searches its values. It is a shortcut for running a compile subcommand and t
 """,
             ReverseSearchExample(printer=printer,
                                  source='p * zero_one', sequences=None),
+            """\
+The PLAY subcommand generates an hidden random sequence and let you guess what sequence it is.
+""",
+            PlayExample(printer=printer,
+                                 source='p * zero_one', tries=['p * zero_one']),
         ]
     )
 
@@ -483,6 +461,16 @@ The RSEARCH command accepts the same options as the SEARCH command. For instance
                                  source='catalan * p ** 2', sequences=None, declarations=[sequence_declaration('p ** 2')]),
         ],
     )
+    ### PLAY
+    navigator.new_page(
+        name="play",
+        elements=[
+            """\
+The PLAY command generates an hidden random sequence and asks you to guess that sequence:
+""",
+            PlayExample(printer=printer,
+                                 source='i + p * zero_one', tries=['p', 'p * zero_one', 'i + p * zero_one']),
+    ])
     ### COMPILE
     navigator.new_page(
         name="compile",

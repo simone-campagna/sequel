@@ -7,12 +7,20 @@ import functools
 import json
 import random
 
-from .base import compile_sequence
+from .base import compile_sequence, rseq, Const
 from .roundrobin import roundrobin
 from .miscellanea import (
     Geometric,
     Arithmetic,
 )
+from .sequence_utils import make_linear_combination
+
+
+def pick(value):
+    if isinstance(value, (list, tuple)):
+        return random.choice(value)
+    else:
+        return value
 
 
 CONFIG = """\
@@ -70,6 +78,28 @@ CONFIG = """\
             "kwargs": {
                 "start_values": [0, 1, 2, 3, 4, 5],
                 "step_values": [1, 2, 3, 4, 5, 6, 7]
+            }
+        },
+        {
+            "level": 0,
+            "algorithm": "recursive_sequence",
+            "weight": 1.0,
+            "kwargs": {
+                "denom": [1],
+                "sequences": [["5", "1", "2"], ["_0", "_0 ** 2"]],
+                "coeffs": [[1], [1, 2, -1]],
+                "known_items": [[-1, 2, 1]]
+            }
+        },
+        {
+            "level": 0,
+            "algorithm": "recursive_sequence",
+            "weight": 0.0,
+            "kwargs": {
+                "denom": [1],
+                "sequences": ["_0", ["_1", "_1 ** 2"]],
+                "coeffs": [[1, 0, -1], [1, 2]],
+                "known_items": [[0, 1], [1, -1]]
             }
         },
         {
@@ -132,6 +162,7 @@ CONFIG = """\
             "algorithm": "linear_combination",
             "weight": 0.5,
             "kwargs": {
+                "num_items": [2],
                 "coeffs": "$coeffs",
                 "sequences": "$g0_sequences"
             }
@@ -303,10 +334,11 @@ def generate_binary(operators, sequences):
     return ops[op](compile_sequence(ls), compile_sequence(rs))
 
 
-def generate_linear_combination(coeffs, sequences):
-    ls, rs = random.sample(sequences, 2)
-    lc, rc = random.sample(coeffs, 2)
-    return lc * compile_sequence(ls) + rc * compile_sequence(rs)
+def generate_linear_combination(coeffs, sequences, num_items):
+    num_items = random.choice(num_items)
+    slist = random.sample(sequences, num_items)
+    clist = random.sample(coeffs, num_items)
+    return make_linear_combination(clist, slist)
 
 
 def generate_affine_transform(values, coeffs, sequences):
@@ -362,6 +394,18 @@ def generate_arithmetic(start_values, step_values):
     return Arithmetic(start=start_value, step=step_value)
 
 
+def generate_recursive_sequence(sequences, coeffs, denom, known_items):
+    clist = []
+    slist = []
+    for coeff, sequence in zip(coeffs, sequences):
+        clist.append(pick(coeff))
+        slist.append(compile_sequence(pick(sequence)))
+    denom = pick(denom)
+    gseq = make_linear_combination(clist, slist, denom)
+    args = [pick(x) for x in known_items] + [gseq]
+    return rseq(*args)
+        
+
 ALGORITHMS = {
     "choice": generate_choice,
     "binary": generate_binary,
@@ -373,6 +417,7 @@ ALGORITHMS = {
     "roundrobin": generate_roundrobin,
     "arithmetic": generate_arithmetic,
     "geometric": generate_geometric,
+    "recursive_sequence": generate_recursive_sequence,
 }
 
 

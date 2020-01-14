@@ -179,7 +179,7 @@ def function_generate(level, algorithm, display_kwargs=None):
         printer.print_doc(sources=[sequence])
 
 
-def function_quiz(level, algorithm, display_kwargs=None):
+def function_play(level, algorithm, display_kwargs=None):
     printer = make_printer(display_kwargs)
     sequence = generate(level=level, algorithm=algorithm)
     if sequence is not None:

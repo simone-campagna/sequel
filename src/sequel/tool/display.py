@@ -8,6 +8,7 @@ import enum
 import functools
 import itertools
 import os
+import readline
 import shutil
 import sys
 import textwrap
@@ -17,7 +18,7 @@ import termcolor
 from ..config import get_config, register_config
 from ..item import Item
 from ..lazy import gmpy2
-from ..sequence import Sequence, SequenceUnboundError
+from ..sequence import Sequence, SequenceUnboundError, compile_sequence
 
 
 
@@ -26,6 +27,8 @@ __all__ = [
     'Printer',
 ]
 
+
+UNDEF = object()
 
 register_config(
     name="display",
@@ -327,42 +330,42 @@ class Printer(object):
         self.print_sequences(sequences, num_items=0, target_sequence=sequence)
 
     @contextlib.contextmanager
-    def overwrite(self, base=None, num_items=None):
-        old_base = self.base
-        old_num_items = self.num_items
+    def overwrite(self, **kwargs):
+        old_values = {key: getattr(self, key) for key in kwargs}
         try:
-            if base is not None:
-                self.base = base
-            if num_items is not None:
-                self.num_items = num_items
+            for key, value in kwargs.items():
+                setattr(self, key, value)
             yield self
         finally:
-            self.num_items = old_num_items
-            self.base = old_base
+            for key, value in old_values.items():
+                setattr(self, key, value)
 
-    def print_quiz(self, source):
+    def print_quiz(self, source, tries=None):
         item_format = "    {index:4d}: {item:20s}"
         def show_items(items):
-            for index, item in enumerate(items):
-                item = self.bold(self.repr_item(item))
-                self(item_format.format(index=index, item=item))
+            with self.overwrite(max_full_digits=10 ** 100, max_compact_digits=10 ** 100):
+                for index, item in enumerate(items):
+                    item = self.bold(self.repr_item(item))
+                    self(item_format.format(index=index, item=item))
+
         items_format = "    {index:4d}: {item:20s} {user_item:20s} {equals}"
         def compare_items(items, user_items):
-            nexact = 0
-            ndiff = 0
-            for index, (item, user_item) in enumerate(zip(items, user_items)):
-                s_item = self.bold(self.repr_item(item))
-                s_user_item = self.repr_item(user_item)
-                if user_item == item:
-                    s_user_item = self.blue(s_user_item)
-                    equals = "[ok]"
-                    nexact += 1
-                else:
-                    s_user_item = self.red(s_user_item)
-                    equals = "!!!"
-                    ndiff += 1
-                self(items_format.format(index=index, item=s_item, user_item=s_user_item, equals=equals))
-            return nexact, ndiff
+            with self.overwrite(max_full_digits=10 ** 100, max_compact_digits=10 ** 100):
+                nexact = 0
+                ndiff = 0
+                for index, (item, user_item) in enumerate(zip(items, user_items)):
+                    s_item = self.bold(self.repr_item(item))
+                    s_user_item = self.repr_item(user_item)
+                    if user_item == item:
+                        s_user_item = self.blue(s_user_item)
+                        equals = "[ok]"
+                        nexact += 1
+                    else:
+                        s_user_item = self.red(s_user_item)
+                        equals = "!!!"
+                        ndiff += 1
+                    self(items_format.format(index=index, item=s_item, user_item=s_user_item, equals=equals))
+                return nexact, ndiff
 
         if isinstance(source, str):
             sequence = Sequence.compile(source, simplify=True)
@@ -371,27 +374,58 @@ class Printer(object):
        
         commands = collections.OrderedDict()
         
-        def _show_help(command, items, sequence):
+        def _show_help(command, args, items, sequence):
             for key, (doc, function) in commands.items():
                 self("{:20s} {}".format(self.bold(key), doc))
 
-        def _get_tag(command, items, sequence):
-            return command[1:]
+        def _get_tag(command, args, items, sequence):
+            return command
 
-        def _print_doc(command, items, sequence):
+        def _print_doc(command, args, items, sequence):
             self.print_doc()
 
-        def _spoiler(command, items, sequence):
+        def _spoiler(command, args, items, sequence):
             self("The hidden sequence is: " + self.bold(sequence))
 
-        def _show_items(command, items, sequence):
+        def _show_items(command, args, items, sequence):
             show_items(items)
 
-        commands[':quit'] = ("quit", _get_tag)
-        commands[':items'] = ("items", _show_items)
-        commands[':spoiler'] = ("show the hidden sequences", _spoiler)
-        commands[':doc'] = ("show available sequences", _print_doc)
-        commands[':help'] = ("show available commands", _show_help)
+        def _calc(command, args, items, sequence):
+            expr = args
+            self(self.bold(">>>"), self.blue(expr))
+            try:
+                res = eval(expr)
+            except:
+                res = compile_sequence(expr)
+            if isinstance(res, Sequence):
+                self.print_sequence(res)
+            else:
+                self(self.bold(res))
+
+        def _get_answer(msg):
+            return input(msg).strip()
+
+        if tries is not None:
+            def _make_get_stacked_answer(tries):
+                stack = list(tries)
+                def _get_stacked_answer(msg):
+                    if stack:
+                        ans = stack.pop(0)
+                        self(msg + ans)
+                        return ans
+                    else:
+                        return _get_answer(msg)
+                return _get_stacked_answer
+            get_answer = _make_get_stacked_answer(tries)
+        else:
+            get_answer = _get_answer
+
+        commands['quit'] = ("quit", _get_tag)
+        commands['items'] = ("items", _show_items)
+        commands['spoiler'] = ("show the hidden sequences", _spoiler)
+        commands['doc'] = ("show available sequences", _print_doc)
+        commands['calc'] = ("calculate expression", _calc)
+        commands['help'] = ("show available commands", _show_help)
 
         # self(str(sequence))
         num_items = self.num_items
@@ -406,15 +440,19 @@ class Printer(object):
             while True:
                 hdr = "[{}] ".format(ntries)
                 try:
-                    ans = input(hdr + "sequence > ").strip()
+                    ans = get_answer(hdr + "sequence > ").strip()
                 except EOFError:
                     self('')
                     return
                 if not ans:
                     continue
-                if ans in commands:
-                    fn = commands[ans][1]
-                    result = fn(ans, items, sequence)
+                if ans.startswith(":"):
+                    lst = ans[1:].split(None, 1)
+                    if len(lst) < 2:
+                        lst.append("")
+                    command, args = lst
+                    fn = commands[command][1]
+                    result = fn(command, args, items, sequence)
                     if result == 'quit':
                         return
                 else:
@@ -430,7 +468,7 @@ class Printer(object):
                     if ndiff:
                         self(hdr + "{} errors - try again".format(ndiff))
                     else:
-                        if user_sequence == sequence:
+                        if user_sequence.equals(sequence):
                             self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
                         else:
                             self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))

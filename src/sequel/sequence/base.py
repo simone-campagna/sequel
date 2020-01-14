@@ -47,6 +47,11 @@ __all__ = [
 
 _NUM_INDEXERS = 10
 
+
+def idem(x):
+    return x
+
+
 class SequenceError(Exception):
     pass
 
@@ -400,6 +405,7 @@ class Sequence(metaclass=SMeta):
             "Set": Set,
             "Value": Value,
             "rseq": rseq,
+            "floor": idem,  # sympy: a / b -> floor(a/b)
         }
         for sequence_type in Sequence.sequence_types():
             globals[sequence_type.__name__] = sequence_type
@@ -945,6 +951,7 @@ class RecursiveSequence(Sequence):
         self._known_items = tuple(gmpy2.mpz(x) for x in known_items)
         if isinstance(generating_sequence, str):
             generating_sequence = compile_sequence(generating_sequence)
+        generating_sequence = self.make_sequence(generating_sequence)
         # if isinstance(generating_sequence, SequenceBuilder):
         #     generating_sequence = generating_sequence({'recursive_sequence': self})
         self._generating_sequence = generating_sequence

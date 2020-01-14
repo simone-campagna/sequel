@@ -214,6 +214,7 @@ _simplify_tests = [
     [Sequence.compile('summation(p + n - 3 * p - n * 1)*1 + 0'), 'summation(-2 * p)'],
     [Sequence.compile('1*product(p + n - 3 * p - n * 1) + 0'), 'product(-2 * p)'],
     [Sequence.compile('(2 * p - n - p + n + 0) | roundrobin(p - n + p, p +p - n*1 - 0)'), 'p | roundrobin(-n + 2 * p, -n + 2 * p)'],
+    [Integer() / Prime(), 'i // p'],
 ]
 
 @pytest.mark.parametrize('sequence, simplified', _simplify_tests)
