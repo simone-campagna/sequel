@@ -80,3 +80,30 @@ def make_power(expr, power):
     else:
         return expr ** power
 
+
+def iter_monomials(variables, power):
+    if power == 0:
+        yield []
+    elif len(variables) == 1:
+        yield [(variables[0], power)]
+    else:
+        yield from iter_monomials(variables[1:], power)
+        for ipower in range(1, power + 1):
+            for res in iter_monomials(variables[1:], power - ipower):
+                yield [(variables[0], ipower)] + res
+
+
+def make_monomial(vplist):
+    result = None
+    for variable, power in vplist:
+        vp = make_power(variable, power)
+        if result is None:
+            result = vp
+        else:
+            result *= vp
+    return result
+            
+
+def create_powers(variables, power):
+    for vplist in iter_monomials(variables, power):
+        yield make_monomial(vplist)

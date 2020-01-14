@@ -20,6 +20,8 @@ from ..sequence import (
 from ..sequence.sequence_utils import (
     make_linear_combination,
     make_power,
+    iter_monomials,
+    make_monomial,
 )
 from ..utils import (
     affine_transformation,
@@ -301,7 +303,7 @@ class LinearCombinationAlgorithm(Algorithm):
                      "min_elapsed", "max_elapsed", "exp_elapsed", "sequences"]
 
     def __init__(self, max_items=19, min_components=3, max_components=4, rationals=True,
-                 min_elapsed=0.2, max_elapsed=2.0, exp_elapsed=-0.8,
+                 min_elapsed=0.0, max_elapsed=3.0, exp_elapsed=0.9,
                  sequences=None):
         super().__init__()
         if sequences:
@@ -319,7 +321,7 @@ class LinearCombinationAlgorithm(Algorithm):
         self.max_components = max_components
         self.min_elapsed = min_elapsed
         self.max_elapsed = max_elapsed
-        self.exp_elapsed = -abs(exp_elapsed)
+        self.exp_elapsed = exp_elapsed
         self.rationals = rationals
         self.max_items = max_items
 
@@ -342,6 +344,7 @@ class LinearCombinationAlgorithm(Algorithm):
             return
 
         max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
+        # print("!!!l", self.min_elapsed, self.max_elapsed, self.exp_elapsed, max_elapsed)
 
         all_values = [values[:num_items] for values in all_values]
         for solution, denom in linear_combination(items, all_values, min_components=self.min_components, max_components=self.max_components,
@@ -371,39 +374,63 @@ class RecursiveSequenceAlgorithm(Algorithm):
                      "min_elapsed", "max_elapsed", "exp_elapsed", "max_depth", "max_power"]
 
     def __init__(self, max_items=19, min_components=3, max_components=4, rationals=True,
-                 min_elapsed=0.2, max_elapsed=2.0, exp_elapsed=-0.8,
+                 min_elapsed=0.0, max_elapsed=3.0, exp_elapsed=0.9,
                  max_depth=2, max_power=3):
         self.min_components = min_components
         self.max_components = max_components
         self.min_elapsed = min_elapsed
         self.max_elapsed = max_elapsed
-        self.exp_elapsed = -abs(exp_elapsed)
+        self.exp_elapsed = exp_elapsed
         self.rationals = rationals
         self.max_items = max_items
         self.max_depth = max_depth
-        self.max_power = max_power
+        self.max_power = max(1, max_power)
 
     def iter_sequences(self, manager, items, rank):
         if rank > 1:
             return
         max_depth = self.max_depth
         max_power = self.max_power
+        powers = list(range(1, max_power + 1))
+
         max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
+        # print("!!!r", self.min_elapsed, self.max_elapsed, self.exp_elapsed, max_elapsed)
+
         indexers = [RecursiveSequenceIndexer(i) for i in range(max_depth)]
         one = Sequence.compile('1')
         for depth in range(2, max_depth + 1):
             d_indexers = list(reversed(indexers[:depth]))
             i_items_list = []
+            i_items_pwr = {pwr: [] for pwr in powers}
+            i_items_pwr[0] = [1 for _ in d_indexers]
             d_items = items[depth:]
             for i in range(depth):
                 i_items = items[i:i + len(d_items)]
                 i_items_list.append(i_items)
+                for pwr in powers:
+                    i_items_pwr[pwr].append([i_item ** pwr for i_item in i_items])
             num_found = 0
             i_list = [[1 for _ in i_items]]  # for const term in linear combination
             i_indexers = [one]
             for power in range(1, max_power + 1):
-                i_list.extend([make_power(x, power) for x in i_items] for i_items in i_items_list)
-                i_indexers.extend(make_power(ind, power) for ind in d_indexers)
+                indices = list(range(len(d_indexers)))
+                # print(":::")
+                # for i_items in i_items_list:
+                #     print(":::", i_items)
+                for iplist in iter_monomials(indices, power):
+                    # print(iplist)
+                    c_indexers = make_monomial([(d_indexers[idx], pwr) for idx, pwr in iplist])
+                    # print(c_indexers)
+                    # r_items = [1 for _ in i_items]
+                    c_items = [1 for _ in i_items]
+                    for idx, pwr in iplist:
+                        # for i, ival in enumerate(i_items_list[idx]):
+                        #     r_items[i] *= make_power(ival, pwr)
+                        for i, ival in enumerate(i_items_pwr[pwr][idx]):
+                            c_items[i] *= ival
+                    # assert r_items == c_items
+                    i_list.append(c_items)
+                    i_indexers.append(c_indexers)
                 for solution, denom in linear_combination(d_items, i_list, min_components=self.min_components, max_components=self.max_components,
                                                           max_elapsed=max_elapsed, rationals=self.rationals):
                     generating_sequence = make_linear_combination(solution, i_indexers, denom)
