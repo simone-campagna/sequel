@@ -195,19 +195,22 @@ class ReverseSearchExample(SimplifyMixIn, DeclarationsMixIn, Example):
 
 
 class PlayExample(Example):
-    def __init__(self, printer, source, tries, max_lines=None):
+    def __init__(self, printer, source, tries, num_items=5, max_lines=None):
         super().__init__(printer=printer, max_lines=max_lines)
         self.source = source
-        self.tries = list(tries) + [":quit"]
+        self.tries = list(tries)
+        self.num_items = num_items
+
+    def example_args(self):
+        return super().example_args() + ['--num-items={}'.format(self.num_items)]
 
     def get_text(self):
         ios = StringIO()
         with self.printer.set_file(ios):
-            self.printer.print_quiz(self.source, tries=self.tries)
+            self.printer.print_quiz(self.source, tries=self.tries, num_items=self.num_items)
         args = self.example_args()
-        args.append(shlex.quote(self.source))
         lines = []
-        lines.append("$ sequel play ")
+        lines.append("$ sequel play " + " ".join(args))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
@@ -469,7 +472,22 @@ The RSEARCH command accepts the same options as the SEARCH command. For instance
 The PLAY command generates an hidden random sequence and asks you to guess that sequence:
 """,
             PlayExample(printer=printer,
-                                 source='i + p * zero_one', tries=['p', 'p * zero_one', 'i + p * zero_one']),
+                                 source='rseq(2, 3, _0 * _1 - 1)', tries=[]),
+            """\
+In order to solve the game you have to guess a sequence matching the shown items. 
+""",
+            PlayExample(printer=printer,
+                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['p']),
+            """\
+You can try to guess the next item of the sequence:
+""",
+            PlayExample(printer=printer,
+                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['100']),
+            """\
+If the guess is correct, the item is added to the list; you can then decide to guess the sequence:
+""",
+            PlayExample(printer=printer,
+                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['965', 'rseq(2, 3, _0 * _1 - 1)']),
     ])
     ### COMPILE
     navigator.new_page(

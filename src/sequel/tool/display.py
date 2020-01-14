@@ -29,6 +29,7 @@ __all__ = [
 
 
 UNDEF = object()
+QUIT = object()
 
 register_config(
     name="display",
@@ -45,6 +46,13 @@ register_config(
         "item_format": "    {index:4d}: {item}",
         "num_items": 10,
     })
+
+
+def evaluate(expr):
+    try:
+        return eval(expr)
+    except:
+        return compile_sequence(expr)
 
 
 class ItemType(enum.Enum):
@@ -340,7 +348,9 @@ class Printer(object):
             for key, value in old_values.items():
                 setattr(self, key, value)
 
-    def print_quiz(self, source, tries=None):
+    def print_quiz(self, source, tries=None, num_items=None):
+        if num_items is None:
+            num_items = self.num_items
         item_format = "    {index:4d}: {item:20s}"
         def show_items(items):
             with self.overwrite(max_full_digits=10 ** 100, max_compact_digits=10 ** 100):
@@ -381,6 +391,9 @@ class Printer(object):
         def _get_tag(command, args, items, sequence):
             return command
 
+        def _quit(command, args, items, sequence):
+            return QUIT
+
         def _print_doc(command, args, items, sequence):
             self.print_doc()
 
@@ -394,13 +407,14 @@ class Printer(object):
             expr = args
             self(self.bold(">>>"), self.blue(expr))
             try:
-                res = eval(expr)
-            except:
-                res = compile_sequence(expr)
-            if isinstance(res, Sequence):
-                self.print_sequence(res)
+                obj = evaluate(expr)
+            except Exception as err:
+                self(hdr + self.red("ERROR:") + str(err))
+                return
+            if isinstance(obj, Sequence):
+                self.print_sequence(obj)
             else:
-                self(self.bold(res))
+                self(self.bold(obj))
 
         def _get_answer(msg):
             return input(msg).strip()
@@ -414,13 +428,13 @@ class Printer(object):
                         self(msg + ans)
                         return ans
                     else:
-                        return _get_answer(msg)
+                        return QUIT
                 return _get_stacked_answer
             get_answer = _make_get_stacked_answer(tries)
         else:
             get_answer = _get_answer
 
-        commands['quit'] = ("quit", _get_tag)
+        commands['quit'] = ("quit", _quit)
         commands['items'] = ("items", _show_items)
         commands['spoiler'] = ("show the hidden sequences", _spoiler)
         commands['doc'] = ("show available sequences", _print_doc)
@@ -428,7 +442,6 @@ class Printer(object):
         commands['help'] = ("show available commands", _show_help)
 
         # self(str(sequence))
-        num_items = self.num_items
         item_mode = 'multiline'
         items = []
         ntries = 0
@@ -440,12 +453,14 @@ class Printer(object):
             while True:
                 hdr = "[{}] ".format(ntries)
                 try:
-                    ans = get_answer(hdr + "sequence > ").strip()
+                    ans = get_answer(hdr + "sequence > ")
                 except EOFError:
                     self('')
                     return
                 if not ans:
                     continue
+                if ans is QUIT:
+                    return
                 if ans.startswith(":"):
                     lst = ans[1:].split(None, 1)
                     if len(lst) < 2:
@@ -453,26 +468,38 @@ class Printer(object):
                     command, args = lst
                     fn = commands[command][1]
                     result = fn(command, args, items, sequence)
-                    if result == 'quit':
+                    if result is QUIT:
                         return
                 else:
-                    ntries += 1
-                    hdr = "[{}] ".format(ntries)
                     try:
-                        user_sequence = Sequence.compile(ans, simplify=True)
+                        obj = evaluate(ans)
                     except Exception as err:
                         self(hdr + self.red("ERROR:") + str(err))
                         continue
-                    user_items = user_sequence.get_values(num_items)
-                    nexact, ndiff = compare_items(items, user_items)
-                    if ndiff:
-                        self(hdr + "{} errors - try again".format(ndiff))
-                    else:
-                        if user_sequence.equals(sequence):
-                            self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
+                    if isinstance(obj, Sequence):
+                        user_sequence = obj
+                        ntries += 1
+                        hdr = "[{}] ".format(ntries)
+                        user_items = user_sequence.get_values(num_items)
+                        nexact, ndiff = compare_items(items, user_items)
+                        if ndiff:
+                            self(hdr + "{} errors - try again".format(ndiff))
                         else:
-                            self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
-                        return
+                            if user_sequence.equals(sequence):
+                                self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
+                            else:
+                                self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
+                            return
+                    else:
+                        next_item = sequence(num_items)
+                        if obj == next_item:
+                            self(hdr + "Good! You correctly guessed a new sequence item")
+                            num_items += 1
+                            items += (next_item,)
+                            show_items(items)
+                        else:
+                            self(hdr + "Mmmh... this is not the next sequence item")
+                        
     def pager(self, *args, **kwargs):
         return Pager(self, *args, **kwargs)
       
