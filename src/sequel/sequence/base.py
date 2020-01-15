@@ -564,7 +564,10 @@ class StashMixin(object):
 class EnumeratedSequence(StashMixin, Sequence):
 
     def __call__(self, i):
-        raise SequenceUnknownValueError("{}[{}]".format(self, i))
+        stash = self.get_stash()
+        if i >= len(stash):
+            raise SequenceUnknownValueError("{}[{}]".format(self, i))
+        return stash[i]
 
     def get_values(self, num, *, start=0):
         return self.get_stash()[start:start + num]
