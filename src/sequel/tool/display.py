@@ -30,6 +30,7 @@ __all__ = [
 
 UNDEF = object()
 QUIT = object()
+HINT = object()
 
 register_config(
     name="display",
@@ -200,12 +201,6 @@ class Printer(object):
             self(data)
         elif item_mode == "multiline":
             for index, (item, item_type) in enumerate(zip(items, item_types())):
-                # if index < num_known:
-                #    fn = self.bold
-                # else:
-                #    fn = self.blue
-                # item = fn(self.repr_item(item))
-                # self(self.item_format.format(index=index, item=item))
                 self(self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
                 
     def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
@@ -348,14 +343,29 @@ class Printer(object):
             for key, value in old_values.items():
                 setattr(self, key, value)
 
-    def print_quiz(self, source, tries=None, num_items=None):
+    def print_quiz(self, source, tries=None, num_items=None, num_unknown_items=3):
         if num_items is None:
             num_items = self.num_items
+        state = {
+            'done': False,
+            'num_unknown_items': num_unknown_items,
+            'num_items': num_items,
+            'items': [],
+            'guessed_indices': set(),
+        }
         item_format = "    {index:4d}: {item:20s}"
-        def show_items(items):
+        def show_items(state):
+            items = state['items']
+            num_items = state['num_items']
+            num_unknown_items = state['num_unknown_items']
+            all_items = [self.repr_item(item) for item in items]
+            all_items.extend(self.red("???") for _ in range(num_items + num_unknown_items - len(items)))
             with self.overwrite(max_full_digits=10 ** 100, max_compact_digits=10 ** 100):
-                for index, item in enumerate(items):
-                    item = self.bold(self.repr_item(item))
+                for index, item in enumerate(all_items):
+                    if index in state['guessed_indices']:
+                        item = self.blue(item)
+                    else:
+                        item = self.bold(item)
                     self(item_format.format(index=index, item=item))
 
         items_format = "    {index:4d}: {item:20s} {user_item:20s} {equals}"
@@ -383,38 +393,53 @@ class Printer(object):
             sequence = source
        
         commands = collections.OrderedDict()
+        calc_prompt = self.bold(">>> ")
+        prompt = self.bold("==> ")
         
-        def _show_help(command, args, items, sequence):
+        def _show_help(command, args, state, sequence):
+            self("You can enter the next missing item, for instance:")
+            self(prompt + "42")
+            self("Or you can enter the hidden sequence:")
+            self(prompt + "p + 4")
+            self("Available commands:")
             for key, (doc, function) in commands.items():
                 self("{:20s} {}".format(self.bold(key), doc))
 
-        def _get_tag(command, args, items, sequence):
+        def _get_tag(command, args, state, sequence):
             return command
 
-        def _quit(command, args, items, sequence):
-            return QUIT
+        def _quit(command, args, state, sequence):
+            state['done'] = True
 
-        def _print_doc(command, args, items, sequence):
+        def _print_doc(command, args, state, sequence):
             self.print_doc()
 
-        def _spoiler(command, args, items, sequence):
+        def _hint(command, args, state, sequence):
+            state['num_items'] += 1
+            state['items'].append(sequence(len(state['items'])))
+            show_items(state)
+
+        def _spoiler(command, args, state, sequence):
             self("The hidden sequence is: " + self.bold(sequence))
 
-        def _show_items(command, args, items, sequence):
-            show_items(items)
+        def _show_items(command, args, state, sequence):
+            show_items(state)
 
-        def _calc(command, args, items, sequence):
+        def _calc(command, args, state, sequence):
             expr = args
-            self(self.bold(">>>"), self.blue(expr))
+            self(calc_prompt, self.blue(expr))
             try:
                 obj = evaluate(expr)
             except Exception as err:
-                self(hdr + self.red("ERROR:") + str(err))
+                self(self.red("ERROR:") + str(err))
                 return
             if isinstance(obj, Sequence):
                 self.print_sequence(obj)
             else:
                 self(self.bold(obj))
+
+        def _bad_command(command, args, state, sequence):
+            self(self.red("ERROR") + ": no such command " +  self.bold(command))
 
         def _get_answer(msg):
             return input(msg).strip()
@@ -434,8 +459,14 @@ class Printer(object):
         else:
             get_answer = _get_answer
 
+        def make_items(state):
+            if len(state['items']) != state['num_items']:
+                state['items'].clear()
+                state['items'].extend(sequence.get_values(state['num_items']))
+
         commands['quit'] = ("quit", _quit)
         commands['items'] = ("items", _show_items)
+        commands['hint'] = ("show a new item", _hint)
         commands['spoiler'] = ("show the hidden sequences", _spoiler)
         commands['doc'] = ("show available sequences", _print_doc)
         commands['calc'] = ("calculate expression", _calc)
@@ -443,17 +474,14 @@ class Printer(object):
 
         # self(str(sequence))
         item_mode = 'multiline'
-        items = []
         ntries = 0
         self("(enter ':help' to show commands)")
-        while True:
-            if len(items) != num_items:
-                items = sequence.get_values(num_items)
-            show_items(items)
+        while not state['done']:
+            make_items(state)
+            show_items(state)
             while True:
-                hdr = "[{}] ".format(ntries)
                 try:
-                    ans = get_answer(hdr + "sequence > ")
+                    ans = get_answer(prompt)
                 except EOFError:
                     self('')
                     return
@@ -466,39 +494,43 @@ class Printer(object):
                     if len(lst) < 2:
                         lst.append("")
                     command, args = lst
-                    fn = commands[command][1]
-                    result = fn(command, args, items, sequence)
+                    fn = commands.get(command, (None, _bad_command))[1]
+                    result = fn(command, args, state, sequence)
                     if result is QUIT:
                         return
                 else:
                     try:
                         obj = evaluate(ans)
                     except Exception as err:
-                        self(hdr + self.red("ERROR:") + str(err))
+                        self(self.red("ERROR:") + str(err))
                         continue
                     if isinstance(obj, Sequence):
                         user_sequence = obj
                         ntries += 1
-                        hdr = "[{}] ".format(ntries)
                         user_items = user_sequence.get_values(num_items)
-                        nexact, ndiff = compare_items(items, user_items)
+                        nexact, ndiff = compare_items(state['items'], user_items)
                         if ndiff:
-                            self(hdr + "{} errors - try again".format(ndiff))
+                            self("{} errors - try again".format(ndiff))
                         else:
                             if user_sequence.equals(sequence):
-                                self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
+                                self("Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
                             else:
-                                self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
+                                self("Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
                             return
                     else:
-                        next_item = sequence(num_items)
+                        next_item = sequence(len(state['items']))
                         if obj == next_item:
-                            self(hdr + "Good! You correctly guessed a new sequence item")
-                            num_items += 1
-                            items += (next_item,)
-                            show_items(items)
+                            self("Good! You correctly guessed a new sequence item")
+                            state['num_items'] += 1
+                            state['num_unknown_items'] -= 1
+                            state['guessed_indices'].add(len(state['items']))
+                            state['items'].append(next_item)
+                            show_items(state)
+                            if state['num_unknown_items'] == 0:
+                                self("Solved! The sequence, has you probably guessed, is {}".format(self.bold(str(sequence))))
+                                return
                         else:
-                            self(hdr + "Mmmh... this is not the next sequence item")
+                            self("Mmmh... this is not the next sequence item")
                         
     def pager(self, *args, **kwargs):
         return Pager(self, *args, **kwargs)
