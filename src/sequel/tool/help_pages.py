@@ -477,17 +477,22 @@ The PLAY command generates an hidden random sequence and asks you to guess that 
 In order to solve the game you have to guess a sequence matching the shown items. 
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['p']),
+                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['p', 'rseq(2, 3, _0 * _1 - 1)']),
             """\
-You can try to guess the next item of the sequence:
+You can also try to guess the next item of the sequence:
 """,
             PlayExample(printer=printer,
                                  source='rseq(2, 3, _0 * _1 - 1)', tries=['100']),
             """\
-If the guess is correct, the item is added to the list; you can then decide to guess the sequence:
+If the guess is correct, the item is added to the list:
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['965', 'rseq(2, 3, _0 * _1 - 1)']),
+                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['965']),
+            """\
+If you guess 3 items you win the game:
+""",
+            PlayExample(printer=printer,
+                                 source='rseq(2, 3, _0 * _1 - 1)', num_items=3, tries=['14', '69', '965']),
     ])
     ### COMPILE
     navigator.new_page(

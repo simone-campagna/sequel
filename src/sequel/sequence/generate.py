@@ -338,7 +338,8 @@ def generate_linear_combination(coeffs, sequences, num_items):
     num_items = random.choice(num_items)
     slist = random.sample(sequences, num_items)
     clist = random.sample(coeffs, num_items)
-    return make_linear_combination(clist, slist)
+    sequences = [compile_sequence(s) for s in slist]
+    return make_linear_combination(clist, sequences)
 
 
 def generate_affine_transform(values, coeffs, sequences):
