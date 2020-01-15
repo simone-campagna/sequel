@@ -348,14 +348,20 @@ class Printer(object):
             for key, value in old_values.items():
                 setattr(self, key, value)
 
-    def print_quiz(self, source, tries=None, num_items=None):
+    def print_quiz(self, source, tries=None, num_items=None, num_unknown_items=3):
         if num_items is None:
             num_items = self.num_items
+        num_known_items = num_items
         item_format = "    {index:4d}: {item:20s}"
         def show_items(items):
+            all_items = [self.repr_item(item) for item in items]
+            all_items.extend(self.red("???") for _ in range(num_items + num_unknown_items - len(items)))
             with self.overwrite(max_full_digits=10 ** 100, max_compact_digits=10 ** 100):
-                for index, item in enumerate(items):
-                    item = self.bold(self.repr_item(item))
+                for index, item in enumerate(all_items):
+                    if index < num_known_items:
+                        item = self.bold(item)
+                    else:
+                        item = self.blue(item)
                     self(item_format.format(index=index, item=item))
 
         items_format = "    {index:4d}: {item:20s} {user_item:20s} {equals}"
@@ -383,8 +389,15 @@ class Printer(object):
             sequence = source
        
         commands = collections.OrderedDict()
+        calc_prompt = self.bold(">>> ")
+        prompt = self.bold("==> ")
         
         def _show_help(command, args, items, sequence):
+            self("You can enter the next missing item, for instance:")
+            self(prompt + "42")
+            self("Or you can enter the hidden sequence:")
+            self(prompt + "p + 4")
+            self("Available commands:")
             for key, (doc, function) in commands.items():
                 self("{:20s} {}".format(self.bold(key), doc))
 
@@ -405,11 +418,11 @@ class Printer(object):
 
         def _calc(command, args, items, sequence):
             expr = args
-            self(self.bold(">>>"), self.blue(expr))
+            self(calc_prompt, self.blue(expr))
             try:
                 obj = evaluate(expr)
             except Exception as err:
-                self(hdr + self.red("ERROR:") + str(err))
+                self(self.red("ERROR:") + str(err))
                 return
             if isinstance(obj, Sequence):
                 self.print_sequence(obj)
@@ -451,9 +464,8 @@ class Printer(object):
                 items = sequence.get_values(num_items)
             show_items(items)
             while True:
-                hdr = "[{}] ".format(ntries)
                 try:
-                    ans = get_answer(hdr + "sequence > ")
+                    ans = get_answer(prompt)
                 except EOFError:
                     self('')
                     return
@@ -474,31 +486,34 @@ class Printer(object):
                     try:
                         obj = evaluate(ans)
                     except Exception as err:
-                        self(hdr + self.red("ERROR:") + str(err))
+                        self(self.red("ERROR:") + str(err))
                         continue
                     if isinstance(obj, Sequence):
                         user_sequence = obj
                         ntries += 1
-                        hdr = "[{}] ".format(ntries)
                         user_items = user_sequence.get_values(num_items)
                         nexact, ndiff = compare_items(items, user_items)
                         if ndiff:
-                            self(hdr + "{} errors - try again".format(ndiff))
+                            self("{} errors - try again".format(ndiff))
                         else:
                             if user_sequence.equals(sequence):
-                                self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
+                                self("Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
                             else:
-                                self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
+                                self("Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
                             return
                     else:
                         next_item = sequence(num_items)
                         if obj == next_item:
-                            self(hdr + "Good! You correctly guessed a new sequence item")
+                            self("Good! You correctly guessed a new sequence item")
                             num_items += 1
+                            num_unknown_items -= 1
                             items += (next_item,)
                             show_items(items)
+                            if num_unknown_items == 0:
+                                self("Solved! The sequence, has you probably guessed, is {}".format(self.bold(str(sequence))))
+                                return
                         else:
-                            self(hdr + "Mmmh... this is not the next sequence item")
+                            self("Mmmh... this is not the next sequence item")
                         
     def pager(self, *args, **kwargs):
         return Pager(self, *args, **kwargs)
