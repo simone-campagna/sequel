@@ -377,6 +377,25 @@ class Sequence(metaclass=SMeta):
             sequence_type_list = new_list
     
     @classmethod
+    def get_locals(cls):
+        locals = {
+            "ANY": ANY,
+            "Any": Any,
+            "Interval": Interval,
+            "LowerBound": LowerBound,
+            "UpperBound": UpperBound,
+            "Set": Set,
+            "Value": Value,
+            "rseq": rseq,
+            "floor": idem,  # sympy: a / b -> floor(a/b)
+        }
+        for sequence_type in Sequence.sequence_types():
+            locals[sequence_type.__name__] = sequence_type
+        locals.update(Sequence.__registry__)
+        locals.update(RecursiveSequenceIndexer.__registry__)
+        return locals
+
+    @classmethod
     def compile(cls, source, simplify=False, locals=None, check_type=True):
         """Compile sequence from source.
     
@@ -396,21 +415,7 @@ class Sequence(metaclass=SMeta):
            Sequence
                The compiled Sequence.
         """
-        globals = {
-            "ANY": ANY,
-            "Any": Any,
-            "Interval": Interval,
-            "LowerBound": LowerBound,
-            "UpperBound": UpperBound,
-            "Set": Set,
-            "Value": Value,
-            "rseq": rseq,
-            "floor": idem,  # sympy: a / b -> floor(a/b)
-        }
-        for sequence_type in Sequence.sequence_types():
-            globals[sequence_type.__name__] = sequence_type
-        globals.update(Sequence.__registry__)
-        globals.update(RecursiveSequenceIndexer.__registry__)
+        globals = cls.get_locals()
         if locals is None:
             locals = {}
         sequence = eval(source, globals, locals)

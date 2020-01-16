@@ -34,6 +34,7 @@ from ..search import (
     StopBelowComplexity,
 )
 from ..sequence import compile_sequence, Sequence, generate
+from ..shell import SequelShell
 from ..profiler import Profiler
 from ..utils import assert_sequence_matches
 
@@ -184,6 +185,11 @@ def function_play(level, algorithm, display_kwargs=None):
     sequence = generate(level=level, algorithm=algorithm)
     if sequence is not None:
         printer.print_quiz(source=sequence)
+
+
+def function_shell(display_kwargs=None):
+    shell = SequelShell()
+    shell.interact()
 
 
 def function_help(link=None):

@@ -39,6 +39,7 @@ from .subcommands import (
     function_config_reset,
     function_config_edit,
     function_generate,
+    function_shell,
     function_play,
     function_help,
 )
@@ -147,6 +148,16 @@ To enable completion run the following command:
         default=None,
         nargs="*",
         help='start from link')
+
+    shell_parser = subparsers.add_parser(
+        'shell',
+        description="open a Sequel Shell",
+        **common_parser_kwargs,
+    )
+    shell_parser.set_defaults(
+        function=function_shell,
+        function_args=[],
+    )
 
     search_description="""\
 Search sequence matching items {}
