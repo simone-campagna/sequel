@@ -306,7 +306,7 @@ The SHELL subcommand opens an interactive python shell to play with sequel seque
 The PLAY subcommand generates an hidden random sequence and let you guess what sequence it is.
 """,
             PlayExample(printer=printer,
-                                 sequences=['p * zero_one'], commands=['solve(p * zero_one)']),
+                                 sequences=['p * zero_one'], commands=['q.solve(p * zero_one)']),
         ]
     )
 
@@ -516,25 +516,30 @@ The PLAY command generates an hidden random sequence and asks you to guess that 
             PlayExample(printer=printer,
                                  sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=[]),
             """\
+The 'q' instance can be used to play the game; run the 'q' command to have an help:
+""",
+            PlayExample(printer=printer,
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q']),
+            """\
 In order to solve the game you have to guess a sequence matching the shown items. 
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['show()', 'solve(p)', 'x = rseq(2, 3, _0 * _1 - 1)', 'print_sequence(x)', 'solve(x)']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q.show()', 'q.solve(p)', 'x = rseq(2, 3, _0 * _1 - 1)', 'print_sequence(x)', 'q.solve(x)']),
             """\
 You can also try to guess the next item of the sequence:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['show()', 'guess(100)']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q.show()', 'q.guess(100)']),
             """\
 If the guess is correct, the item is added to the list:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['show()', 'guess(965)']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q.show()', 'q.guess(965)']),
             """\
 If you guess 3 items you win the game:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], num_items=3, commands=['show()', 'guess(14)', 'guess(69)', 'guess(965)']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], num_items=3, commands=['q.show()', 'q.guess(14)', 'q.guess(69)', 'q.guess(965)']),
     ])
     ### SHELL
     navigator.new_page(

@@ -474,7 +474,7 @@ class Renderer(object):
                 attrs = ["underline"]
             # print(link.text, current_page_name, color, attrs)
             page_link_text = termcolor.colored(text, color, attrs=attrs)
-            menu_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["reverse"]) + \
+            menu_link_text = termcolor.colored(text[:nmin[transformed_link_text]], color, attrs=attrs + ["bold"]) + \
                                                termcolor.colored(text[nmin[transformed_link_text]:], color, attrs=attrs)
             link_re = re.compile(r'\b(?<!-){}\b'.format(re.escape(transformed_link_text)))
             lsub.append((link_re, page_link_text, menu_link_text))

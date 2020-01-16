@@ -39,13 +39,18 @@ class SequelShell(InteractiveConsole):
 
     def banner(self):
         return """\
-SequelShell
+Sequel shell
 """
 
-    def interact(self, banner=None):
+    def exitmsg(self):
+        return ""
+
+    def interact(self, banner=None, exitmsg=None):
         if banner is None:
             banner = self.banner()
-        super().interact(banner=banner)
+        if exitmsg is None:
+            exitmsg = self.exitmsg()
+        super().interact(banner=banner, exitmsg=exitmsg)
 
     def run_commands(self, commands, banner=None, echo=False):
         printer = self.printer
