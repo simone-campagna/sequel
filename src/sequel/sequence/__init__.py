@@ -52,4 +52,5 @@ from .roundrobin import (
 )
 from .generate import (
     generate,
+    generate_sequences,
 )

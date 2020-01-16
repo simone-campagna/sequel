@@ -33,13 +33,14 @@ from ..search import (
     # StopAtNum,
     StopBelowComplexity,
 )
-from ..sequence import compile_sequence, Sequence, generate
-from ..shell import SequelShell
+from ..sequence import compile_sequence, Sequence, generate, generate_sequences
 from ..profiler import Profiler
 from ..utils import assert_sequence_matches
 
 from .display import Printer, iter_item_types
 from .help_pages import create_help
+from .quiz import QuizShell
+from .shell import SequelShell
 
 __all__ = [
     'main',
@@ -182,13 +183,14 @@ def function_generate(level, algorithm, display_kwargs=None):
 
 def function_play(level, algorithm, display_kwargs=None):
     printer = make_printer(display_kwargs)
-    sequence = generate(level=level, algorithm=algorithm)
-    if sequence is not None:
-        printer.print_quiz(source=sequence)
+    sequence_iterator = generate_sequences(level=level, algorithm=algorithm)
+    quiz_shell = QuizShell(sequence_iterator=sequence_iterator)
+    quiz_shell.interact()
 
 
 def function_shell(display_kwargs=None):
-    shell = SequelShell()
+    printer = make_printer(display_kwargs)
+    shell = SequelShell(printer=printer)
     shell.interact()
 
 

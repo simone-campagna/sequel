@@ -4,8 +4,10 @@ Help pages
 
 import collections
 import contextlib
+import itertools
 from io import StringIO
 import shlex
+import sys
 
 from ..declaration import (
     parse_sequence_declaration,
@@ -14,6 +16,8 @@ from ..declaration import (
 )
 from .display import Printer
 from .page import Navigator, Element, Paragraph, Quotation, Break
+from .quiz import QuizShell
+from .shell import SequelShell
 from ..sequence import compile_sequence, Sequence
 from ..items import make_items, ANY
 from ..utils import assert_sequence_matches
@@ -26,6 +30,16 @@ __all__ = [
 DummyCatalogDeclaration = collections.namedtuple(
     'DummyCatalogDeclaration', 'filename sources')
     
+
+@contextlib.contextmanager
+def redirect(stdout, stderr):
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = stdout, stderr
+        yield
+    finally:
+        sys.stdout, sys.stderr = old_stdout, old_stderr
+
 
 class Example(Element):
     def __init__(self, *, printer, max_lines=None, **kwargs):
@@ -194,20 +208,43 @@ class ReverseSearchExample(SimplifyMixIn, DeclarationsMixIn, Example):
         return self._format_lines(lines)
 
 
-class PlayExample(Example):
-    def __init__(self, printer, source, tries, num_items=5, max_lines=None):
+class Shellxample(Example):
+    def __init__(self, printer, commands, max_lines=None):
         super().__init__(printer=printer, max_lines=max_lines)
-        self.source = source
-        self.tries = list(tries)
+        self.commands = list(commands)
+
+    def get_text(self):
+        ios = StringIO()
+        shell = SequelShell(printer=self.printer)
+        with self.printer.set_file(ios):
+            with redirect(ios, ios):
+                shell.run_commands(self.commands, echo=True)
+        args = self.example_args()
+        lines = []
+        lines.append("$ sequel shell " + " ".join(args))
+        lines.extend(self._output_lines(ios.getvalue()))
+        return self._format_lines(lines)
+
+
+class PlayExample(Example):
+    def __init__(self, printer, sequences, commands, num_items=5, max_lines=None, banner=None, max_games=1):
+        super().__init__(printer=printer, max_lines=max_lines)
+        self.sequences = [Sequence.make_sequence(x) for x in sequences]
+        self.commands = list(commands)
         self.num_items = num_items
+        self.banner = banner
+        self.max_games = max_games
 
     def example_args(self):
         return super().example_args() + ['--num-items={}'.format(self.num_items)]
 
     def get_text(self):
         ios = StringIO()
+        quiz_shell = QuizShell(printer=self.printer, sequence_iterator=itertools.cycle(self.sequences),
+                               num_known_items=self.num_items, max_games=self.max_games)
         with self.printer.set_file(ios):
-            self.printer.print_quiz(self.source, tries=self.tries, num_items=self.num_items)
+            with redirect(ios, ios):
+                quiz_shell.run_commands(self.commands, echo=True, banner=self.banner)
         args = self.example_args()
         lines = []
         lines.append("$ sequel play " + " ".join(args))
@@ -261,10 +298,15 @@ and searches its values. It is a shortcut for running a compile subcommand and t
             ReverseSearchExample(printer=printer,
                                  source='p * zero_one', sequences=None),
             """\
+The SHELL subcommand opens an interactive python shell to play with sequel sequences:
+""",
+            Shellxample(printer=printer,
+                                 commands=['print_sequence(p * zero_one)']),
+            """\
 The PLAY subcommand generates an hidden random sequence and let you guess what sequence it is.
 """,
             PlayExample(printer=printer,
-                                 source='p * zero_one', tries=['p * zero_one']),
+                                 sequences=['p * zero_one'], commands=['solve(p * zero_one)']),
         ]
     )
 
@@ -472,27 +514,37 @@ The RSEARCH command accepts the same options as the SEARCH command. For instance
 The PLAY command generates an hidden random sequence and asks you to guess that sequence:
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', tries=[]),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=[]),
             """\
 In order to solve the game you have to guess a sequence matching the shown items. 
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['p', 'rseq(2, 3, _0 * _1 - 1)']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['show()', 'solve(p)', 'x = rseq(2, 3, _0 * _1 - 1)', 'print_sequence(x)', 'solve(x)']),
             """\
 You can also try to guess the next item of the sequence:
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['100']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['show()', 'guess(100)']),
             """\
 If the guess is correct, the item is added to the list:
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', tries=['965']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['show()', 'guess(965)']),
             """\
 If you guess 3 items you win the game:
 """,
             PlayExample(printer=printer,
-                                 source='rseq(2, 3, _0 * _1 - 1)', num_items=3, tries=['14', '69', '965']),
+                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], num_items=3, commands=['show()', 'guess(14)', 'guess(69)', 'guess(965)']),
+    ])
+    ### SHELL
+    navigator.new_page(
+        name="shell",
+        elements=[
+            """\
+The SHELL subcommand opens an interactive python shell to play with sequel sequences:
+""",
+            Shellxample(printer=printer,
+                                 commands=['print_sequence(p * zero_one)']),
     ])
     ### COMPILE
     navigator.new_page(

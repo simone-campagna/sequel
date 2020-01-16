@@ -507,3 +507,8 @@ def generate(level=None, algorithm=None):
         for cumulated_p, algorithm_config in lst:
             if p <= cumulated_p:
                 return run_algorithm(algorithm_config)
+
+
+def generate_sequences(level=None, algorithm=None):
+    while True:
+        yield generate(level=level, algorithm=algorithm)
