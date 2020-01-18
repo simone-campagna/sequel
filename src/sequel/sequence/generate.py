@@ -86,7 +86,7 @@ CONFIG = """\
             "weight": 1.0,
             "kwargs": {
                 "denom": [1],
-                "sequences": [["5", "1", "2"], ["_0", "_0 ** 2"]],
+                "sequences": [["5", "1", "2"], ["I0", "I0 ** 2"]],
                 "coeffs": [[1], [1, 2, -1]],
                 "known_items": [[-1, 2, 1]]
             }
@@ -97,7 +97,7 @@ CONFIG = """\
             "weight": 0.0,
             "kwargs": {
                 "denom": [1],
-                "sequences": ["_0", ["_1", "_1 ** 2"]],
+                "sequences": ["I0", ["I1", "I1 ** 2"]],
                 "coeffs": [[1, 0, -1], [1, 2]],
                 "known_items": [[0, 1], [1, -1]]
             }

@@ -15,7 +15,7 @@ from ..sequence import (
     Power, make_fibonacci, make_tribonacci,
     Repunit,
     RecursiveSequence,
-    RecursiveSequenceIndexer,
+    BackIndexer,
 )
 from ..sequence.sequence_utils import (
     make_linear_combination,
@@ -396,7 +396,7 @@ class RecursiveSequenceAlgorithm(Algorithm):
         max_elapsed = max(self.min_elapsed, self.max_elapsed / (1.0 + rank) ** self.exp_elapsed)
         # print("!!!r", self.min_elapsed, self.max_elapsed, self.exp_elapsed, max_elapsed)
 
-        indexers = [RecursiveSequenceIndexer(i) for i in range(max_depth)]
+        indexers = [BackIndexer(i) for i in range(max_depth)]
         one = Sequence.compile('1')
         for depth in range(2, max_depth + 1):
             d_indexers = list(reversed(indexers[:depth]))

@@ -8,6 +8,7 @@ import itertools
 from io import StringIO
 import shlex
 import sys
+import traceback
 
 from ..declaration import (
     parse_sequence_declaration,
@@ -18,7 +19,7 @@ from .display import Printer
 from .page import Navigator, Element, Paragraph, Quotation, Break
 from .quiz import QuizShell
 from .shell import SequelShell
-from ..sequence import compile_sequence, Sequence
+from ..sequence import compile_sequence, Sequence, RecursiveSequenceError
 from ..items import make_items, ANY
 from ..utils import assert_sequence_matches
 
@@ -115,6 +116,33 @@ class DeclarationsMixIn(object):
         return args
 
 
+class RaisingMixIn(object):
+    def __init__(self, *, expected_exception=False, **kwargs):
+        self.expected_exception = None
+        if isinstance(expected_exception, type) and issubclass(expected_exception, Exception):
+            self.expected_exception = expected_exception
+        elif isinstance(expected_exception, bool):
+            if expected_exception:
+                self.expected_exception = BaseException
+            else:
+                self.expected_exception = None
+        else:
+            raise TypeError(expected_exception)
+        super().__init__(**kwargs)
+
+    @contextlib.contextmanager
+    def raising(self, file=sys.stderr):
+        if self.expected_exception:
+            try:
+                yield
+            except self.expected_exception:
+                traceback.print_exc(file=file)
+            else:
+                raise RuntimeError("should raise {} but it doesn't".format(self.expected_exception))
+        else:
+            yield
+
+            
 class DocExample(SimplifyMixIn, Example):
     def __init__(self, printer, sources, simplify=False, max_lines=None):
         super().__init__(printer=printer, simplify=simplify, max_lines=max_lines)
@@ -134,9 +162,9 @@ class DocExample(SimplifyMixIn, Example):
         return self._format_lines(lines)
 
 
-class CompileExample(SimplifyMixIn, Example):
-    def __init__(self, printer, sources, simplify=False, max_lines=None, num_items=None):
-        super().__init__(printer=printer, simplify=simplify, max_lines=max_lines)
+class CompileExample(SimplifyMixIn, RaisingMixIn, Example):
+    def __init__(self, printer, sources, simplify=False, expected_exception=False, max_lines=None, num_items=None):
+        super().__init__(printer=printer, simplify=simplify, expected_exception=expected_exception, max_lines=max_lines)
         self.sources = sources
         self.simplify = simplify
         self.num_items = num_items
@@ -144,9 +172,10 @@ class CompileExample(SimplifyMixIn, Example):
     def get_text(self):
         ios = StringIO()
         with self.printer.set_file(ios):
-            for source in self.sources:
-                sequence = compile_sequence(source, simplify=self.simplify)
-                self.printer.print_sequence(sequence, num_items=self.num_items)
+            with self.raising(ios):
+                for source in self.sources:
+                    sequence = compile_sequence(source, simplify=self.simplify)
+                    self.printer.print_sequence(sequence, num_items=self.num_items)
         args = self.example_args()
         if self.sources:
             args.extend(self.sources)
@@ -240,10 +269,10 @@ class PlayExample(Example):
 
     def get_text(self):
         ios = StringIO()
-        quiz_shell = QuizShell(printer=self.printer, sequence_iterator=itertools.cycle(self.sequences),
-                               num_known_items=self.num_items, max_games=self.max_games)
         with self.printer.set_file(ios):
             with redirect(ios, ios):
+                quiz_shell = QuizShell(printer=self.printer, sequence_iterator=itertools.cycle(self.sequences),
+                                       num_known_items=self.num_items, max_games=self.max_games)
                 quiz_shell.run_commands(self.commands, echo=True, banner=self.banner)
         args = self.example_args()
         lines = []
@@ -306,7 +335,7 @@ The SHELL subcommand opens an interactive python shell to play with sequel seque
 The PLAY subcommand generates an hidden random sequence and let you guess what sequence it is.
 """,
             PlayExample(printer=printer,
-                                 sequences=['p * zero_one'], commands=['q.solve(p * zero_one)']),
+                                 sequences=['p * zero_one'], commands=['q.guess(p * zero_one)']),
         ]
     )
 
@@ -402,7 +431,7 @@ The polygonal numbers are also available:
 Additionally, a generic RECURSIVE-SEQUENCE can be defined; the following sequence is the recursive definition of the factorial function:
 """,
             CompileExample(printer=printer,
-                           sources=['rseq(1, _0 * i)']),
+                           sources=['rseq(1, I1 * i)']),
         ],
     )
 
@@ -412,62 +441,102 @@ Additionally, a generic RECURSIVE-SEQUENCE can be defined; the following sequenc
         parent="expressions",
         elements=[
             """\
-Generic recursive sequences can be defined using the "rseq" function: it takes a list of known values and a generating sequence. The generating sequence is a special sequence that, given the last generated items, generates the next one; it can access the last item as _0, the second to last item as _1, and so on. 
-""",
-            """\
-For instance, 'rseq(1, _0 * i)' defines a new sequence starting with 0 and producing new items as the product of the last item ('_0') with the value of the sequence 'i' ([0, 1, 2, 3, ...]). The values are:
+Generic recursive sequences can be defined using the "rseq" function: it takes a list of known values and a generating sequence. The generating sequence is a special sequence that, given the last generated items, produces the next one. The form of a recursive sequence definition is
 """,
             Quotation("""\
-  rseq(1, _0 * i):
-    [0] ->                                   1  (the initial value)
-    [1] -> _0 * i(1) == [0] * 1 == 1 * 1 ==  1
-    [2] -> _0 * i(2) == [1] * 2 == 1 * 2 ==  2
-    [3] -> _0 * i(3) == [2] * 3 == 2 * 3 ==  6
-    [4] -> _0 * i(4) == [3] * 4 == 6 * 4 == 24
-    ...
+  rseq(K0, K1, ..., KN, GS)
+
+where:
+
+  K0, K1, ..., KN are the first N known values (N can be 0)
+  GS is a generatong sequence
 """),
             """\
-This is the same as the factorial sequence.
+The generating sequence is used to produce the items for i >= N; for instance, in 'rseq(4, 8, p)', the generating sequence is 'p', and it is used to produce the items with index 2, 3, ...:
 """,
             CompileExample(printer=printer,
-                           sources=['rseq(1, _0 * i)']),
+                           sources=['rseq(4, 8, 0)']),
+            """
+The generating sequence can be a generic sequence; nevertheless it may contain references to the recursive sequence itself:
+""",
+            Quotation("""\
+  I0      is the recursive sequence itself
+  I1      is equivalent to I0 | i - 1
+  I2      is equivalent to I0 | i - 2
+  ...
+  I9      is equivalent to I0 | i - 9
+  rseq[n] is equivalent to I0 | i - n
+"""),
             """\
-As a second example, consider 'rseq(0, 1, _0 + _1)'; in this case the known items are two (0 and 1) and the next items are generated as the sum of the two previous values (_0 and _1):
+For instance, 'rseq(1, I1 * i)' defines a new sequence starting with 1 and producing new items as the product of the last item ('I1') with the value of the sequence 'i' ([0, 1, 2, 3, ...]). The values are:
+""",
+            Quotation("""\
+  rseq(1, I1 * i):
+    [0] ->                                   1  (the initial value)
+    [1] -> I1 * i(1) == [0] * 1 == 1 * 1 ==  1
+    [2] -> I1 * i(2) == [1] * 2 == 1 * 2 ==  2
+    [3] -> I1 * i(3) == [2] * 3 == 2 * 3 ==  6
+    [4] -> I1 * i(4) == [3] * 4 == 6 * 4 == 24
+    ...
+
+This is the same as the factorial sequence.
+"""),
+            CompileExample(printer=printer,
+                           sources=['rseq(1, I1 * i)']),
+            """\
+As a second example, consider 'rseq(0, 1, I1 + I2)'; in this case the known items are two (0 and 1) and the next items are generated as the sum of the last two values (I1 and I2):
 """,
 
             Quotation("""\
-  rseq(0, 1, _0 + _1):
+  rseq(0, 1, I1 + I2):
     [0] ->                                   0  (the first known item)
     [1] ->                                   1  (the second known item)
-    [2] -> _0 + _1 == [1] + [0] == 1 + 0 ==  1
-    [3] -> _0 + _1 == [2] + [1] == 1 + 1 ==  2
-    [4] -> _0 + _1 == [3] + [2] == 2 + 1 ==  3
-    [5] -> _0 + _1 == [4] + [3] == 3 + 2 ==  5
-    [6] -> _0 + _1 == [5] + [4] == 5 + 3 ==  8
+    [2] -> I1 + I2 == [1] + [0] == 0 + 0 ==  1
+    [3] -> I1 + I2 == [2] + [1] == 1 + 1 ==  2
+    [4] -> I1 + I2 == [3] + [2] == 2 + 1 ==  3
+    [5] -> I1 + I2 == [4] + [3] == 3 + 2 ==  5
+    [6] -> I1 + I2 == [5] + [4] == 5 + 3 ==  8
+    ...
+
+This is the same as the fib01 sequence.
+"""),
+            CompileExample(printer=printer,
+                           sources=['rseq(0, 1, I1 + I2)']),
+            """\
+A recursive sequence definition must contain at least N known elements, where N is the max used index in the generating expression; so, if the generating expression is 'I1 + 3 * I3',
+the recursive sequence definition must contain at least 3 values. Anyway, it is accepted to define more than N+1 known values, for instance:
+""",
+            CompileExample(printer=printer,
+                           sources=['rseq(3, 2, 1, 0, I1 + 1)']),
+            """\
+Another constraint on the generating sequence is obviously that it cannot be used to generate items with index N >= the index of the last generated item.
+For instance, 'I0', wich is a reference to the recursive sequence itself, is not a valid generating sequence:
+""",
+            CompileExample(printer=printer,
+                           sources=['rseq(0, I0)'], expected_exception=RecursiveSequenceError),
+            """\
+In the definition above the item 1 of the recursive sequence is defined as the item 1 of the recursive sequence itself; this is an error.
+Anyway, I0 can be used in a generating sequence definition; for instance 'rseq(1, summation(I0) | i - 1)' is defined as follow:
+""",
+            Quotation("""\
+  rseq(1, summation(I0) | i - 1):
+    [0] ->                                         1  (the first known item)
+    [1] -> summation(I0)[0] == sum(1)              1
+    [2] -> summation(I0)[1] == sum(1, 1) ==        2
+    [3] -> summation(I0)[2] == sum(1, 1, 2) ==     4
+    [4] -> summation(I0)[3] == sum(1, 1, 2, 4) ==  8
     ...
 """),
-
+            CompileExample(printer=printer,
+                           sources=['rseq(0, 1, summation(I0) | i - 1)']),
             """\
-This is the same as the fib01 sequence.
+The following sequence computes the items of the Collatz sequence starting with n=19:
 """,
             CompileExample(printer=printer,
-                           sources=['rseq(0, 1, _0 + _1)']),
+                           sources=['rseq(19, ifelse(I1 % 2 == 0, I1 // 2, 3 * I1 + 1))'], num_items=24),
             """\
-The generating sequence is a generic sequence. The following sequence computes the items of the Collatz sequence starting with n=19:
-""",
-            CompileExample(printer=printer,
-                           sources=['rseq(19, ifelse(_0 % 2 == 0, _0 // 2, 3 * _0 + 1))'], num_items=24),
-            """\
-When defining the generating sequence, the n-th to last generated item can be accessed as 'rseq[n]', for any value of n; the _0, _1, ..., _9 indices are shortcuts for rseq[0], rseq[1], ..., rseq[9] respectively. So, the recursive definition of the fib01 sequence can be written as:
-""",
-            CompileExample(printer=printer,
-                           sources=['rseq(0, 1, rseq[0] + rseq[1])']),
-            """\
-A recursive sequence definition must contain at least N+1 known elements, where N is the max used index in the generating expression; so, if the generating expression is '_0 + 3 * _2', N is 2 and the
-recursive sequence definition must contain at least 3 values. Anyway, it is accepted to define more than N+1 known values, for instance:
-""",
-            CompileExample(printer=printer,
-                           sources=['rseq(1000, 999, 998, _0 + 1)']),
+Be aware that I0, I1, ... are "limited" sequences: they cannot be used outside a rseq(...) definition. Moreover, as stated above, I<N> cannot be used to generate items with index n >= N.
+"""
         ],
     )
 
@@ -514,32 +583,42 @@ The RSEARCH command accepts the same options as the SEARCH command. For instance
 The PLAY command generates an hidden random sequence and asks you to guess that sequence:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=[]),
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=[]),
             """\
 The 'q' instance can be used to play the game; run the 'q' command to have an help:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q']),
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q']),
             """\
-In order to solve the game you have to guess a sequence matching the shown items. 
+In order to win the game you have to guess a sequence matching the shown items. 
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q.show()', 'q.solve(p)', 'x = rseq(2, 3, _0 * _1 - 1)', 'print_sequence(x)', 'q.solve(x)']),
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(p)', 'x = rseq(2, 3, I1 * I2 - 1)', 'print_sequence(x)', 'q.guess(x)']),
             """\
 You can also try to guess the next item of the sequence:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q.show()', 'q.guess(100)']),
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(100)']),
             """\
 If the guess is correct, the item is added to the list:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], commands=['q.show()', 'q.guess(965)']),
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(965)']),
             """\
 If you guess 3 items you win the game:
 """,
             PlayExample(printer=printer,
-                                 sequences=['rseq(2, 3, _0 * _1 - 1)'], num_items=3, commands=['q.show()', 'q.guess(14)', 'q.guess(69)', 'q.guess(965)']),
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], num_items=3, commands=['q.show()', 'q.guess(14)', 'q.guess(69)', 'q.guess(965)']),
+            """\
+You can ask for new items:
+""",
+            PlayExample(printer=printer,
+                        sequences=['rseq(2, 3, I1 * I2 - 1)'], num_items=3, commands=['q.new_item()', 'q.new_item()']),
+            """\
+If the current game is too difficult for you, the 'new_game' command will start a new one:
+""",
+            PlayExample(printer=printer,
+                        sequences=['(fib01 + catalan) ** m_exp', 'p'], num_items=3, commands=['q.new_game()']),
     ])
     ### SHELL
     navigator.new_page(
@@ -684,7 +763,7 @@ For instance:
 """,
             SearchExample(printer=printer,
                           items=[4, 3, 20, 0, 77, -52, 238, -285, 736, -1276],
-                          sequences=[compile_sequence('rseq(2, 1, _1 - _0 + 3) * p')]),
+                          sequences=[compile_sequence('rseq(2, 1, I2 - I1 + 3) * p')]),
 
         ],
         parent="search",

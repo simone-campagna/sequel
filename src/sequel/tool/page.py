@@ -335,24 +335,60 @@ class Navigator(collections.abc.Mapping):
             raise ValueError("{!r} is not a NavigationAction".format(link.action))
         return do_function(link)
 
+    def _get_ref(self, refs, text, warn_multiple=True):
+        text = transform_link(text)
+        link = refs.get(text, None)
+        if link is not None:
+            return True, link
+        matching_links = [link for link in self._links.values() if link.matches(text)]
+        if len(matching_links) == 1:
+            return True, matching_links[0]
+        elif len(matching_links) > 1:
+            if warn_multiple:
+                self._warn_multiple_matches(text, matching_links)
+            return False, matching_links
+        return False, None
+
+    def get_link(self, text, warn_multiple=True):
+        found, link = self._get_ref(self._links, text, warn_multiple=warn_multiple)
+        if found:
+            return link
+
+    def get_page(self, text, warn_multiple=True):
+        found, link = self._get_ref(self._pages, text, warn_multiple=warn_multiple)
+        if found:
+            print(text, link)
+            return link.data['page']
+
+    def _warn_multiple_matches(self, text, links):
+        matches = []
+        for link in links:
+            matches.append(self.printer.red(text) + link.text[len(text):])
+        self.printer("Multiple matches: " + " | " .join(matches))
+
     def follow_link(self, text):
         text = transform_link(text)
-        link = self._links.get(text, None)
-        if link is None:
-            # start
-            matching_links = [link for link in self._links.values() if link.matches(text)]
-            if len(matching_links) == 1:
-                link = matching_links[0]
-            elif len(matching_links) > 1:
-                matches = []
-                for matching_link in matching_links:
-                    matches.append(self.printer.red(text) + matching_link.text[len(text):])
-                self.printer("Multiple matches: " + " | " .join(matches))
-                link = None
-        if link:
-            return self._execute_link(link)
-        else:
-            return LinkResult(status=NavigationStatus.FAILURE, link=None, page=None)
+        found, link = self._get_ref(self._links, text)
+        if found:
+            if link:
+                return self._execute_link(link)
+            else:
+                return LinkResult(status=NavigationStatus.FAILURE, link=None, page=None)
+        # REM if link is None:
+        # REM     # start
+        # REM     matching_links = [link for link in self._links.values() if link.matches(text)]
+        # REM     if len(matching_links) == 1:
+        # REM         link = matching_links[0]
+        # REM     elif len(matching_links) > 1:
+        # REM         matches = []
+        # REM         for matching_link in matching_links:
+        # REM             matches.append(self.printer.red(text) + matching_link.text[len(text):])
+        # REM         self.printer("Multiple matches: " + " | " .join(matches))
+        # REM         link = None
+        # REM if link:
+        # REM     return self._execute_link(link)
+        # REM else:
+        # REM     return LinkResult(status=NavigationStatus.FAILURE, link=None, page=None)
 
     def add_index(self):
         if self.index_name is not None:
@@ -390,7 +426,7 @@ class Navigator(collections.abc.Mapping):
         order(l0, dct, olist)
         return olist
 
-    def navigate(self, start_links=(), interactive=None):
+    def navigate(self, home=None, start_links=(), interactive=None):
         start_links = list(start_links)
         if interactive is None:
             interactive = not bool(start_links)
@@ -407,7 +443,10 @@ class Navigator(collections.abc.Mapping):
         if start_links:
             page = None
         else:
-            page = self.home_page()
+            if home is None:
+                page = self.home_page()
+            else:
+                page = self.get_page(home)
         while True:
             if page is not None:
                 renderer = Renderer(self, printer, current_page=page, interactive=interactive)

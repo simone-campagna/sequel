@@ -7,19 +7,17 @@ import types
 from .display import Printer
 from .shell import SequelShell
 from ..sequence import Sequence, compile_sequence, generate_sequences
+from ..lazy import gmpy2
 
 
 
 class QuizGame(object):
-    def __init__(self, sequence, *, num_known_items=10, num_correct_guesses=3, printer=None):
+    def __init__(self, sequence, *, num_known_items=10, num_correct_guesses=3):
         self.__num_known_items = num_known_items
         self.__num_correct_guesses = num_correct_guesses
         self.__sequence = Sequence.make_sequence(sequence)
         self.__items = list(self.__sequence.get_values(self.__num_known_items))
         self.__guessed_indices = set()
-        if printer is None:
-            printer = Printer()
-        self._printer = printer
 
     def check_guess(self, item):
         items = self.__items
@@ -68,22 +66,32 @@ class QuizGame(object):
         return frozenset(self.__guessed_indices)
 
 
-class Cmd(object):
-    def __init__(self, function):
-        self.function = function
+class AutoCall(object):
+    def __init__(self, printer, function, name=None, doc=None):
+        self._printer = printer
+        self._function = function
+        if name is None:
+            name = function.__name__
+        self._name = name
+        if doc is None:
+            doc = function.__doc__
+        if doc is None:
+            doc = name
+        self._doc = doc
 
-    # def __repr__(self):
-    #     self()
+    def __repr__(self):
+        return self._function()
 
     def __call__(self, *args, **kwargs):
-        return self.function(*args, **kwargs)
+        return self._printer(self._function(*args, **kwargs))
 
     @property
     def name(self):
-        return self.function.__name__
+        return self._name
 
+    @property
     def doc(self):
-        return self.function.__doc__
+        return self._doc
 
 
 class Quiz(object):
@@ -102,32 +110,94 @@ class Quiz(object):
         self.__max_games = max_games
         self.__played_games = 0
         self.__docs = []
-        for method in (self.help, self.show, self.solve, self.guess, self.hint, self.spoiler, self.new):
-            method_name = method.__name__
-            method_doc = method.__doc__
-            if method_doc is None:
-                method_doc = method_name
+        for method_name, repr_method in [('help', self.__repr_help),
+                                         ('show', self.__repr_show),
+                                         ('guess', None),
+                                         ('guess_item', None),
+                                         ('guess_sequence', None),
+                                         ('hint', self.__repr_hint),
+                                         ('spoiler', self.__repr_spoiler),
+                                         ('new_game', self.__repr_new_game),
+                                         ('new_item', self.__repr_new_item)]:
+            if repr_method is None:
+                method = getattr(self, method_name)
+                method_doc = method.__doc__
+            else:
+                method = AutoCall(self.__printer, repr_method, name=method_name)
+                setattr(self, method_name, method)
+                method_doc = method.doc
             self.__docs.append((method_name, method_doc))
         self.__restart()
 
     def __restart(self):
         self.__sequence = next(self.__sequence_iterator)
         self.__sequence_shown = False
-        self.__game = QuizGame(self.__sequence, num_known_items=self.__num_known_items, num_correct_guesses=self.__num_correct_guesses, printer=self.__printer)
+        self.__game = QuizGame(self.__sequence, num_known_items=self.__num_known_items, num_correct_guesses=self.__num_correct_guesses)
         self.__played_games += 1
 
     def __autorestart(self):
         if self.__max_games is None or self.__max_games > self.__played_games:
-            self.new()
+            self.new_game()
 
-    def help(self):
-        """show help"""
-        printer(self.__help())
-
-    def __help(self):
+    def guess(self, value):
+        """Try to guess the sequence ot the next item"""
+        if gmpy2.is_integer(value):
+            return self.guess_item(value)
+        elif isinstance(value, Sequence):
+            return self.guess_sequence(value)
+        else:
+            printer = self.__printer
+            printer(printer.red("ERROR: ") + "guess expects an integer or a sequence argument, not " + printer.bold(type(value).__name__))
+            
+    def guess_item(self, item):
+        """Try to guess the next item"""
         printer = self.__printer
-        lines = []
-        lines.append("""\
+        game = self.__game
+        if game.check_guess(item):
+            printer("Good, you correctly guessed a new sequence item")
+            self.show()
+            missing = game.num_correct_guesses
+            if missing == 0:
+                printer("You won! The sequence was {}".format(printer.bold(self.__sequence)))
+                self.__autorestart()
+            elif missing > 0:
+                if missing == 1:
+                    pl = ''
+                else:
+                    pl = 's'
+                printer("Guess {} more item{} to win!".format(missing, pl))
+        else:
+            printer("Mmmh... {} is not the next sequence item".format(item))
+
+    def guess_sequence(self, sequence):
+        """Try to guess the sequence"""
+        printer = self.__printer
+        game = self.__game
+        ref = self.__sequence
+        seq = Sequence.make_sequence(sequence)
+        if game.is_solution(seq):
+            if game.is_exact_solution(seq):
+                printer("Wow! You found the exact solution {}".format(printer.bold(str(ref))))
+            else:
+                printer("Good! You found the solution {}; the exact solution was {}".format(printer.bold(str(seq)), printer.bold(str(ref))))
+            self.__autorestart()
+        else:
+            printer("No, {} is not the solution".format(printer.bold(str(seq))))
+
+    def __call__(self):
+        self.show()
+
+    def __repr__(self):
+        return self.__repr_help()
+
+    # def help(self):
+    #     """show help"""
+    #     printer = self.__printer
+
+    def __repr_help(self):
+        printer = self.__printer
+        with printer.set_ios() as ios:
+            printer("""\
 Look at the items and try to find the hidden sequence.
 
 If you guess the sequence, try to solve the game with the command q.solve(); for instance:
@@ -147,88 +217,63 @@ If you cannot guess the sequence, you can start a new game:
 
 Available commands are:
 """)
-        for method_name, method_doc in self.__docs:
-            lines.append("  {} {}".format(printer.bold("{:10s}".format(method_name)), method_doc))
-        return '\n'.join(lines)
+            for method_name, method_doc in self.__docs:
+                printer("  {} {}".format(printer.bold("{:20s}".format(method_name)), method_doc))
+            return ios.getvalue()
 
-    def new(self):
-        """Restart the game"""
-        if self.__sequence is not None:
-            printer = self.__printer
-            printer("The sequence was {}".format(printer.bold(self.__sequence)))
-        self.__restart()
-        self.show()
-
-    def hint(self):
-        """Add a sequence item"""
-        self.__game.new_item()
-        self.show()
-
-    def spoiler(self):
-        """Show the hidden sequence"""
-        return self.__sequence
-
-    def show(self):
+    def __repr_show(self):
         """Show the sequence items"""
         printer = self.__printer
-        if not self.__sequence_shown:
-            printer("===============================================")
-            printer("Find the hidden sequence producing these items:")
-            printer("===============================================")
-            self.__sequence_shown = True
-        game = self.__game
-        items = game.items
-        all_items = [printer.repr_item(item) for item in items]
-        all_items.extend(printer.red("?") for _ in range(game.num_known_items + game.num_correct_guesses - len(items)))
-        item_format = "    {index:4d}: {item:20s}"
-        guessed_indices = game.guessed_indices
-        for index, item in enumerate(all_items):
-            if index in guessed_indices:
-                item = printer.blue(item)
-            else:
-                item = printer.bold(item)
-            printer(item_format.format(index=index, item=item))
-        
-    def guess(self, item):
-        """Try to guess the next sequence item"""
-        printer = self.__printer
-        game = self.__game
-        if game.check_guess(item):
-            printer("Good, you correctly guessed a new sequence item")
-            self.show()
-            missing = game.num_correct_guesses
-            if missing == 0:
-                printer("You won! The sequence was {}".format(printer.bold(self.__sequence)))
-                self.__autorestart()
-            elif missing > 0:
-                if missing == 1:
-                    pl = ''
+        with printer.set_ios() as ios:
+            if not self.__sequence_shown:
+                printer("===============================================")
+                printer("Find the hidden sequence producing these items:")
+                printer("===============================================")
+                self.__sequence_shown = True
+            game = self.__game
+            items = game.items
+            all_items = [printer.repr_item(item) for item in items]
+            all_items.extend(printer.red("?") for _ in range(game.num_known_items + game.num_correct_guesses - len(items)))
+            item_format = "    {index:4d}: {item:20s}"
+            guessed_indices = game.guessed_indices
+            for index, item in enumerate(all_items):
+                if index in guessed_indices:
+                    item = printer.blue(item)
                 else:
-                    pl = 's'
-                printer("Guess {} more item{} to win!".format(missing, pl))
-        else:
-            printer("Mmmh... {} is not the next sequence item".format(item))
-
-    def solve(self, sequence):
-        """Try to solve the game by providing a matching sequence"""
+                    item = printer.bold(item)
+                printer(item_format.format(index=index, item=item))
+            return ios.getvalue()
+        
+    def __repr_new_game(self):
+        """Restart the game"""
         printer = self.__printer
-        game = self.__game
-        ref = self.__sequence
-        seq = Sequence.make_sequence(sequence)
-        if game.is_solution(seq):
-            if game.is_exact_solution(seq):
-                printer("Wow! You found the exact solution {}".format(printer.bold(str(ref))))
-            else:
-                printer("Good! You found the solution {}; the exact solution was {}".format(printer.bold(str(seq)), printer.bold(str(ref))))
-            self.__autorestart()
-        else:
-            printer("No, {} is not the solution".format(printer.bold(str(seq))))
+        out = []
+        if self.__sequence is not None:
+            with printer.set_ios() as ios:
+                printer("The sequence was {}".format(printer.bold(self.__sequence)))
+                out.append(ios.getvalue())
+        self.__restart()
+        out.append(self.__repr_show())
+        return '\n'.join(out)
 
-    def __call__(self):
-        self.show()
+    def __repr_new_item(self):
+        """Add a sequence item"""
+        self.__game.new_item()
+        return self.__repr_show()
 
-    def __repr__(self):
-        return self.__help()
+    def __repr_hint(self):
+        """Show some hint"""
+        printer = self.__printer
+        with printer.set_ios() as ios:
+            printer("no hints available")
+            return ios.getvalue()
+
+    def __repr_spoiler(self):
+        """Show the hidden sequence"""
+        printer = self.__printer
+        with printer.set_ios() as ios:
+            printer("the hidden sequence is " + printer.bold(str(self.__sequence)))
+            return ios.getvalue()
 
 
 class QuizShell(SequelShell):
@@ -238,6 +283,12 @@ class QuizShell(SequelShell):
         self.quiz = Quiz(printer=printer, num_known_items=num_known_items, num_correct_guesses=num_correct_guesses,
                          sequence_iterator=sequence_iterator, max_games=max_games)
         super().__init__(locals={'q': self.quiz}, printer=printer)
+        self._initialized = False
+
+    def _init(self):
+        if not self._initialized:
+            self._initialized = True
+            self.run_commands(["q.show()"], echo=False)
 
     def banner(self):
         return """\
@@ -245,7 +296,11 @@ Sequel quiz - try to find the hidden sequence.
 The 'q' instance is the quiz; run 'q' for help.
 """
 
+    def run_commands(self, *args, **kwargs):
+        self._init()
+        super().run_commands(*args, **kwargs)
+
     def interact(self):
-        self.run_commands(["q.show()"], echo=False)
+        self._init()
         super().interact(banner="")
 

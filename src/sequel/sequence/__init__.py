@@ -2,10 +2,13 @@
 Sequence module
 """
 
+import sys as _sys
+
+
 from .base import (
-    SequenceError, SequenceUnknownValueError, SequenceUnboundError,
+    SequenceError, SequenceUnknownValueError, SequenceUnboundError, RecursiveSequenceError,
     Sequence, Function, Iterator,
-    RecursiveSequence, RecursiveSequenceIndexer, rseq,
+    RecursiveSequence, BackIndexer, rseq,
     Integer, Natural,
     Const,
     Compose,
@@ -27,6 +30,7 @@ from .polygonal import (
 from .functional import (
     derivative, integral,
     summation, product,
+    ifelse,
 )
 from .merge_join import (
     merge, join,
@@ -54,3 +58,8 @@ from .generate import (
     generate,
     generate_sequences,
 )
+
+_mod = _sys.modules[__name__]
+for _cls in Sequence, BackIndexer:
+    for _name, _seq in _cls.get_registry().items():
+        setattr(_mod, _name, _seq)

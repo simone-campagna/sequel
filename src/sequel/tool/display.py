@@ -6,6 +6,7 @@ import collections
 import contextlib
 import enum
 import functools
+import io
 import itertools
 import os
 import readline
@@ -119,6 +120,12 @@ class Printer(object):
             yield self
         finally:
             self.file = old_file
+
+    @contextlib.contextmanager
+    def set_ios(self):
+        ios = io.StringIO()
+        with self.set_file(ios):
+            yield ios
 
     def _colored(self, string, color):
         if self.colored:

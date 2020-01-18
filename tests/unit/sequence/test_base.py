@@ -2,7 +2,8 @@ import pytest
 
 from sequel.sequence import (
     Sequence,
-    RecursiveSequence, RecursiveSequenceIndexer, rseq,
+    RecursiveSequence, BackIndexer, rseq,
+    RecursiveSequenceError,
     Compose,
     Integer, Natural,
     Const,
@@ -24,6 +25,8 @@ from sequel.sequence import (
     VanEck,
     verify_traits,
     merge, join,
+    summation,
+    product,
 )
 
 
@@ -137,9 +140,19 @@ _refs = [
     ["merge(p, 5, p, 8, p)", merge(Prime(), 5, Prime(), 8, Prime()), [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]],
     ["merge(p, 5, -1, 8, p)", merge(Prime(), 5, -1, 8, Prime()), [2, 3, 5, 7, 11, -1, -1, -1, 23, 29]],
     ["join(p, 5, -1, 8, p)", join(Prime(), 5, -1, 8, Prime()), [2, 3, 5, 7, 11, -1, -1, -1, 2, 3]],
-    ["rseq(0, 1, _0 ** 2 - _1)", RecursiveSequence((0, 1), RecursiveSequenceIndexer(0) ** 2 - RecursiveSequenceIndexer(1)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
-    ["rseq(0, 1, _0 ** 2 - _1)", rseq(0, 1, rseq[0] ** 2 - rseq[1]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
-    ["rseq(1001, 0, 1, _0 ** 2 - _1)", rseq(1001, 0, 1, rseq[0] ** 2 - rseq[1]), [1001, 0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(0, 1, I1 ** 2 - I2)", RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(0, 1, I1 ** 2 - I2)", rseq(0, 1, rseq[1] ** 2 - rseq[2]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(1001, 0, 1, I1 ** 2 - I2)", rseq(1001, 0, 1, rseq[1] ** 2 - rseq[2]), [1001, 0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rseq(4, 3, 2, 1, I0 | i - 1)", rseq(4, 3, 2, 1, rseq[0] | Integer() - 1), [4, 3, 2, 1, 1, 1, 1, 1, 1]],
+    ["rseq(4, 3, 2, 1, I1)", rseq(4, 3, 2, 1, rseq[1]), [4, 3, 2, 1, 1, 1, 1, 1, 1]],
+    ["rseq(4, 3, 2, 1, I1 | i - 1)", rseq(4, 3, 2, 1, rseq[1] | (Integer() - 1)), [4, 3, 2, 1, 2, 1, 2, 1, 2]],
+    ["rseq(4, 3, 2, 1, I2)", rseq(4, 3, 2, 1, rseq[2]), [4, 3, 2, 1, 2, 1, 2, 1, 2]],
+    ["rseq(4, 3, 2, 1, I2 | i - 1)", rseq(4, 3, 2, 1, rseq[2] | (Integer() - 1)), [4, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3]],
+    ["rseq(4, 3, 2, 1, I3)", rseq(4, 3, 2, 1, rseq[3]), [4, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3]],
+    ["rseq(4, 3, 2, 1, I3 | i - 1)", rseq(4, 3, 2, 1, rseq[3] | (Integer() - 1)), [4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4]],
+    ["rseq(0, 1, summation(I0) | i - 1)", rseq(0, 1, summation(rseq[0]) | Integer() - 1), [0, 1, 1, 2, 4, 8, 16, 32, 64, 128]],
+    ["rseq(2, 1, product(I0) | i - 1)", rseq(2, 1, product(rseq[0]) | Integer() - 1), [2, 1, 2, 4, 16, 16**2, 16**4, 16**8]],
+    ["rseq(3, 1, summation(I0 * 2) - 1 | i - 1)", rseq(3, 1, summation(rseq[0] * 2) - 1 | Integer() - 1), [3, 1, 7, 21, 63, 189]],
 ]
 
 
@@ -159,12 +172,6 @@ def test_sequence_values(string, sequence, reference):
     indices = list(range(len(reference)))
     assert list(sequence[i] for i in indices) == reference
     assert list(zip(sequence, indices)) == list(zip(reference, indices))
-    assert str(sequence) == string
-
-
-@pytest.mark.parametrize("string, sequence, reference", _refs)
-def test_sequence_string(string, sequence, reference):
-    indices = list(range(len(reference)))
     assert str(sequence) == string
 
 
@@ -258,17 +265,17 @@ def test_verify_traits(sequence):
 
 
 @pytest.mark.parametrize("index, exc", [
-    ['abc', TypeError("'abc' is not a valid index")],
-    [-1, ValueError("-1 is not a valid index")],
+    ['abc', TypeError("'abc' is not a valid offset")],
+    [-1, ValueError("-1 is not a valid offset")],
 ])
-def test_RecursiveSequenceIndexer_error(index, exc):
+def test_BackIndexer_error(index, exc):
     with pytest.raises(type(exc)) as exc_info:
-        RecursiveSequenceIndexer(index)
+        BackIndexer(index)
     assert str(exc_info.value) == str(exc)
 
 
 @pytest.mark.parametrize("known_args, generating_sequence, exc", [
-    [(0, 1), rseq[2] ** 3, ValueError("sequence rseq(0, 1, _2 ** 3): too few known items: 2 < 3")],
+    [(0, 1), rseq[3] ** 3, ValueError("sequence rseq(0, 1, I3 ** 3): too few known items: 2 < 3")],
 ])
 def test_RecursiveSequence_error(known_args, generating_sequence, exc):
     with pytest.raises(type(exc)) as exc_info:
@@ -278,25 +285,42 @@ def test_RecursiveSequence_error(known_args, generating_sequence, exc):
 
 def test_rseq_index_maker():
     v = rseq[2]
-    assert isinstance(v, RecursiveSequenceIndexer)
-    assert v.index == 2
+    assert isinstance(v, BackIndexer)
+    assert v.offset == 2
 
 
 def test_rseq_maker():
-    v = rseq(1001, 0, 1, rseq[0] ** 2 - rseq[1])
+    v = rseq(1001, 0, 1, rseq[1] ** 2 - rseq[2])
     assert isinstance(v, RecursiveSequence)
     assert v.known_items == (1001, 0, 1)
-    assert v.generating_sequence == rseq[0] ** 2 - rseq[1]
+    assert v.generating_sequence == rseq[1] ** 2 - rseq[2]
 
 
-def test_RecursiveSequence():
-    r = rseq(0, 1, rseq[0] * 3 - rseq[1] * 2)
-    n = 20
-    values = [int(v) for _, v in zip(range(n), r)]
-    print(values)
-    for i in range(n):
-        r._reset_items()
-        ri = r(i)
-        print(i, values[i], int(ri))
-        assert ri == values[i]
+@pytest.mark.parametrize("sequence, index, ref_value", [
+    [rseq(111, rseq[0]), 0, 111],
+    [rseq(111, rseq[1]), 1, 111],
+    [rseq(111, 112, rseq[0]), 0, 111],
+    [rseq(111, 112, rseq[0]), 1, 112],
+    [rseq(1, 3, 10, derivative(rseq[2])), 0, 1],
+    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 0, 1],
+    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 1, 3],
+    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 2, 10],
+    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 3, 7],
+])
+def test_rseq_ok(sequence, index, ref_value):
+    assert int(sequence(index)) == int(ref_value)
+
+
+@pytest.mark.parametrize("sequence, index, rs_index, rs_len", [
+    [rseq(rseq[0]), 0, 0, 0],
+    [rseq(rseq[0] | (Integer() - 1)), 0, -1, 0],
+    [rseq(111, 112, rseq[0] | Natural()), 2, 3, 2],
+    [rseq(4, 3, 2, 1, rseq[0] | (Integer() - 5)), 4, -1, 4],
+    [rseq(1, 3, 10, derivative(rseq[0])), 3, 4, 3],
+])
+def test_rseq_fail(sequence, index, rs_index, rs_len):
+    with pytest.raises(RecursiveSequenceError) as exc_info:
+        print(sequence(index))
+    assert str(exc_info.value) == "request for item {} in recursive sequence with {} items".format(rs_index, rs_len)
+
 

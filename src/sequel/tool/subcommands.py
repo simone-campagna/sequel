@@ -194,6 +194,6 @@ def function_shell(display_kwargs=None):
     shell.interact()
 
 
-def function_help(link=None):
+def function_help(link=None, home=None, interactive=None):
     help_pages = create_help()
-    help_pages.navigate(start_links=link)
+    help_pages.navigate(home=home, start_links=link, interactive=interactive)

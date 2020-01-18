@@ -140,14 +140,30 @@ To enable completion run the following command:
     )
     help_parser.set_defaults(
         function=function_help,
-        function_args=['link'],
+        function_args=['home', 'link', 'interactive'],
     )
+    int_grp = help_parser.add_mutually_exclusive_group()
+    int_grp.add_argument(
+        '-i', '--interactive',
+        dest='interactive', default=None,
+        action='store_true',
+        help='interactive mode')
+    int_grp.add_argument(
+        '-I', '--no-interactive',
+        dest='interactive', default=None,
+        action='store_false',
+        help='non interactive mode')
+    help_parser.add_argument(
+        '-H', '--home',
+        type=str,
+        default=None,
+        help="set home page")
     help_parser.add_argument(
         'link',
         type=str,
         default=None,
         nargs="*",
-        help='start from link')
+        help='go to page (not interactive)')
 
     shell_parser = subparsers.add_parser(
         'shell',
