@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-def make_stop_condition(min_items=100, max_items=1000, max_item=10e100, max_time=5.0):
+def make_stop_condition(min_items=20, max_items=1000, max_item=10e100, max_time=5.0):
     def stop_condition(num_items, last_item, t0):
         if num_items == 0:
             return False

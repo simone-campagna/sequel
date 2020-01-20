@@ -948,10 +948,10 @@ class BackIndexer(Sequence):
             cls.register_factory('I{}'.format(i), make_factory(i))
 
     def __repr__(self):
-        if self._index < _NUM_INDEXERS:
-            return "I{}".format(self._index)
+        if self._offset < _NUM_INDEXERS:
+            return "I{}".format(self._offset)
         else:
-            return "rseq[{}]".format(self._index)
+            return "rseq[{}]".format(self._offset)
 
 
 class RecursiveSequence(Sequence):

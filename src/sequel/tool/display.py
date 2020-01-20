@@ -19,7 +19,12 @@ import termcolor
 from ..config import get_config, register_config
 from ..item import Item
 from ..lazy import gmpy2
-from ..sequence import Sequence, SequenceUnboundError, compile_sequence
+from ..sequence import (
+    Sequence, SequenceUnboundError,
+    compile_sequence,
+    inspect_sequence,
+    classify as classify_sequence,
+)
 
 
 
@@ -139,6 +144,9 @@ class Printer(object):
     def red(self, string):
         return self._colored(string, "red")
 
+    def green(self, string):
+        return self._colored(string, "green")
+
     def guess(self, string):
         return string
         #return termcolor.colored(string, attrs=["underline"])
@@ -222,19 +230,12 @@ class Printer(object):
                 sequence = source
             else:
                 sequence = Sequence.compile(source, simplify=simplify)
-            if num_items is None:
-                num_items = self.num_items
             self(self.bold(str(sequence)) + " : " + sequence.doc())
             if full:
-                self(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
-            if num_items:
-                try:
-                    items = sequence.get_values(num_items)
-                    self.print_items(items)
-                except SequenceUnboundError:
-                    pass
+                self.print_sequence_traits(sequence)
+            self.print_sequence_items(sequence, num_items)
 
-    def print_sequence(self, sequence, num_items=None, item_types=KNOWN, header=""):
+    def print_sequence(self, sequence, num_items=None, tree=False, traits=False, classify=False, inspect=False, item_types=KNOWN, header=""):
         """Print a sequence.
     
            Parameters
@@ -243,20 +244,63 @@ class Printer(object):
                the sequence
            num_items: int, optional
                number of items to be shown (defaults to ``10``)
+           tree: bool, optional
+               print sequence tree (defaults to False)
+           traits: bool, optional
+               print sequence traits (defaults to False)
+           classify: bool, optional
+               classify sequence and print sequence tree (defaults to False)
+           inspect: bool, optional
+               inspect sequence (defaults to False)
         """
-        if num_items is None:
-            num_items = self.num_items
         s_sequence = str(sequence)
         s_sequence = self.bold(str(sequence))
         self("{}{}".format(header, s_sequence))
+        self.print_sequence_items(sequence, num_items, item_types=item_types)
+        if traits or classify:
+            self.print_sequence_traits(sequence, classify=classify)
+        if inspect:
+            self.print_sequence_info(sequence)
+        if tree:
+            self.print_tree(sequence)
+    
+    def print_sequence_traits(self, sequence, classify=False):
+        if classify:
+            classified_traits = classify_sequence(sequence)
+        else:
+            classified_traits = set()
+        sequence_traits = set(sequence.traits)
+        traits = sequence_traits.union(classified_traits)
+        colored_traits = []
+        for trait in sorted(traits, key=lambda x: x.value):
+            if trait not in sequence_traits:
+                color = self.blue
+            elif trait not in classified_traits:
+                color = self.red
+            else:
+                color = self.green
+            colored_traits.append(color(trait.name))
+        self(" " + self.bold("*") + " traits: {}".format("|".join(colored_traits)))
+
+    def print_sequence_info(self, sequence):
+        info = inspect_sequence(sequence)
+        self(self.blue("contains:"))
+        for seq in info.contains:
+            self("  + " + self.bold(seq))
+        self(self.blue("flags:"))
+        for flag in info.flags:
+            self("  + " + flag.name)
+
+    def print_sequence_items(self, sequence, num_items, item_types=KNOWN):
+        if num_items is None:
+            num_items = self.num_items
         if num_items:
             try:
                 items = sequence.get_values(num_items)
                 self.print_items(items, item_types=item_types)
             except SequenceUnboundError:
                 pass
-    
-    
+
     def print_sequences(self, sequences, num_items=None, item_types=KNOWN, header="", target_sequence=None):
         best_match, best_match_complexity = None, 1000000
         if target_sequence is not None:

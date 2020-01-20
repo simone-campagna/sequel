@@ -108,7 +108,7 @@ def function_config_reset():
     reset_config()
 
 
-def function_compile(sources, simplify=False, tree=False, display_kwargs=None):
+def function_compile(sources, simplify=False, tree=False, inspect=False, traits=False, classify=False,  display_kwargs=None):
     printer = make_printer(display_kwargs)
     if tree:
         print_function = printer.print_tree
@@ -116,7 +116,7 @@ def function_compile(sources, simplify=False, tree=False, display_kwargs=None):
         print_function = printer.print_sequence
     for source in sources:
         sequence = compile_sequence(source, simplify=simplify)
-        print_function(sequence)
+        printer.print_sequence(sequence, tree=tree, inspect=inspect, traits=traits, classify=classify)
 
     
 def function_tree(sources, simplify=False, display_kwargs=None):
