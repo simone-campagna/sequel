@@ -17,9 +17,11 @@ class Trait(enum.Enum):
     NEGATIVE = 3
     NON_ZERO = 4
     ALTERNATING = 5
-    PARTIALLY_KNOWN = 6
-    FAST_GROWING = 7
-    SLOW = 8
+    INCREASING = 6
+    DECREASING = 7
+    PARTIALLY_KNOWN = 8
+    FAST_GROWING = 9
+    SLOW = 10
 
 
 def verify_injective(items):
@@ -51,12 +53,32 @@ def verify_alternating(items):
     return True
 
 
+def verify_increasing(items):
+    prev = None
+    for item in items:
+        if prev is not None:
+            if item < prev:
+                return False
+    return True
+
+
+def verify_decreasing(items):
+    prev = None
+    for item in items:
+        if prev is not None:
+            if item > prev:
+                return False
+    return True
+
+
 _VERIFY_FUNCTION = {
     Trait.INJECTIVE: verify_injective,
     Trait.POSITIVE: verify_positive,
     Trait.NEGATIVE: verify_negative,
     Trait.NON_ZERO: verify_non_zero,
     Trait.ALTERNATING: verify_alternating,
+    Trait.INCREASING: verify_increasing,
+    Trait.DECREASING: verify_decreasing,
 }
 
 def verify_traits(items, *traits):

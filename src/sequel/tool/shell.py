@@ -6,7 +6,7 @@ from code import InteractiveConsole
 import readline
 import sys
 
-from ..sequence import Sequence, compile_sequence
+from ..sequence import Sequence, compile_sequence, inspect_sequence, generate, classify
 from .display import Printer
 
 __all__ = [
@@ -26,6 +26,9 @@ class SequelShell(InteractiveConsole):
         s_locals['print'] = printer
         s_locals['printer'] = printer
         s_locals['print_sequence'] = printer.print_sequence
+        s_locals['inspect_sequence'] = inspect_sequence
+        s_locals['classify'] = classify
+        s_locals['generate'] = generate
         super().__init__(s_locals)
 
     @classmethod

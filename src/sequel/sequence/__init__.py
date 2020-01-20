@@ -58,6 +58,9 @@ from .generate import (
     generate,
     generate_sequences,
 )
+from .classify import (
+    classify,
+)
 from .inspect_sequence import (
     inspect_sequence,
 )
