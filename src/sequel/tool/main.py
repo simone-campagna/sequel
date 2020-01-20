@@ -225,7 +225,7 @@ Compile a sequence""",
         **common_parser_kwargs)
     compile_parser.set_defaults(
         function=function_compile,
-        function_args=['sources', 'simplify', 'tree', 'inspect', 'traits', 'classify'] + ['display_kwargs'])
+        function_args=['sources', 'simplify', 'tree', 'inspect', 'traits', 'classify', 'doc'] + ['display_kwargs'])
 
     generate_parser = subparsers.add_parser(
         'generate',
@@ -485,6 +485,12 @@ Reverse search: compile a sequence and tries to search it""",
         action='store_true',
         default=False,
         help="classify sequence by traits")
+
+    compile_parser.add_argument(
+        '-d', '--doc',
+        action='store_true',
+        default=False,
+        help="print sequence doc")
 
     for parser in rsearch_parser, compile_parser, tree_parser:
         parser.add_argument(

@@ -206,17 +206,17 @@ class Printer(object):
         data = "    {} ...".format(self.separator.join(r_items))
         return data
 
-    def print_items(self, items, item_types=KNOWN, item_mode=None):
+    def print_items(self, items, item_types=KNOWN, item_mode=None, header=""):
         if item_mode is None:
             item_mode = self.item_mode
         if item_mode == "oneline":
             data = self._oneline_items(items, item_types=item_types)
             if False and self.wraps:
-                data = textwrap.fill(data, subsequent_indent='    ', break_long_words=False)
+                data = textwrap.fill(data, initial_indent=header, subsequent_indent=header + '    ', break_long_words=False)
             self(data)
         elif item_mode == "multiline":
             for index, (item, item_type) in enumerate(zip(items, item_types())):
-                self(self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
+                self(header + self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
                 
     def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
         if sources is None:
@@ -235,13 +235,15 @@ class Printer(object):
                 self.print_sequence_traits(sequence)
             self.print_sequence_items(sequence, num_items)
 
-    def print_sequence(self, sequence, num_items=None, tree=False, traits=False, classify=False, inspect=False, item_types=KNOWN, header=""):
+    def print_sequence(self, sequence, num_items=None, tree=False, traits=False, classify=False, inspect=False, doc=False, item_types=KNOWN, header=""):
         """Print a sequence.
     
            Parameters
            ----------
            sequence: Sequence
                the sequence
+           doc: bool, optional
+               print sequence doc (defaults to False)
            num_items: int, optional
                number of items to be shown (defaults to ``10``)
            tree: bool, optional
@@ -255,16 +257,21 @@ class Printer(object):
         """
         s_sequence = str(sequence)
         s_sequence = self.bold(str(sequence))
-        self("{}{}".format(header, s_sequence))
-        self.print_sequence_items(sequence, num_items, item_types=item_types)
+        if doc:
+            s_doc = " : " + sequence.doc()
+        else:
+            s_doc = ""
+        self("{}{}{}".format(header, s_sequence, s_doc))
+        self.print_sequence_items(sequence, num_items, item_types=item_types, header=header + "    ")
         if traits or classify:
-            self.print_sequence_traits(sequence, classify=classify)
+            self.print_sequence_traits(sequence, classify=classify, header=header + "    ")
         if inspect:
-            self.print_sequence_info(sequence)
+            self.print_sequence_info(sequence, header + "    ")
         if tree:
-            self.print_tree(sequence)
+            self(header + "    tree:")
+            self.print_tree(sequence, header=header + "        ")
     
-    def print_sequence_traits(self, sequence, classify=False):
+    def print_sequence_traits(self, sequence, classify=False, header=""):
         if classify:
             classified_traits = classify_sequence(sequence)
         else:
@@ -280,24 +287,20 @@ class Printer(object):
             else:
                 color = self.green
             colored_traits.append(color(trait.name))
-        self(" " + self.bold("*") + " traits: {}".format("|".join(colored_traits)))
+        self(header + "traits: {}".format("|".join(colored_traits)))
 
-    def print_sequence_info(self, sequence):
+    def print_sequence_info(self, sequence, header=""):
         info = inspect_sequence(sequence)
-        self(self.blue("contains:"))
-        for seq in info.contains:
-            self("  + " + self.bold(seq))
-        self(self.blue("flags:"))
-        for flag in info.flags:
-            self("  + " + flag.name)
+        self(header + "contains: " + " ".join(self.bold(str(seq)) for seq in info.contains))
+        self(header + "flags: " + " " .join(self.blue(flag.name) for flag in info.flags))
 
-    def print_sequence_items(self, sequence, num_items, item_types=KNOWN):
+    def print_sequence_items(self, sequence, num_items, item_types=KNOWN, header=""):
         if num_items is None:
             num_items = self.num_items
         if num_items:
             try:
                 items = sequence.get_values(num_items)
-                self.print_items(items, item_types=item_types)
+                self.print_items(items, item_types=item_types, header=header)
             except SequenceUnboundError:
                 pass
 
@@ -332,7 +335,7 @@ class Printer(object):
             self("best match: {}".format(self.bold(str(best_match))))
 
 
-    def print_tree(self, sequence):
+    def print_tree(self, sequence, header=""):
         max_complexity = sequence.complexity()
         max_len = 1
         while True:
@@ -353,7 +356,7 @@ class Printer(object):
             if schild != rchild:
                 lst.append(":")
                 lst.append(rchild)
-            hdr = "{} ".format(self.blue(complexity)) + ("  " * depth)
+            hdr = "{}{} ".format(header, self.blue(complexity)) + ("  " * depth)
             self(hdr + " ".join(lst))
     
     
