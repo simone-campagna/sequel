@@ -58,6 +58,9 @@ from .generate import (
     generate,
     generate_sequences,
 )
+from .inspect import (
+    inspect,
+)
 
 _mod = _sys.modules[__name__]
 for _cls in Sequence, BackIndexer:

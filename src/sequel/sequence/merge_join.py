@@ -1,5 +1,5 @@
 """
-Functionals
+Merge & join
 """
 
 import abc

@@ -6,7 +6,7 @@ import types
 
 from .display import Printer
 from .shell import SequelShell
-from ..sequence import Sequence, compile_sequence, generate_sequences
+from ..sequence import Sequence, compile_sequence, generate_sequences, inspect
 from ..lazy import gmpy2
 
 
@@ -131,6 +131,12 @@ class Quiz(object):
 
     def __restart(self):
         self.__sequence = next(self.__sequence_iterator)
+        self.__hints = set()
+        info = inspect(self.__sequence)
+        for flag in info.flags:
+            self.__hints.add(flag.name)
+        for seq in info.contains:
+            self.__hints.add("it contains the sequence {}".format(str(seq)))
         self.__sequence_shown = False
         self.__game = QuizGame(self.__sequence, num_known_items=self.__num_known_items, num_correct_guesses=self.__num_correct_guesses)
         self.__played_games += 1
@@ -265,7 +271,11 @@ Available commands are:
         """Show some hint"""
         printer = self.__printer
         with printer.set_ios() as ios:
-            printer("no hints available")
+            if self.__hints:
+                hint = self.__hints.pop()
+                printer(hint)
+            else:
+                printer("no hints available")
             return ios.getvalue()
 
     def __repr_spoiler(self):
