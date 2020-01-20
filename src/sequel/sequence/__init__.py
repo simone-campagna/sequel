@@ -58,8 +58,8 @@ from .generate import (
     generate,
     generate_sequences,
 )
-from .inspect import (
-    inspect,
+from .inspect_sequence import (
+    inspect_sequence,
 )
 
 _mod = _sys.modules[__name__]

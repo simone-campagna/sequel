@@ -6,7 +6,7 @@ import types
 
 from .display import Printer
 from .shell import SequelShell
-from ..sequence import Sequence, compile_sequence, generate_sequences, inspect
+from ..sequence import Sequence, compile_sequence, generate_sequences, inspect_sequence
 from ..lazy import gmpy2
 
 
@@ -132,7 +132,7 @@ class Quiz(object):
     def __restart(self):
         self.__sequence = next(self.__sequence_iterator)
         self.__hints = set()
-        info = inspect(self.__sequence)
+        info = inspect_sequence(self.__sequence)
         for flag in info.flags:
             self.__hints.add(flag.name)
         for seq in info.contains:

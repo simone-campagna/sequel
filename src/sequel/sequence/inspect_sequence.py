@@ -16,6 +16,7 @@ from .polygonal import Polygonal
 from .roundrobin import roundrobin
 
 __all__ = [
+    'inspect_sequence',
 ]
 
 
@@ -44,7 +45,7 @@ Info = collections.namedtuple("Info", "contains flags")
 _DATA = weakref.WeakKeyDictionary()
 
 
-def inspect(sequence):
+def inspect_sequence(sequence):
     if not isinstance(sequence, Sequence):
         raise TypeError(sequence)
     if not sequence in _DATA:
@@ -98,7 +99,7 @@ def _make_info(sequence):
 def register_info(sequence, contains=(), flags=()):
     if not isinstance(sequence, Sequence):
         raise TypeError(sequence)
-    info = inspect(sequence)
+    info = inspect_sequence(sequence)
     _DATA[sequence] = Info(
         contains=info.contains.union(contains),
         flags=info.flags.union(flags),

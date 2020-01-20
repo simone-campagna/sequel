@@ -9,7 +9,7 @@ import random
 
 from .base import compile_sequence, rseq, Const
 from .fibonacci import make_fibonacci, make_tribonacci
-from .inspect import register_info, Flag
+from .inspect_sequence import register_info, Flag
 from .roundrobin import roundrobin
 from .miscellanea import (
     Geometric,
