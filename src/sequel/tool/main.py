@@ -25,22 +25,22 @@ from ..search import (
 
 from ..sequence import (
     Sequence,
+    Trait,
 )
 from ..declaration import (
     sequence_declaration,
     catalog_declaration,
 )
 from .subcommands import (
+    RANDOM_SEQUENCE,
     function_search,
     function_rsearch,
-    function_compile,
+    function_show,
     function_doc,
-    function_tree,
     function_config_show,
     function_config_write,
     function_config_reset,
     function_config_edit,
-    function_generate,
     function_shell,
     function_play,
     function_help,
@@ -234,19 +234,19 @@ def add_link_argument(parser):
         help='go to page (not interactive)')
 
 
-@arg('items')
-def add_items_argument(parser):
-    parser.add_argument(
-        "items",
-        nargs='+',
-        type=make_item,
-        help="sequence items")
+# REM @arg('items')
+# REM def add_items_argument(parser):
+# REM     parser.add_argument(
+# REM         "items",
+# REM         nargs='+',
+# REM         type=make_item,
+# REM         help="sequence items")
 
 
 @arg('limit')
 def add_limit_argument(parser):
     parser.add_argument(
-        "-l", "--limit",
+        "-L", "--limit",
         metavar="L",
         type=int,
         default=None,
@@ -442,14 +442,51 @@ def add_doc_argument(parser):
         help="print sequence doc")
 
 
-@arg('sources', nargs='+')
-@arg('sources:optional', nargs='*')
-def add_sources_argument(parser, nargs):
+@arg('sequences')
+def add_sequences_argument(parser):
     parser.add_argument(
-        "sources",
-        type=str,
-        nargs=nargs,
-        help="sequence source").completer = sequence_completer
+        "-e", "--expressions",
+        dest='sequences',
+        metavar='EXPR',
+        default=None,
+        action="append", type=str,
+        help="sequence expression").completer = sequence_completer
+    parser.add_argument(
+        "-b", "--by-traits",
+        dest='sequences',
+        metavar='TRAIT[,TRAIT,...]',
+        default=None,
+        choices=list(Trait),
+        action="append", type=Trait.__getitem__, nargs='+',
+        help="sequence expression").completer = sequence_completer
+
+
+@arg('sequence:required', required=True, items=False, gname="sequence")
+@arg('sequence:with-items', required=False, items=True, gname="input")
+def add_sequence_argument(parser, required, items=False, gname=""):
+    group = parser.add_argument_group(gname)
+    mgroup = group.add_mutually_exclusive_group(required=required)
+    default = None
+    mgroup.add_argument(
+        "-e", "--expression",
+        dest="sequence",
+        metavar='EXPR',
+        default=default,
+        action="store", type=str, nargs='?',
+        help="sequence expression").completer = sequence_completer
+    mgroup.add_argument(
+        "-r", "--random",
+        dest="sequence", default=default,
+        action="store_const", const=RANDOM_SEQUENCE,
+        help="generate a random sequence")
+    if items:
+        mgroup.add_argument(
+            "-i", "--items",
+            metavar='INT',
+            dest="sequence", default=default,
+            type=int, nargs='+',
+            help="sequence items")
+    
 
 
 @arg('level')
@@ -474,9 +511,6 @@ def main():
     common_parser_kwargs = {
         'formatter_class': argparse.RawDescriptionHelpFormatter,
     }
-    common_search_args = [
-        'handler', 'profile', 'declarations',
-    ]
     common_display_args = [
         'num_items', 'item_mode', 'separator', 'item_format', 'base', 'wraps',
         'max_compact_digits', 'max_full_digits', 'colored',
@@ -550,17 +584,8 @@ $ sequel search 2 3 5 7 12..20
         description=search_description.format(""),
         subparsers=subparsers,
         function=function_search,
-        function_args=['items', 'limit', 'sort', 'reverse'] + common_search_args,
-        **common_parser_kwargs)
-
-    # RSEARCH  # TODO merge with SEARCH
-    rsearch_parser = create_parser(
-        'rsearch',
-        description="""\
-Reverse search: compile a sequence and tries to search it""",
-        subparsers=subparsers,
-        function=function_rsearch,
-        function_args=['sources', 'simplify', 'limit', 'sort', 'reverse'] + common_search_args,
+        function_args=['sequence:with-items', 'limit', 'sort', 'reverse', 'simplify',
+                       'handler', 'profile', 'declarations', 'level', 'algorithm'],
         **common_parser_kwargs)
 
     # DOC
@@ -570,7 +595,7 @@ Reverse search: compile a sequence and tries to search it""",
 Show sequence documentation""",
         subparsers=subparsers,
         function=function_doc,
-        function_args=['sources:optional', 'simplify', 'traits', 'classify'],
+        function_args=['sequences', 'simplify', 'traits', 'classify'],
         **common_parser_kwargs)
 
     # SHOW
@@ -579,18 +604,8 @@ Show sequence documentation""",
         description="""\
 Show a sequence""",
         subparsers=subparsers,
-        function=function_compile,
-        function_args=['sources', 'simplify', 'tree', 'inspect', 'traits', 'classify', 'doc'],
-        **common_parser_kwargs)
-
-    # GENERATE  # TODO remove: put -g option to show
-    generate_parser = create_parser(
-        'generate',
-        description="""\
-Generate a random sequence""",
-        subparsers=subparsers,
-        function=function_generate,
-        function_args=['level', 'algorithm'],
+        function=function_show,
+        function_args=['sequence:required', 'simplify', 'tree', 'inspect', 'traits', 'classify', 'doc', 'level', 'algorithm'],
         **common_parser_kwargs)
 
     # PLAY
@@ -601,16 +616,6 @@ Play the sequence game. Sequel will generate a random sequence and make you a qu
         subparsers=subparsers,
         function=function_play,
         function_args=['level', 'algorithm'],
-        **common_parser_kwargs)
-
-    # TREE  # TODO remove
-    tree_parser = create_parser(
-        'tree',
-        description="""\
-Compile a sequence and show it as a tree""",
-        subparsers=subparsers,
-        function=function_tree,
-        function_args=['sources', 'simplify'],
         **common_parser_kwargs)
 
     # CONFIG
@@ -665,15 +670,9 @@ Reset config file""",
         function_args=[],
         **common_parser_kwargs)
 
-#----- here ---
 
     argcomplete.autocomplete(parser)
     namespace = parser.parse_args()
-    # REM if 'display_kwargs' in namespace.function_args:
-    # REM     display_kwargs = {}
-    # REM     for arg in common_display_args:
-    # REM         display_kwargs[arg] = getattr(namespace, arg)
-    # REM     namespace.display_kwargs = display_kwargs
 
     config = load_config(namespace.config_filename)
     setup_config(config)

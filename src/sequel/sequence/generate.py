@@ -29,9 +29,9 @@ CONFIG = """\
 {
     "macros": {
         "g0_sequences": [
-            "cube", "even", "factorial", "fib11", "i", "n",
-            "odd", "p", "power_of_2", "power_of_3", "square",
-            "triangular", "repunit"
+            "factorial", "fib11", "n",
+            "odd", "p", "power_of_2", "power_of_3",
+            "repunit"
         ],
         "g1_sequences": [
             "fib01", "lucas" 
@@ -46,7 +46,15 @@ CONFIG = """\
             "genocchi", "phi", "pi", "sigma", "tau"
         ],
         "g0_functionals": [
-            "summation", "product", "integral", "derivative"
+            "summation", "integral", "derivative"
+        ],
+        "g0_product_sequences": [
+            "n", "fib11", "lucas",
+            "odd", "power_of_2", "power_of_3",
+            "power_of_10", "p", "m_exp"
+        ],
+        "g1_product_sequences": [
+            "factorial", "catalan", "phi", "tau", "sigma", "bell"
         ],
         "g0_sides": [
             4, 7, 8, 9, 10
@@ -103,22 +111,22 @@ CONFIG = """\
         },
         {
             "level": 0,
-            "algorithm": "recursive_sequence",
+            "algorithm": "rseq",
             "weight": 1.0,
             "kwargs": {
                 "denom": [1],
-                "sequences": [["5", "1", "2"], ["I0", "I0 ** 2"]],
+                "sequences": [["5", "1", "2"], ["I1", "I1 ** 2"]],
                 "coeffs": [[1], [1, 2, -1]],
                 "known_items": [[-1, 2, 1]]
             }
         },
         {
             "level": 0,
-            "algorithm": "recursive_sequence",
+            "algorithm": "rseq",
             "weight": 0.0,
             "kwargs": {
                 "denom": [1],
-                "sequences": ["I0", ["I1", "I1 ** 2"]],
+                "sequences": ["I1", ["I2", "I2 ** 2"]],
                 "coeffs": [[1, 0, -1], [1, 2]],
                 "known_items": [[0, 1], [1, -1]]
             }
@@ -202,6 +210,22 @@ CONFIG = """\
             "weight": 0.1,
             "kwargs": {
                 "sequences": "$g4_sequences"
+            }
+        },
+        {
+            "level": 2,
+            "algorithm": "product",
+            "weight": 0.3,
+            "kwargs": {
+                "sequences": "$g0_product_sequences"
+            }
+        },
+        {
+            "level": 3,
+            "algorithm": "product",
+            "weight": 0.1,
+            "kwargs": {
+                "sequences": "$g1_product_sequences"
             }
         },
         {
@@ -382,6 +406,12 @@ def generate_functional(functionals, sequences):
     return sequence
     
     
+def generate_product(sequences):
+    seq = random.choice(sequences)
+    sequence = compile_sequence("product({})".format(seq))
+    register_info(sequence, flags={Flag.FUNCTIONAL})
+    return sequence
+
 def generate_polygonal(sides):
     sides = random.choice(sides)
     sequence = compile_sequence("Polygonal({})".format(sides))
@@ -426,7 +456,7 @@ def generate_arithmetic(start_values, step_values):
     return sequence
 
 
-def generate_recursive_sequence(sequences, coeffs, denom, known_items):
+def generate_rseq(sequences, coeffs, denom, known_items):
     clist = []
     slist = []
     for coeff, sequence in zip(coeffs, sequences):
@@ -458,12 +488,13 @@ ALGORITHMS = {
     "linear_combination": generate_linear_combination,
     "affine_transform": generate_affine_transform,
     "functional": generate_functional,
+    "product": generate_product,
     "polygonal": generate_polygonal,
     "compose": generate_compose,
     "roundrobin": generate_roundrobin,
     "arithmetic": generate_arithmetic,
     "geometric": generate_geometric,
-    "recursive_sequence": generate_recursive_sequence,
+    "rseq": generate_rseq,
     "fibonacci": generate_fibonacci,
     "tribonacci": generate_tribonacci,
 }

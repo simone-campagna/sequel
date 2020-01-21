@@ -47,6 +47,9 @@ __all__ = [
 ]
 
 
+RANDOM_SEQUENCE = object()
+
+
 def type_stop_below_complexity(string):
     return StopBelowComplexity(int(string))
 
@@ -98,32 +101,46 @@ def function_config_reset():
     reset_config()
 
 
-def function_compile(sources, simplify=False, tree=False, inspect=False, traits=False, classify=False, doc=False):
+def function_show(sequence, level=None, algorithm=None, simplify=False, tree=False, inspect=False, traits=False, classify=False, doc=False):
     printer = Printer()
-    if tree:
-        print_function = printer.print_tree
+    if sequence is RANDOM_SEQUENCE:
+        sequence = generate(level=level, algorithm=algorithm)
     else:
-        print_function = printer.print_sequence
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        printer.print_sequence(sequence, tree=tree, inspect=inspect, traits=traits, classify=classify, doc=doc)
+        sequence = compile_sequence(sequence, simplify=simplify)
+    printer.print_sequence(sequence, tree=tree, inspect=inspect, traits=traits, classify=classify, doc=doc)
 
     
-def function_tree(sources, simplify=False):
+def function_doc(sequences, simplify=False, traits=False, classify=False):
+    if not sequences:
+        sequences = None
+    else:
+        for value in sequences:
+            lst = []
+            if isinstance(value, (list, tuple)):
+                lst.extend(Sequence.iter_sequences_by_traits(*value))
+            else:
+                lst.append(value)
+            sequences = lst
     printer = Printer()
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        printer.print_tree(sequence)
-
-    
-def function_doc(sources, simplify=False, traits=False, classify=False):
-    if not sources:
-        sources = None
-    printer = Printer()
-    printer.print_doc(sources=sources, simplify=simplify, traits=traits, classify=classify)
+    printer.print_doc(sources=sequences, simplify=simplify, traits=traits, classify=classify)
 
 
-def function_search(items, limit=None, sort=False, reverse=False, handler=None, profile=False, declarations=None):
+def function_search(sequence, limit=None, sort=False, reverse=False, handler=None, profile=False, declarations=None, simplify=False, level=None, algorithm=None):
+    if sequence is RANDOM_SEQUENCE:
+        rev_search = True
+        sequence = generate(level=level, algorithm=algorithm)
+        source = str(sequence)
+        items = None
+    elif isinstance(sequence, str):
+        rev_search = True
+        source = sequence
+        sequence = compile_sequence(sequence, simplify=simplify)
+        items = None
+    else:
+        items = sequence
+        sequence = None
+        source = None
+        rev_search = False
     if declarations is None:
         declarations = ()
     with declared(*declarations):
@@ -133,11 +150,18 @@ def function_search(items, limit=None, sort=False, reverse=False, handler=None, 
         else:
             profiler = None
         config = get_config()
-        size = len(items)
-        manager = create_manager(size, config=config)
-        found_sequences = manager.search(items, handler=handler, profiler=profiler)
-        sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-        printer.print_sequences(sequences, item_types=iter_item_types(items))
+        num_items = printer.num_items
+        if rev_search:
+            items = sequence.get_values(num_items)
+            manager = create_manager(len(items), config=config)
+            found_sequences = manager.search(items, handler=handler, profiler=profiler)
+            sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+            printer.print_rsearch(source, sequence, items, sequences)
+        else:
+            manager = create_manager(num_items, config=config)
+            found_sequences = manager.search(items, handler=handler, profiler=profiler)
+            sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+            printer.print_sequences(sequences, item_types=iter_item_types(items))
         if profile:
             printer.print_stats(profiler)
 
@@ -163,13 +187,6 @@ def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=N
         if profile:
             printer.print_stats(profiler)
             
-
-def function_generate(level, algorithm):
-    printer = Printer()
-    sequence = generate(level=level, algorithm=algorithm)
-    if sequence is not None:
-        printer.print_doc(sources=[sequence])
-
 
 def function_play(level, algorithm):
     printer = Printer()

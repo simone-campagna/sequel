@@ -270,8 +270,13 @@ class Sequence(metaclass=SMeta):
         return cls.__registry__
 
     def has_traits(self, *traits):
-        traits = set(traits)
-        return traits == traits.intersection(self.traits)
+        return self.traits >= frozenset(traits)
+
+    @classmethod
+    def iter_sequences_by_traits(cls, *traits):
+        for seq in cls.get_registry().values():
+            if seq.has_traits(*traits):
+                yield seq
 
     def __pos__(self):
         return self

@@ -143,14 +143,18 @@ def assert_sequence_matches(sequence, items):
 def perfect_power(n):
     if n < 0:
         result = sympy.perfect_power(-n)
-        if result is not False:
-            root, power = result
-            if power % 2 == 1:
-                return (-root, power)
-            else:
-                return False
+        if result is None or result is False:
+            return False
+        root, power = result
+        if power % 2 == 1:
+            return (-root, power)
+        else:
+            return False
     else:
-        return sympy.perfect_power(n)
+        result = sympy.perfect_power(n)
+        if result is None or result is False:
+            return False
+        return result
 
 
 def linear_combination(items, input_items_list, min_components=1, max_components=4, rationals=True, max_elapsed=2.0, max_solutions=1):
