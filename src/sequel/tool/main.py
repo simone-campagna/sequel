@@ -3,6 +3,7 @@ Main tool.
 """
 
 import argparse
+import functools
 
 import argcomplete
 
@@ -102,8 +103,10 @@ def create_parser(*args, function, function_args, subparsers=None, **kwargs):
 _HELP = object()
 _ARGS = {}
 
-def arg(name):
+def arg(name, **kwargs):
     def arg_decorator(fun):
+        if kwargs:
+            fun = functools.partial(fun, **kwargs)
         _ARGS[name] = fun
         return fun
     return arg_decorator
@@ -439,20 +442,13 @@ def add_doc_argument(parser):
         help="print sequence doc")
 
 
-@arg('sources')
-def add_sources_argument(parser):
+@arg('sources', nargs='+')
+@arg('sources:optional', nargs='*')
+def add_sources_argument(parser, nargs):
     parser.add_argument(
         "sources",
         type=str,
-        nargs='+',
-        help="sequence source").completer = sequence_completer
-
-@arg('sources:optional')
-def add_optional_sources_argument(parser):
-    parser.add_argument(
-        "sources",
-        type=str,
-        nargs='*',
+        nargs=nargs,
         help="sequence source").completer = sequence_completer
 
 
