@@ -50,6 +50,7 @@ from .repunit import (
 from .trait import (
     Trait,
     verify_traits,
+    get_trait_description,
 )
 from .roundrobin import (
     roundrobin,

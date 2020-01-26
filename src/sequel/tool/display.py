@@ -183,6 +183,8 @@ class Printer(object):
         return fn_color(self.repr_item(item))
 
     def repr_item(self, item):
+        if isinstance(item, Item):
+            return str(item)
         item = gmpy2.mpz(item)
         num_digits = item.num_digits(self.base)
         if num_digits >= self.max_compact_digits:
@@ -218,18 +220,29 @@ class Printer(object):
             for index, (item, item_type) in enumerate(zip(items, item_types())):
                 self(header + self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
                 
-    def print_doc(self, sources=None, num_items=None, traits=False, classify=False, simplify=False):
+    def print_doc(self, sources=None, num_items=None, traits=False, classify=False, simplify=False, sort=True):
         if sources is None:
-            sources = sorted([str(sequence) for sequence in Sequence.get_registry().values() if sequence.is_bound()])
-        first = True
+            sources = [sequence for sequence in Sequence.get_registry().values() if sequence.is_bound()]
+        sequences = []
+        s_sequences = set()
         for source in sources:
+            if isinstance(source, Sequence):
+                sequence = source
+                if simplify:
+                    sequence = sequence.simplify()
+            else:
+                sequence = Sequence.compile(source, simplify=simplify)
+            s_sequence = str(sequence)
+            if s_sequence not in s_sequences:
+                s_sequences.add(s_sequence)
+                sequences.append(sequence)
+        if sort:
+            sequences.sort(key=lambda x: str(x))
+        first = True
+        for sequence in sequences:
             if not first:
                 self()
             first = False
-            if isinstance(source, Sequence):
-                sequence = source
-            else:
-                sequence = Sequence.compile(source, simplify=simplify)
             self(self.bold(str(sequence)) + " : " + sequence.doc())
             if traits or classify:
                 self.print_sequence_traits(sequence, classify=classify)
@@ -330,7 +343,7 @@ class Printer(object):
             except SequenceUnboundError:
                 pass
 
-    def print_sequences(self, sequences, num_items=None, item_types=KNOWN, header="", target_sequence=None):
+    def print_search_result(self, sequences, num_items=None, item_types=KNOWN, header="", target_sequence=None):
         best_match, best_match_complexity = None, 1000000
         if target_sequence is not None:
             found = False
@@ -406,11 +419,14 @@ class Printer(object):
         for row in table:
             self(fmt.format(*row))
 
-    def print_rsearch(self, source, sequence, items, sequences):
-        self(self.bold("###") + " compiling " + self.bold(str(source)) + " ...")
-        self.print_sequence(sequence)
+    def print_generate_sequence_header(self):
+        self(self.bold("###") + " generating random sequence ...")
+
+    def print_evaluate_expression_header(self, expression):
+        self(self.bold("###") + " evaluating " + self.bold(str(expression)) + " ...")
+
+    def print_search_header(self, items):
         self(self.bold("###") + " searching " + self.bold(" ".join(self.repr_items(items))) + " ...")
-        self.print_sequences(sequences, num_items=0, target_sequence=sequence)
 
     @contextlib.contextmanager
     def overwrite(self, **kwargs):

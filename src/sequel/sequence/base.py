@@ -269,15 +269,25 @@ class Sequence(metaclass=SMeta):
     def get_registry(cls):
         return cls.__registry__
 
-    def has_traits(self, *traits):
+    def has_trait(self, trait):
+        return trait in self.traits
+
+    def has_traits(self, traits):
         return self.traits >= frozenset(traits)
 
     @classmethod
-    def iter_sequences_by_traits(cls, *traits):
+    def iter_sequences_with_traits(cls, traits):
         for seq in cls.get_registry().values():
-            if seq.has_traits(*traits):
+            if seq.has_traits(traits):
                 yield seq
 
+    @classmethod
+    def get_sequences_with_traits(cls, traits, order=False):
+        sequences = list(cls.iter_sequences_with_traits(traits))
+        if order:
+            sequences.sort(key=str)
+        return sequences
+        
     def __pos__(self):
         return self
 

@@ -8,6 +8,7 @@ import enum
 __all__ = [
     'Trait',
     'verify_traits',
+    'get_trait_description',
 ]
 
 
@@ -22,6 +23,24 @@ class Trait(enum.Enum):
     PARTIALLY_KNOWN = 8
     FAST_GROWING = 9
     SLOW = 10
+
+
+TRAIT_DESCRIPTION = {
+    Trait.INJECTIVE: 'every sequence item is unique',
+    Trait.POSITIVE: 'every sequence item is >= 0',
+    Trait.NEGATIVE: 'every sequence item is <= 0',
+    Trait.NON_ZERO: 'every sequence item is != 0',
+    Trait.ALTERNATING: 'sequence items are alternatively strictly positive and strictly negative',
+    Trait.INCREASING: 'every sequence items is >= its predecessor',
+    Trait.DECREASING: 'every sequence items is <= its predecessor',
+    Trait.PARTIALLY_KNOWN: 'only some of the first sequence items are known',
+    Trait.FAST_GROWING: 'the absolute value of the sequence items grows rapidly',
+    Trait.SLOW: 'generation of new items is slow',
+}
+
+
+def get_trait_description(trait):
+    return TRAIT_DESCRIPTION[trait]
 
 
 def verify_injective(items):

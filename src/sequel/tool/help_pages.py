@@ -15,11 +15,11 @@ from ..declaration import (
     sequence_declaration, declared,
     DeclarationType,
 )
-from .display import Printer
+from .display import Printer, iter_item_types
 from .page import Navigator, Element, Paragraph, Quotation, Break
 from .quiz import QuizShell
 from .shell import SequelShell
-from ..sequence import compile_sequence, Sequence, RecursiveSequenceError
+from ..sequence import compile_sequence, Sequence, RecursiveSequenceError, Trait, get_trait_description
 from ..items import make_items, ANY
 from ..utils import assert_sequence_matches
 
@@ -42,7 +42,7 @@ def redirect(stdout, stderr):
         sys.stdout, sys.stderr = old_stdout, old_stderr
 
 
-class Example(Element):
+class OutputLines(Element):
     def __init__(self, *, printer, max_lines=None, **kwargs):
         self.printer = printer
         self.max_lines = max_lines
@@ -61,8 +61,25 @@ class Example(Element):
                 lines.insert(max_lines, "...")
         return lines
 
+    def _format_lines(self, lines):
+        return '\n'.join("  " + line for line in lines)
+
+
+class TraitsElement(OutputLines):
+    def get_text(self):
+        printer = self.printer
+        trait_fmt = "{name} {desc}"
+        def adj(txt):
+            return "{:20s}".format(txt)
+
+        lines = [trait_fmt.format(name=printer.bold(adj("TRAIT")), desc=printer.bold("DESCRIPTION"))]
+        for trait in Trait:
+            lines.append(trait_fmt.format(name=printer.blue(adj(trait.name)), desc=get_trait_description(trait)))
+        return "\n".join(lines)
+
+        
+class Example(OutputLines):
     def example_args(self):
-        # print("Example: []")
         return []
 
     def _format_lines(self, lines):
@@ -78,7 +95,6 @@ class SimplifyMixIn(object):
         args = super().example_args()
         if self.simplify:
             args.append("--simplify")
-        # print("Simplify:", args)
         return args
 
 
@@ -136,7 +152,7 @@ class RaisingMixIn(object):
             try:
                 yield
             except self.expected_exception:
-                traceback.print_exc(file=file)
+                file.write(self.printer.red(traceback.format_exc()))
             else:
                 raise RuntimeError("should raise {} but it doesn't".format(self.expected_exception))
         else:
@@ -144,18 +160,34 @@ class RaisingMixIn(object):
 
             
 class DocExample(SimplifyMixIn, Example):
-    def __init__(self, printer, sources, simplify=False, max_lines=None):
+    def __init__(self, printer, kind, source, simplify=False, max_lines=None):
         super().__init__(printer=printer, simplify=simplify, max_lines=max_lines)
-        self.sources = sources
+        self.kind = kind
+        self.source = source
         self.simplify = simplify
+
+    def example_args(self):
+        args = super().example_args()
+        if self.kind == 'expressions':
+            args.append('-e')
+            args.extend(self.source)
+        elif self.kind == 'traits':
+            args.append('-w')
+            args.extend(self.source)
+        return args
 
     def get_text(self):
         ios = StringIO()
+        if self.kind == 'all':
+            sources = None
+        elif self.kind == 'expressions':
+            sources = self.source
+        elif self.kind == 'traits':
+            traits = [Trait[trait] for trait in self.source]
+            sources = Sequence.get_sequences_with_traits(traits, order=True)
         with self.printer.set_file(ios):
-            self.printer.print_doc(sources=self.sources, simplify=self.simplify)
+            self.printer.print_doc(sources=sources, simplify=self.simplify)
         args = self.example_args()
-        if self.sources:
-            args.extend(self.sources)
         lines = []
         lines.append("$ sequel doc " + " ".join(args))
         lines.extend(self._output_lines(ios.getvalue()))
@@ -186,8 +218,19 @@ class CompileExample(SimplifyMixIn, RaisingMixIn, Example):
 
 
 class SearchExample(DeclarationsMixIn, Example):
-    def __init__(self, *, printer, items, sequences, max_lines=None, declarations=None):
+    def __init__(self, *, printer, kind, source, sequences, max_lines=None, declarations=None):
         super().__init__(printer=printer, declarations=declarations, max_lines=max_lines)
+        self.kind = kind
+        self.source = source
+        self.target_sequence = None
+        if kind == 'items':
+            items = source
+            assert sequences is not None
+        else:
+            self.target_sequence = Sequence.make_sequence(source)
+            items = self.target_sequence.get_values(printer.num_items)
+            if sequences is None:
+                sequences = [self.target_sequence]
         self.orig_items = tuple(items)
         self.items = make_items(items)
         seqs = []
@@ -200,39 +243,34 @@ class SearchExample(DeclarationsMixIn, Example):
         for sequence in self.sequences:
             assert_sequence_matches(sequence, self.items)
 
+    def example_args(self):
+        args = super().example_args()
+        if self.kind == 'items':
+            args.append('-i')
+            args.extend(str(i) for i in self.orig_items)
+        elif self.kind == 'expression':
+            args.append('-e')
+            args.extend(repr(self.source))
+        elif self.kind == 'random':
+            args.append('-r')
+        return args
+
     def get_text(self):
         ios = StringIO()
-        with self.printer.set_file(ios):
-            self.printer.print_sequences(self.sequences)
+        printer = self.printer
+        with printer.set_file(ios):
+            kwargs = {'target_sequence': self.target_sequence}
+            if self.kind == 'expression':
+                printer.print_evaluate_expression_header(self.source)
+            elif self.kind == 'random':
+                printer.print_generate_sequence_header()
+            else:
+                kwargs['item_types'] = iter_item_types(self.items)
+            printer.print_search_header(self.items)
+            printer.print_search_result(self.sequences, **kwargs)
         lines = []
         args = self.example_args()
-        args.extend(shlex.quote(str(item)) for item in self.orig_items)
         lines.append("$ sequel search " + " ".join(args))
-        lines.extend(self._output_lines(ios.getvalue()))
-        return self._format_lines(lines)
-
-
-class ReverseSearchExample(SimplifyMixIn, DeclarationsMixIn, Example):
-    def __init__(self, printer, source, sequences, simplify=False, max_lines=None, declarations=None):
-        super().__init__(printer=printer, simplify=simplify, max_lines=max_lines, declarations=declarations)
-        self.source = source
-        self.sequences = sequences
-        self.simplify = simplify
-
-    def get_text(self):
-        ios = StringIO()
-        with self.declare():
-            with self.printer.set_file(ios):
-                sequence = compile_sequence(self.source, simplify=self.simplify)
-                items = sequence.get_values(self.printer.num_items)
-                sequences = self.sequences
-                if sequences is None:
-                    sequences = [sequence]
-                self.printer.print_rsearch(self.source, sequence, items, sequences)
-        args = self.example_args()
-        args.append(shlex.quote(self.source))
-        lines = []
-        lines.append("$ sequel rsearch " + " ".join(args))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
@@ -293,39 +331,33 @@ def create_help():
 Sequel is a command line tool to find integer sequences:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, 5, 7, 11],
+                          kind="items", source=[2, 3, 5, 7, 11],
                           sequences=[compile_sequence('p')]),
             SearchExample(printer=printer,
-                          items=[2, 3, 5, 7, 13, 17],
+                          kind="items", source=[2, 3, 5, 7, 13, 17],
                           sequences=[compile_sequence('m_exp')]),
             """\
 The SEARCH subcommand accepts an arbitrary number of integer values and returns a list of matching sequences;
 it may also return multiple matches:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, 5, 7],
+                          kind="items", source=[2, 3, 5, 7],
                           sequences=[compile_sequence('p'), compile_sequence('m_exp')]),
             """\
 Sequel knows many CORE-SEQUENCES; the DOC subcommand can be used to get information about one or more sequences:
 """,
             DocExample(printer=printer,
-                       sources=['m_exp', 'p']),
+                       kind='expressions', source=['m_exp', 'p']),
             """\
 If no sequence name is specified, the doc subcommand shows all the known sequences:
 """,
             DocExample(printer=printer,
-                       sources=None, max_lines=(5, 3)),
+                       kind='all', source=None, max_lines=(5, 3)),
             """\
 The COMPILE subcommand can be used to compile sequence EXPRESSIONS:
 """,
             CompileExample(printer=printer,
                            sources=['p * zero_one']),
-            """\
-The RSEARCH subcommand can be used to test the search algorithm: it gets a sequence definition, compiles it,
-and searches its values. It is a shortcut for running a compile subcommand and then a search subcommand.
-""",
-            ReverseSearchExample(printer=printer,
-                                 source='p * zero_one', sequences=None),
             """\
 The SHELL subcommand opens an interactive python shell to play with sequel sequences:
 """,
@@ -347,6 +379,8 @@ The PLAY subcommand generates an hidden random sequence and let you guess what s
 Sequel understands many SEQUENCES. There are many CORE-SEQUENCES; for instance 'p' is the prime numbers sequence [2, 3, 5, 7, ...].
 
 Other sequences can be created using sequence EXPRESSIONS; for instance, 'p + 10' is the sequence of the prime numbers plus ten [12, 13, 15, 17, ...].
+
+Sequences can be classified by TRAITS.
 """,
         ],
     )
@@ -360,7 +394,7 @@ Other sequences can be created using sequence EXPRESSIONS; for instance, 'p + 10
 Sequel knows many sequences; the DOC subcommand without arguments shows information about all CORE-SEQUENCES:
 """,
             DocExample(printer=printer,
-                       sources=None),
+                       kind='all', source=None),
         ],
     )
     ### SEQUENCE_EXPRESSIONS
@@ -462,7 +496,7 @@ The generating sequence can be a generic sequence; nevertheless it may contain r
             Quotation("""\
   I0      is the recursive sequence itself
   I1      is equivalent to I0 | i - 1
-  I2      is equivalent to I0 | i - 2
+  I2      is equivalent to I0 | i - 2 (or I1 | i - 1)
   ...
   I9      is equivalent to I0 | i - 9
   rseq[n] is equivalent to I0 | i - n
@@ -548,33 +582,32 @@ Be aware that I0, I1, ... are "limited" sequences: they cannot be used outside a
 Without arguments the DOC command shows the available core sequences.
 """,
             DocExample(printer=printer,
-                       sources=None, max_lines=(5, 3)),
+                       kind='all', source=None, max_lines=(5, 3)),
             """\
-When one or more arguments are passed, the arguments are compiled and the documentation about the resulting sequence is shown:
+The DOC command can be used to show documentation about selected sequences:
 """,
-
             DocExample(printer=printer,
-                       sources=['m_exp', 'p', 'm_exp * (p - 2)']),
+                       kind='all', source=['m_exp', 'p', 'catalan']),
+            """\
+It is also possible to select sequences by given TRAITS:
+""",
+            DocExample(printer=printer,
+                       kind='traits', source=['INJECTIVE', 'NON_ZERO'], max_lines=(5, 3)),
         ],
     )
-    ### RSEARCH
+
+    ### TRAITS
     navigator.new_page(
-        name="rsearch",
+        name="traits",
+        parent="sequences",
         elements=[
             """\
-The RSEARCH command can be used to test the search algorithm by performing a reverse search of a sequence definition.
-It accepts a sequence definition; the sequence is compiled and its values are passed to the search algorithm. 
-For instance:
+Sequence traits are:
+
 """,
-            ReverseSearchExample(printer=printer,
-                                 source='p * zero_one', sequences=None),
-            """\
-The RSEARCH command accepts the same options as the SEARCH command. For instance, it accepts a sequence DECLARATION:
-""",
-            ReverseSearchExample(printer=printer,
-                                 source='catalan * p ** 2', sequences=None, declarations=[sequence_declaration('p ** 2')]),
-        ],
-    )
+        TraitsElement(printer=printer),
+    ])
+
     ### PLAY
     navigator.new_page(
         name="play",
@@ -653,47 +686,56 @@ The search subcommand tries to find a sequence matching the given integer values
 Sequel tries first to search for CORE-SEQUENCES:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, 5, 7],
+                          kind="items", source=[2, 3, 5, 7],
                           sequences=[compile_sequence('p'), compile_sequence('m_exp')]),
             """\
 If no known sequence matches the given values, sequel applies some ALGORITHMS to detect a matching sequence. It can so find generic SEQUENCES. For instance:
 """,
             SearchExample(printer=printer,
-                          items=[10, 15, 25, 35, 71, 97, 101, 191],
+                          kind="items", source=[10, 15, 25, 35, 71, 97, 101, 191],
                           sequences=[compile_sequence('-3 * p + 8 * m_exp')]),
             SearchExample(printer=printer,
-                          items=[3, 6, 9, 15, 24],
+                          kind="items", source=[3, 6, 9, 15, 24],
                           sequences=[compile_sequence('3 * Fib(first=1, second=2)')]),
             SearchExample(printer=printer,
-                          items=[1, 36, 316, 2556, 20476, 163836],
+                          kind="items", source=[1, 36, 316, 2556, 20476, 163836],
                           sequences=[compile_sequence('-4 + 5 * Geometric(base=8)')]),
             SearchExample(printer=printer,
-                          items=[2, 101, 3, 107, 5, 149, 7, 443],
+                          kind="items", source=[2, 101, 3, 107, 5, 149, 7, 443],
                           sequences=[compile_sequence('roundrobin(p, 100 + Geometric(base=7))'),
                                      compile_sequence('roundrobin(m_exp, 100 + Geometric(base=7))')]),
             """\
 Search accepts patterns instead of integer values. For instance, ANY matches with any value:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, ANY, 7, 11],
+                          kind="items", source=[2, 3, ANY, 7, 11],
                           sequences=[compile_sequence('p')]),
             """\
 A range of suitable values can be passed as 'first..last': any integer value with first <= value <= last is then matched:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, ANY, 7, '10..20'],
+                          kind="items", source=[2, 3, ANY, 7, '10..20'],
                           sequences=[compile_sequence('p'), compile_sequence('m_exp')]),
             """\
 A set of values can be passed as 'v0,v1,v2', for instance:
 """,
             SearchExample(printer=printer,
-                          items=[2, 3, ANY, 7, '10,13'],
+                          kind="items", source=[2, 3, ANY, 7, '10,13'],
                           sequences=[compile_sequence('m_exp')]),
             """\
 Notice that using patterns can inhibit some search algorithms.
 
 The SEARCH algorithm can be more efficient in case you know or guess that some non-core sequence can be part of the solution. In this case you can add a sequence DECLARATION.
 """,
+            """\
+The SEARCH command can also be used to test the search algorithm by performing a reverse search of a known sequence.
+The input sequence can be an expression or a randomly generated sequence.
+For instance:
+""",
+            SearchExample(printer=printer,
+                                 kind='expression', source='p * zero_one', sequences=None),
+            SearchExample(printer=printer,
+                                 kind='random', source='rseq(1, 2, 2 * I2**2 - I1)', sequences=None),
     ])
 
     ### DECLARATION
@@ -712,28 +754,28 @@ that has been used to generate these values, but it is very slow.
 If you have reasons to guess that the p ** 2 sequence is probably part of the solution, the algorithm can be considerably faster:
 """,
             SearchExample(printer=printer,
-                          items=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
+                          kind="items", source=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
                           sequences=['catalan + p ** 2'],
                           declarations=[sequence_declaration('p ** 2')]),
             """\
 It is possible to give a name to the declared sequence, for instance:
 """,
             SearchExample(printer=printer,
-                          items=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
+                          kind="items", source=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
                           sequences=['catalan + p2'],
                           declarations=[sequence_declaration('p2:=p ** 2')]),
             """\
 It is possible to register more than one sequence:
 """,
             SearchExample(printer=printer,
-                          items=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
+                          kind="items", source=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
                           sequences=['c + p2'],
                           declarations=[sequence_declaration('p2:=p ** 2'), sequence_declaration('c:=catalan - m_exp')]),
             """\
 Sequence declarations can be collected in files; for instance, suppose the file 'catalog.txt' contains the two declarations 'p2:=p ** 2' and 'c:=catalan - m_exp':
 """,
             SearchExample(printer=printer,
-                          items=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
+                          kind="items", source=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
                           sequences=['c + p2'],
                           declarations=[DummyCatalogDeclaration('catalog.txt', ['p2:=p ** 2', 'c:=catalan - m_exp'])]),
             """\
@@ -762,7 +804,7 @@ sequence 's' matching the resulting values; the sequence 'p + s' is then a solut
 For instance:
 """,
             SearchExample(printer=printer,
-                          items=[4, 3, 20, 0, 77, -52, 238, -285, 736, -1276],
+                          kind="items", source=[4, 3, 20, 0, 77, -52, 238, -285, 736, -1276],
                           sequences=[compile_sequence('rseq(2, 1, I2 - I1 + 3) * p')]),
 
         ],

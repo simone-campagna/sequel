@@ -370,8 +370,7 @@ class Navigator(collections.abc.Mapping):
         if found:
             if link:
                 return self._execute_link(link)
-            else:
-                return LinkResult(status=NavigationStatus.FAILURE, link=None, page=None)
+        return LinkResult(status=NavigationStatus.FAILURE, link=None, page=None)
         # REM if link is None:
         # REM     # start
         # REM     matching_links = [link for link in self._links.values() if link.matches(text)]

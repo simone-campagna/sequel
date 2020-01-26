@@ -3,6 +3,7 @@ Main tool.
 """
 
 import argparse
+import collections
 import functools
 
 import argcomplete
@@ -26,6 +27,9 @@ from ..search import (
 from ..sequence import (
     Sequence,
     Trait,
+)
+from ..sequence.generate import (
+    get_generate_algorithms,
 )
 from ..declaration import (
     sequence_declaration,
@@ -82,6 +86,12 @@ def type_range(string):
     return (left, right)
 
 
+_HELP = object()
+_ARGS = {}
+_ArgInfo = collections.namedtuple(
+    "_ArgInfo", "name dests fun")
+
+
 def create_parser(*args, function, function_args, subparsers=None, **kwargs):
     if subparsers:
         parser = subparsers.add_parser(*args, **kwargs)
@@ -89,8 +99,9 @@ def create_parser(*args, function, function_args, subparsers=None, **kwargs):
         parser = argparse.ArgumentParser(*args, **kwargs)
     f_args = []
     for arg in function_args:
-        _ARGS[arg](parser)
-        f_args.append(arg.split(":", 1)[0])
+        arg_info = _ARGS[arg]
+        arg_info.fun(parser)
+        f_args.extend(arg_info.dests)
     if function is _HELP:
         function = parser.print_help
         f_args = []
@@ -100,14 +111,15 @@ def create_parser(*args, function, function_args, subparsers=None, **kwargs):
     return parser
 
 
-_HELP = object()
-_ARGS = {}
-
-def arg(name, **kwargs):
+def arg(name, *, dests=None, **kwargs):
     def arg_decorator(fun):
         if kwargs:
             fun = functools.partial(fun, **kwargs)
-        _ARGS[name] = fun
+        if dests is None:
+            odests = [name]
+        else:
+            odests = dests
+        _ARGS[name] = _ArgInfo(name=name, dests=odests, fun=fun)
         return fun
     return arg_decorator
     
@@ -121,8 +133,8 @@ def add_load_argument(parser):
         help="python module")
 
 
-@arg('config')
-def add_config_argument(parser):
+@arg('config_filename')
+def add_config_filename_argument(parser):
     parser.add_argument(
         "-c", "--config",
         metavar="F",
@@ -442,27 +454,28 @@ def add_doc_argument(parser):
         help="print sequence doc")
 
 
-@arg('sequences')
-def add_sequences_argument(parser):
-    parser.add_argument(
+@arg('inputs', dests=['expressions', 'sequence_traits'])
+def add_inputs_argument(parser):
+    group = parser.add_argument_group("input")
+    mgroup = parser.add_mutually_exclusive_group()
+    mgroup.add_argument(
         "-e", "--expressions",
-        dest='sequences',
         metavar='EXPR',
         default=None,
-        action="append", type=str,
+        type=str, nargs='+',
         help="sequence expression").completer = sequence_completer
-    parser.add_argument(
-        "-b", "--by-traits",
-        dest='sequences',
+    mgroup.add_argument(
+        "-w", "--with-traits",
+        dest='sequence_traits',
         metavar='TRAIT[,TRAIT,...]',
         default=None,
         choices=list(Trait),
-        action="append", type=Trait.__getitem__, nargs='+',
-        help="sequence expression").completer = sequence_completer
+        type=Trait.__getitem__, nargs='+',
+        help="select sequences with given traits").completer = sequence_completer
 
 
-@arg('sequence:required', required=True, items=False, gname="sequence")
-@arg('sequence:with-items', required=False, items=True, gname="input")
+@arg('sequence:required', dests=['sequence'], required=True, items=False, gname="sequence")
+@arg('sequence:with-items', dests=['sequence'], required=False, items=True, gname="input")
 def add_sequence_argument(parser, required, items=False, gname=""):
     group = parser.add_argument_group(gname)
     mgroup = group.add_mutually_exclusive_group(required=required)
@@ -482,9 +495,9 @@ def add_sequence_argument(parser, required, items=False, gname=""):
     if items:
         mgroup.add_argument(
             "-i", "--items",
-            metavar='INT',
+            metavar='ITEM',
             dest="sequence", default=default,
-            type=int, nargs='+',
+            type=make_item, nargs='+',
             help="sequence items")
     
 
@@ -498,13 +511,15 @@ def add_level_argument(parser):
         help="set level, e.g. '2', ':3', '2:5'")
 
 
-@arg('algorithm')
-def add_algorithm_argument(parser):
+@arg('algorithms')
+def add_algorithms_argument(parser):
     parser.add_argument(
-        "-a", "--algorithm",
+        "-a", "--algorithms",
         default=None,
-        type=str,
-        help="set algorithm name")
+        choices=sorted(get_generate_algorithms()),
+        nargs='+',
+        help="add generate algorithms")
+
 
 def main():
     """Main function"""
@@ -525,7 +540,7 @@ To enable completion run the following command:
 
   $ eval "$(register-python-argcomplete sequel)"
 """.format(version=VERSION),
-        function=_HELP, function_args=['pymodules', 'config', 'config_keys'] + common_display_args,
+        function=_HELP, function_args=['pymodules', 'config_filename', 'config_keys'] + common_display_args,
         **common_parser_kwargs)
 
     parser.add_argument(
@@ -585,7 +600,7 @@ $ sequel search 2 3 5 7 12..20
         subparsers=subparsers,
         function=function_search,
         function_args=['sequence:with-items', 'limit', 'sort', 'reverse', 'simplify',
-                       'handler', 'profile', 'declarations', 'level', 'algorithm'],
+                       'handler', 'profile', 'declarations', 'level', 'algorithms'],
         **common_parser_kwargs)
 
     # DOC
@@ -595,7 +610,7 @@ $ sequel search 2 3 5 7 12..20
 Show sequence documentation""",
         subparsers=subparsers,
         function=function_doc,
-        function_args=['sequences', 'simplify', 'traits', 'classify'],
+        function_args=['inputs', 'simplify', 'traits', 'classify'],
         **common_parser_kwargs)
 
     # SHOW
@@ -605,7 +620,7 @@ Show sequence documentation""",
 Show a sequence""",
         subparsers=subparsers,
         function=function_show,
-        function_args=['sequence:required', 'simplify', 'tree', 'inspect', 'traits', 'classify', 'doc', 'level', 'algorithm'],
+        function_args=['sequence:required', 'simplify', 'tree', 'inspect', 'traits', 'classify', 'doc', 'level', 'algorithms'],
         **common_parser_kwargs)
 
     # PLAY
@@ -615,7 +630,7 @@ Show a sequence""",
 Play the sequence game. Sequel will generate a random sequence and make you a quiz""",
         subparsers=subparsers,
         function=function_play,
-        function_args=['level', 'algorithm'],
+        function_args=['level', 'algorithms'],
         **common_parser_kwargs)
 
     # CONFIG

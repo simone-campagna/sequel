@@ -18,6 +18,13 @@ from .miscellanea import (
 from .sequence_utils import make_linear_combination
 
 
+__all__ = [
+    'get_generate_algorithms',
+    'generate',
+    'generate_sequences',
+]
+
+
 def pick(value):
     if isinstance(value, (list, tuple)):
         return random.choice(value)
@@ -531,13 +538,18 @@ def compile_config(config):
     return cfg
         
 
-def generate(level=None, algorithm=None):
+def get_generate_algorithms():
+    return list(sorted(ALGORITHMS))
+
+
+def generate(level=None, algorithms=None, simplify=False):
     config = compile_config(json.loads(CONFIG))
 
-    def make_select(level, algorithm):
+    def make_select(level, algorithms):
         select_functions = []
-        if algorithm:
-            select_functions.append(lambda algorithm_config: algorithm_config.name == algorithm)
+        if algorithms is not None:
+            algorithms = set(algorithms)
+            select_functions.append(lambda algorithm_config: algorithm_config.name in algorithms)
         if level:
             levels = set()
             if isinstance(level, int):
@@ -565,14 +577,19 @@ def generate(level=None, algorithm=None):
     def run_algorithm(algorithm_config):
         return algorithm_config.function(**algorithm_config.kwargs)
 
-    select = make_select(level, algorithm)
+    def simplify_sequence(sequence):
+        if simplify:
+            sequence = sequence.simplify()
+        return sequence
+
+    select = make_select(level, algorithms)
     selected = []
     for level_config in config.values():
         for algorithm_config in level_config:
             if select(algorithm_config):
                 selected.append(algorithm_config)
     if len(selected) == 1:
-        return run_algorithm(selected[0])
+        return simplify_sequence(run_algorithm(selected[0]))
     elif selected:
         lst = []
         tot = sum(algorithm_config.weight for algorithm_config in selected)
@@ -584,7 +601,7 @@ def generate(level=None, algorithm=None):
         p = random.random()
         for cumulated_p, algorithm_config in lst:
             if p <= cumulated_p:
-                return run_algorithm(algorithm_config)
+                return simplify_sequence(run_algorithm(algorithm_config))
 
 
 def generate_sequences(level=None, algorithm=None):
