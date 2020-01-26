@@ -194,25 +194,32 @@ class DocExample(SimplifyMixIn, Example):
         return self._format_lines(lines)
 
 
-class CompileExample(SimplifyMixIn, RaisingMixIn, Example):
-    def __init__(self, printer, sources, simplify=False, expected_exception=False, max_lines=None, num_items=None):
+class ShowExample(SimplifyMixIn, RaisingMixIn, Example):
+    def __init__(self, printer, kind, source, simplify=False, expected_exception=False, max_lines=None, num_items=None):
         super().__init__(printer=printer, simplify=simplify, expected_exception=expected_exception, max_lines=max_lines)
-        self.sources = sources
+        self.kind = kind
+        self.source = source
         self.simplify = simplify
         self.num_items = num_items
+
+    def example_args(self):
+        args = super().example_args()
+        if self.kind == 'expression':
+            args.append('-e')
+            args.append(str(self.source))
+        if self.kind == 'random':
+            args.append('-r')
+        return args
 
     def get_text(self):
         ios = StringIO()
         with self.printer.set_file(ios):
             with self.raising(ios):
-                for source in self.sources:
-                    sequence = compile_sequence(source, simplify=self.simplify)
-                    self.printer.print_sequence(sequence, num_items=self.num_items)
+                sequence = compile_sequence(self.source, simplify=self.simplify)
+                self.printer.print_sequence(sequence, num_items=self.num_items)
         args = self.example_args()
-        if self.sources:
-            args.extend(self.sources)
         lines = []
-        lines.append("$ sequel compile " + " ".join(shlex.quote(arg) for arg in args))
+        lines.append("$ sequel show " + " ".join(shlex.quote(arg) for arg in args))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
@@ -354,10 +361,10 @@ If no sequence name is specified, the doc subcommand shows all the known sequenc
             DocExample(printer=printer,
                        kind='all', source=None, max_lines=(5, 3)),
             """\
-The COMPILE subcommand can be used to compile sequence EXPRESSIONS:
+The SHOW subcommand can be used to show information about a sequence:
 """,
-            CompileExample(printer=printer,
-                           sources=['p * zero_one']),
+            ShowExample(printer=printer,
+                        kind='expression', source='p * zero_one'),
             """\
 The SHELL subcommand opens an interactive python shell to play with sequel sequences:
 """,
@@ -407,65 +414,86 @@ New sequences can be created by composing CORE-SEQUENCES and integer constants w
 
 An integer constant is considered as a const sequence; for instance, the sequence '3' always repeats the integer value '3':
 """,
-            CompileExample(printer=printer,
-                           sources=['3']),
+            ShowExample(printer=printer,
+                        kind='expression', source='3'),
             """\
-The usual arithmetic operators can be used to obtain new sequences; for instance:
+The usual arithmetic operators (+, -, *, /, //, %, **) can be used to obtain new sequences; for instance:
 """,
-            CompileExample(printer=printer,
-                           sources=['3 * p + m_exp - m_primes', 'm_exp % p', 'p ** n']),
+            ShowExample(printer=printer,
+                        kind='expression', source='3 * p ** 2 - m_exp'),
             """\
 Since sequel only supports integer sequences, the division operator always truncates the result:
 """,
-            CompileExample(printer=printer,
-                           sources=['m_exp // p']),
+            ShowExample(printer=printer,
+                        kind='expression', source='m_exp // p'),
             """\
 Powers are also available: the sequence 'Power(3)' is the sequence i**3':
 """,
-            CompileExample(printer=printer,
-                           sources=['Power(3)', 'Power(7)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='Power(3)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='Power(7)'),
             """\
 Sequences can be composed with the '|' operator. The sequence 'p | n' is the sequence primes 'p' computed on the values of the natural numers sequence 'n':
 """,
-            CompileExample(printer=printer,
-                           sources=['p', 'n', 'p | n', 'p | (2 * n)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='p | n'),
             """\
 The 'roundrobin' function creates a new sequence by taking values from other sequences:
 """,
-            CompileExample(printer=printer,
-                           sources=['roundrobin(p, 0, 7 * n - 10)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='roundrobin(p, 0, 7 * n - 10)'),
             """\
 Other available functions are 'integral', 'derivative', 'summation', 'product':
 """,
-            CompileExample(printer=printer,
-                           sources=['integral(p)', 'derivative(p)', 'summation(p)', 'product(p)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='integral(p)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='derivative(p)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='product(p)'),
             """\
 The 'ifelse' function creates a new function according to a condition. For instance, the following sequence is '1000 + fib01' for the indices where catalan is even, and p for the indices where catalan is odd:
 """,
-            CompileExample(printer=printer,
-                           sources=['ifelse(catalan % 2 == 0, 1000 + fib01, p)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='ifelse(catalan % 2 == 0, 1000 + fib01, p)'),
             """\
 Moreover, some parametric sequences are available. For instance, the geometric, arithmetic sequences:
 """,
-            CompileExample(printer=printer,
-                           sources=['Geometric(base=8)', 'Arithmetic(start=2, step=7)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='Geometric(base=8)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='Arithmetic(start=2, step=7)'),
             """\
 Fibonacci sequences are also available; 'Fib' is the generic Fibonacci sequence with parametric 'first' and 'second' values. Three specialized sequences are available:
 'fib01', 'fib11' and 'lucas':
 are defined as 
 """,
-            CompileExample(printer=printer,
-                           sources=['Fib(first=2, second=4)', 'fib01', 'fib11', 'lucas']),
+            ShowExample(printer=printer,
+                        kind='expression', source='fib01'),
+            ShowExample(printer=printer,
+                        kind='expression', source='Fib(first=2, second=4)'),
             """\
 The polygonal numbers are also available:
 """,
-            CompileExample(printer=printer,
-                           sources=['triangular', 'square', 'pentagonal', 'hexagonal', 'Polygonal(8)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='triangular'),
+            ShowExample(printer=printer,
+                        kind='expression', source='pentagonal'),
+            ShowExample(printer=printer,
+                        kind='expression', source='Polygonal(8)'),
             """\
 Additionally, a generic RECURSIVE-SEQUENCE can be defined; the following sequence is the recursive definition of the factorial function:
 """,
-            CompileExample(printer=printer,
-                           sources=['rseq(1, I1 * i)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(1, I1 * i)'),
+            """\
+The SHOW command can also generate a random sequence:
+""",
+            ShowExample(printer=printer,
+                        kind='random', source='rseq(0, 0, I1 ** 2 - 2 * I2 + 1)'),
+            ShowExample(printer=printer,
+                        kind='random', source='product(lucas)'),
         ],
     )
 
@@ -488,8 +516,8 @@ where:
             """\
 The generating sequence is used to produce the items for i >= N; for instance, in 'rseq(4, 8, p)', the generating sequence is 'p', and it is used to produce the items with index 2, 3, ...:
 """,
-            CompileExample(printer=printer,
-                           sources=['rseq(4, 8, 0)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(4, 8, 0)'),
             """
 The generating sequence can be a generic sequence; nevertheless it may contain references to the recursive sequence itself:
 """,
@@ -515,8 +543,8 @@ For instance, 'rseq(1, I1 * i)' defines a new sequence starting with 1 and produ
 
 This is the same as the factorial sequence.
 """),
-            CompileExample(printer=printer,
-                           sources=['rseq(1, I1 * i)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(1, I1 * i)'),
             """\
 As a second example, consider 'rseq(0, 1, I1 + I2)'; in this case the known items are two (0 and 1) and the next items are generated as the sum of the last two values (I1 and I2):
 """,
@@ -534,20 +562,20 @@ As a second example, consider 'rseq(0, 1, I1 + I2)'; in this case the known item
 
 This is the same as the fib01 sequence.
 """),
-            CompileExample(printer=printer,
-                           sources=['rseq(0, 1, I1 + I2)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(0, 1, I1 + I2)'),
             """\
 A recursive sequence definition must contain at least N known elements, where N is the max used index in the generating expression; so, if the generating expression is 'I1 + 3 * I3',
 the recursive sequence definition must contain at least 3 values. Anyway, it is accepted to define more than N+1 known values, for instance:
 """,
-            CompileExample(printer=printer,
-                           sources=['rseq(3, 2, 1, 0, I1 + 1)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(3, 2, 1, 0, I1 + 1)'),
             """\
 Another constraint on the generating sequence is obviously that it cannot be used to generate items with index N >= the index of the last generated item.
 For instance, 'I0', wich is a reference to the recursive sequence itself, is not a valid generating sequence:
 """,
-            CompileExample(printer=printer,
-                           sources=['rseq(0, I0)'], expected_exception=RecursiveSequenceError),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(0, I0)', expected_exception=RecursiveSequenceError),
             """\
 In the definition above the item 1 of the recursive sequence is defined as the item 1 of the recursive sequence itself; this is an error.
 Anyway, I0 can be used in a generating sequence definition; for instance 'rseq(1, summation(I0) | i - 1)' is defined as follow:
@@ -561,13 +589,13 @@ Anyway, I0 can be used in a generating sequence definition; for instance 'rseq(1
     [4] -> summation(I0)[3] == sum(1, 1, 2, 4) ==  8
     ...
 """),
-            CompileExample(printer=printer,
-                           sources=['rseq(0, 1, summation(I0) | i - 1)']),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(0, 1, summation(I0) | i - 1)'),
             """\
 The following sequence computes the items of the Collatz sequence starting with n=19:
 """,
-            CompileExample(printer=printer,
-                           sources=['rseq(19, ifelse(I1 % 2 == 0, I1 // 2, 3 * I1 + 1))'], num_items=24),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(19, ifelse(I1 % 2 == 0, I1 // 2, 3 * I1 + 1))', num_items=24),
             """\
 Be aware that I0, I1, ... are "limited" sequences: they cannot be used outside a rseq(...) definition. Moreover, as stated above, I<N> cannot be used to generate items with index n >= N.
 """
@@ -663,16 +691,16 @@ The SHELL subcommand opens an interactive python shell to play with sequel seque
             Shellxample(printer=printer,
                                  commands=['print_sequence(p * zero_one)']),
     ])
-    ### COMPILE
+    ### SHOW
     navigator.new_page(
-        name="compile",
+        name="show",
         elements=[
             """\
-The COMPILE command compiles a sequence and shows its first items:
+The SHOW command shows information about a sequence.
 For instance:
 """,
-            CompileExample(printer=printer,
-                        sources=['p * zero_one']),
+            ShowExample(printer=printer,
+                        kind='expression', source='p * zero_one'),
         ],
     )
 

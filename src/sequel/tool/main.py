@@ -485,7 +485,7 @@ def add_sequence_argument(parser, required, items=False, gname=""):
         dest="sequence",
         metavar='EXPR',
         default=default,
-        action="store", type=str, nargs='?',
+        action="store", type=str,
         help="sequence expression").completer = sequence_completer
     mgroup.add_argument(
         "-r", "--random",
