@@ -5,7 +5,9 @@ Shell class
 from code import InteractiveConsole
 import readline
 import sys
+from pathlib import Path
 
+from ..config import get_rl_history_filename, get_rl_init_filename
 from ..sequence import Sequence, compile_sequence, inspect_sequence, generate, classify
 from .display import Printer
 
@@ -31,6 +33,9 @@ class SequelShell(InteractiveConsole):
         s_locals['generate'] = generate
         super().__init__(s_locals)
 
+    def history_filename(self):
+        return get_rl_history_filename()
+
     @classmethod
     def get_locals(cls):
         locals = {
@@ -53,7 +58,16 @@ Sequel shell
             banner = self.banner()
         if exitmsg is None:
             exitmsg = self.exitmsg()
-        super().interact(banner=banner, exitmsg=exitmsg)
+        init_filename = get_rl_init_filename()
+        if init_filename.is_file():
+            readline.read_init_file(init_filename)
+        history_filename = self.history_filename()
+        if history_filename.is_file():
+            readline.read_history_file(history_filename)
+        try:
+            super().interact(banner=banner, exitmsg=exitmsg)
+        finally:
+            readline.write_history_file(history_filename)
 
     def run_commands(self, commands, banner=None, echo=False):
         printer = self.printer

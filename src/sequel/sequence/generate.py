@@ -604,6 +604,6 @@ def generate(level=None, algorithms=None, simplify=False):
                 return simplify_sequence(run_algorithm(algorithm_config))
 
 
-def generate_sequences(level=None, algorithm=None):
+def generate_sequences(level=None, algorithms=None):
     while True:
-        yield generate(level=level, algorithm=algorithm)
+        yield generate(level=level, algorithms=algorithms)

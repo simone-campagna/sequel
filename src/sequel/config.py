@@ -6,7 +6,7 @@ import collections
 import copy
 import functools
 import json
-import os
+from pathlib import Path
 import random
 import shutil
 import subprocess
@@ -21,8 +21,9 @@ __all__ = [
     "get_config_filename",
     "default_config",
     "get_config",
-    "get_rl_history_filename",
     "get_rl_init_filename",
+    "get_rl_history_filename",
+    "get_rl_quiz_history_filename",
     "get_actual_config_filename",
     "get_actual_base_path",
     "set_config",
@@ -36,10 +37,11 @@ __all__ = [
     "show_config",
 ]
 
-RCDIR = os.path.normpath(os.path.abspath(os.path.join(os.path.expanduser("~"), ".sequel")))
-CONFIG_FILENAME = os.path.join(RCDIR, "sequel.config")
-RL_HISTORY_FILENAME = os.path.join(RCDIR, "sequel.rl-history")
-RL_INIT_FILENAME = os.path.join(RCDIR, "sequel.rl-init")
+RCDIR = Path.home().joinpath(".sequel")
+CONFIG_FILENAME = RCDIR.joinpath("sequel.config")
+RL_INIT_FILENAME = RCDIR.joinpath("sequel.rl-init")
+RL_HISTORY_FILENAME = RCDIR.joinpath("sequel.rl-history")
+RL_QUIZ_HISTORY_FILENAME = RCDIR.joinpath("sequel.rl-quiz-history")
 
 CONFIG = None
 
@@ -48,6 +50,10 @@ CONFIG_REGISTRY = {}
 
 def get_rl_history_filename():
     return RL_HISTORY_FILENAME
+
+
+def get_rl_quiz_history_filename():
+    return RL_QUIZ_HISTORY_FILENAME
 
 
 def get_rl_init_filename():
@@ -123,21 +129,22 @@ def get_actual_config_filename(config=None):
 def get_actual_base_path(config=None):
     filename = get_actual_config_filename(config)
     if filename is None:
-        return os.getcwd()
+        return Path.cwd()
     else:
-        return os.path.dirname(os.path.normpath(os.path.abspath(filename)))
+        return Path(filename).resolve()
 
 
 def make_abs_path(pathname, config=None):
     if config is None:
         config = get_config()
-    if not os.path.isabs(pathname):
+    pathname = Path(pathname)
+    if not pathname.is_absolute():
         config_filename = get_actual_config_filename(config)
         if filename is None:
-            pathname = os.path.abspath(pathname)
+            pathname = pathname.absolute()
         else:
-            dirname = os.path.dirname(os.path.abspath(config_filename))
-            pathname = os.path.join(dirname, pathname)
+            dirname = config_filename.parent
+            pathname = dirname.joinpath(pathname)
     return pathname
 
 
@@ -148,13 +155,13 @@ def reset_config():
 
 
 def load_config(filename=None):
-    if filename is None and os.path.exists(get_config_filename()):
+    if filename is None and get_config_filename().exists():
         filename = get_config_filename()
     data = default_config()
     if filename:
         with open(filename, "r") as fp:
             data.update(json.load(fp))
-        data["__internal__"]["filename"] = os.path.abspath(filename)
+        data["__internal__"]["filename"] = filename.resolve()
     return data
 
 
@@ -171,9 +178,10 @@ def dump_config(config, filename=None):
     if filename is None:
         print(json_data)
     elif isinstance(filename, str):
-        dirname = os.path.dirname(os.path.abspath(filename))
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
+        filename = Path(filename)
+        dirname = filename.absolute().parent
+        if not dirname.is_dir():
+            dirname.mkdir(parents=True)
         with open(filename, "w") as file:
             file.write(json_data)
     else:
@@ -263,7 +271,8 @@ def edit_config(config=None):
     if config is None:
         config = get_config()
     with tempfile.TemporaryDirectory() as tmpd:
-        tmpf = os.path.join(tmpd, "sequel.config")
+        tmpd = Path(tmpd)
+        tmpf = tmpd.joinpath("sequel.config")
         write_config(config, tmpf)
         returncode = subprocess.call([config['sequel']['editor'], tmpf])
         if returncode == 0:

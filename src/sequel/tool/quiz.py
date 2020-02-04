@@ -6,6 +6,7 @@ import types
 
 from .display import Printer
 from .shell import SequelShell
+from ..config import get_rl_quiz_history_filename
 from ..sequence import Sequence, compile_sequence, generate_sequences, inspect_sequence
 from ..lazy import gmpy2
 
@@ -294,6 +295,9 @@ class QuizShell(SequelShell):
                          sequence_iterator=sequence_iterator, max_games=max_games)
         super().__init__(locals={'q': self.quiz}, printer=printer)
         self._initialized = False
+
+    def history_filename(self):
+        return get_rl_quiz_history_filename()
 
     def _init(self):
         if not self._initialized:
