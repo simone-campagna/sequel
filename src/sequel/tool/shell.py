@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..config import get_rl_history_filename, get_rl_init_filename
 from ..sequence import Sequence, compile_sequence, inspect_sequence, generate, classify
+from ..search import search
 from .display import Printer
 
 __all__ = [
@@ -32,6 +33,7 @@ class SequelShell(InteractiveConsole):
         s_locals['inspect_sequence'] = inspect_sequence
         s_locals['classify'] = classify
         s_locals['generate'] = generate
+        s_locals['search'] = search
         self._locals = s_locals
         super().__init__(s_locals)
 

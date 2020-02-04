@@ -127,3 +127,8 @@ def create_manager(size, config=None):
         manager.add_algorithm(algorithm)
     return manager
 
+
+def search(items):
+    size = min(10, len(items))
+    manager = create_manager(size)
+    yield from manager.search(items)
