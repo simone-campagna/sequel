@@ -4,6 +4,7 @@ Shell class
 
 from code import InteractiveConsole
 import readline
+import rlcompleter
 import sys
 from pathlib import Path
 
@@ -31,6 +32,7 @@ class SequelShell(InteractiveConsole):
         s_locals['inspect_sequence'] = inspect_sequence
         s_locals['classify'] = classify
         s_locals['generate'] = generate
+        self._locals = s_locals
         super().__init__(s_locals)
 
     def history_filename(self):
@@ -64,6 +66,8 @@ Sequel shell
         history_filename = self.history_filename()
         if history_filename.is_file():
             readline.read_history_file(history_filename)
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(rlcompleter.Completer(self._locals).complete)
         try:
             super().interact(banner=banner, exitmsg=exitmsg)
         finally:
