@@ -128,8 +128,10 @@ class DivAlgorithm(RecursiveAlgorithm):
                     vr = vl + r_value - 1
                     if vr == vl:
                         vv = vr
-                    else:
+                    elif vl < vr:
                         vv = Interval(vl, vr)
+                    else:
+                        vv = Interval(vr, vl)
                     sub_items.append(vv)
             else:
                 # ok
