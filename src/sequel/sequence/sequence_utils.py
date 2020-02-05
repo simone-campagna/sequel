@@ -9,10 +9,13 @@ from ..utils import gcd
 __all__ = [
     'make_linear_combination',
     'make_power',
+    'iter_monomials',
+    'make_monomial',
+    'create_powers',
 ]
 
 
-def make_linear_combination(coeffs, items, denom=1):
+def make_linear_combination(coeffs, items, denom=1, powers=None):
     orig_ci_list = list(zip(coeffs, items))
     result = None
     coeffs = []
@@ -23,6 +26,8 @@ def make_linear_combination(coeffs, items, denom=1):
             item = 1
         coeffs.append(coeff)
         items.append(item)
+    if powers is None:
+        powers = [1 for _ in items]
     if denom < 0:
         denom = -denom
         coeffs = [-c for c in coeffs]
@@ -33,9 +38,11 @@ def make_linear_combination(coeffs, items, denom=1):
             denom //= g
             coeffs = [c // g for c in coeffs]
         # print(">>>", denom, coeffs)
-    for coeff, item in zip(coeffs, items):
+    for coeff, item, power in zip(coeffs, items, powers):
+        if power != 1:
+            item = make_power(item, power)
         if isinstance(item, Const):
-            const_value = coeff * item.value
+            const_value = coeff * (item.value ** power)
             if const_value < 0 and result is not None:
                 item = Const(-const_value)
                 coeff = -1
@@ -75,7 +82,9 @@ def make_linear_combination(coeffs, items, denom=1):
 def make_power(expr, power):
     if isinstance(expr, Const):
         return Const(expr.value ** power)
-    if power == 1:
+    if power == 0:
+        return Const(1)
+    elif power == 1:
         return expr
     else:
         return expr ** power

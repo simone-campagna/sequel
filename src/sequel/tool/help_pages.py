@@ -354,11 +354,6 @@ it may also return multiple matches:
 Sequel knows many CORE-SEQUENCES; the DOC subcommand can be used to get information about one or more sequences:
 """,
             DocExample(printer=printer,
-                       kind='expressions', source=['m_exp', 'p']),
-            """\
-If no sequence name is specified, the doc subcommand shows all the known sequences:
-""",
-            DocExample(printer=printer,
                        kind='all', source=None, max_lines=(5, 3)),
             """\
 The SHOW subcommand can be used to show information about a sequence:
@@ -368,13 +363,13 @@ The SHOW subcommand can be used to show information about a sequence:
             """\
 The SHELL subcommand opens an interactive python shell to play with sequel sequences:
 """,
-            Shellxample(printer=printer,
-                                 commands=['print_sequence(p * zero_one)']),
+#             Shellxample(printer=printer,
+#                                  commands=['print_sequence(p * zero_one)']),
             """\
 The PLAY subcommand generates an hidden random sequence and let you guess what sequence it is.
 """,
-            PlayExample(printer=printer,
-                                 sequences=['p * zero_one'], commands=['q.guess(p * zero_one)']),
+#             PlayExample(printer=printer,
+#                                  sequences=['p * zero_one'], commands=['q.guess(p * zero_one)']),
         ]
     )
 
@@ -487,13 +482,6 @@ Additionally, a generic RECURSIVE-SEQUENCE can be defined; the following sequenc
 """,
             ShowExample(printer=printer,
                         kind='expression', source='rseq(1, I1 * i)'),
-            """\
-The SHOW command can also generate a random sequence:
-""",
-            ShowExample(printer=printer,
-                        kind='random', source='rseq(0, 0, I1 ** 2 - 2 * I2 + 1)'),
-            ShowExample(printer=printer,
-                        kind='random', source='product(lucas)'),
         ],
     )
 
@@ -615,7 +603,7 @@ Without arguments the DOC command shows the available core sequences.
 The DOC command can be used to show documentation about selected sequences:
 """,
             DocExample(printer=printer,
-                       kind='all', source=['m_exp', 'p', 'catalan']),
+                       kind='expressions', source=['catalan', 'm_exp', 'p']),
             """\
 It is also possible to select sequences by given TRAITS:
 """,
@@ -696,11 +684,19 @@ The SHELL subcommand opens an interactive python shell to play with sequel seque
         name="show",
         elements=[
             """\
-The SHOW command shows information about a sequence.
-For instance:
+The SHOW command shows information about sequence EXPRESSIONS, for instance:
 """,
             ShowExample(printer=printer,
                         kind='expression', source='p * zero_one'),
+            ShowExample(printer=printer,
+                        kind='expression', source='rseq(0, 1, 1 - I1 ** 2 + I2 ** 2)'),
+            """\
+The SHOW command can also generate random sequences:
+""",
+            ShowExample(printer=printer,
+                        kind='random', source='rseq(0, 0, I1 ** 2 - 2 * I2 + 1)'),
+            ShowExample(printer=printer,
+                        kind='random', source='product(lucas)'),
         ],
     )
 
@@ -819,22 +815,99 @@ Be aware that adding too many sequence declaration can slow down some catalog-ba
 Sequel implements many algorithms to discover which sequences generate the given values.
 
 The first algorithm tries to find a core sequence matching the result: for instance when searching "2 3 5 7 11" the
-'p' sequence is immediately found.
-
-Then sequel tries to find an affine trasformation of a core sequence matching the values: for instance "1 4 10 16 28 34" is found as '3 * p - 5'.
-
-Sequel tries then to see if the values match any arithmetic or geometric sequence, or a power sequence such as 'i ** 3', or a fibonacci-like
-sequence, or a polynomial sequence such as '2 + i - i**3', or a repunit sequence, or finally a linear combination of known sequences.
-
-If no sequence is found, sequel applies some recursive algorithms: for instance it tries to subtract the core sequence 'p' to the given values, and to find the
-sequence 's' matching the resulting values; the sequence 'p + s' is then a solution.
-
-For instance:
+'p' sequence is immediately found:
 """,
             SearchExample(printer=printer,
-                          kind="items", source=[4, 3, 20, 0, 77, -52, 238, -285, 736, -1276],
-                          sequences=[compile_sequence('rseq(2, 1, I2 - I1 + 3) * p')]),
+                          kind="items", source=[2, 3, 5, 7, 11],
+                          sequences=[compile_sequence('p')]),
+            """\
+The next algorithm tries to see if the sequence is a const sequence:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[4, 4, 4, 4, 4, 4],
+                          sequences=[compile_sequence('4')]),
+            """\
+The next algorithm tries to see if the sequence is an Arithmetic sequence:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[2, 9, 16, 23, 30, 37],
+                          sequences=[compile_sequence('Arithmetic(2, 7)')]),
+            """\
+The next algorithm tries to see if the sequence is a Geometric sequence:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[1, 7, 49, 343, 2401, 16807],
+                          sequences=[compile_sequence('Geometric(7)')]),
+            """\
+The next algorithm tries to see if the sequence is a Power sequence (Power(n) := i ** n):
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[0, 1, 32, 243, 1024, 3125],
+                          sequences=[compile_sequence('Power(5)')]),
+            """\
+The next algorithm tries to see if the sequence is a Fibonacci-like sequence (Fib(first, second, scale) := scale * Fib[n-1] + Fib[n-2], Fib[0] := first, Fib[1] := second):
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[5, -1, 1, 3, 13, 55, 233, 987],
+                          sequences=[compile_sequence('Fib(5, -1, 4)')]),
+            """\
+The next algorithm tries to see if the sequence is a Tribonacci sequence:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[5, 6, -3, 8, 11, 16, 35],
+                          sequences=[compile_sequence('Trib(5, 6, -3)')]),
+            """\
+The next algorithm tries to see if the sequence is a polynomial:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[5, 11, 45, 113, 197, 255, 221],
+                          sequences=[compile_sequence('5 + 7 * i**3 - i**4')]),
+            """\
+The next algorithm tries to see if the sequence is a Repunit sequence:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[6, 9, 18, 45, 126, 369, 1098, 3285],
+                          sequences=[compile_sequence('5 + Repunit(3)')]),
+            """\
+The next algorithm tries to see if the sequence is a RECURSIVE-SEQUENCE:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[0, 1, 0, 2, -3, -4, -6, -19, -324, -104614],
+                          sequences=[compile_sequence('rseq(0, 1, 1 - I1 ** 2 + I2 ** 2)')]),
+            """\
+The next algorithm tries to see if the sequence is a linear combination of known sequences:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[1, -2, -1, 14, 59, 243, 867, 2910],
+                          sequences=[compile_sequence('7 * catalan - 3 * m_exp')]),
+            """\
+The following algorithms try to invert some kind of binary operator. These algorithms recursively call the search algorithms for a subsequence,
+so they can be considerably slow.
 
+The next algorithm tries to find a sequence S and a power C so that S ** C matches the given items:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[16, 16, 25, 64, 289, 2025, 18225],
+                          sequences=[compile_sequence('(3 + catalan) ** 2')]),
+            """\
+In this case, the algorithm finds that the sequence items '16 16 25 64 289 2025 18225' are the square of the items '4 4 5 8 17 45 135'. It then tries to search a sequence
+S matching the items '4 4 5 8 17 45 135', and the solution will be S ** 2. The sequence S is found as '3 + catalan' with one of the previous algorithms.
+""",
+            """\
+The next algorithm tries to find two sequences L and R so that L + R, L - R, L * R, L / R or L ** r matches the given items:
+""",
+            SearchExample(printer=printer,
+                          kind="items", source=[5, 6, 11, 16, 28, 41, 58, 94],
+                          sequences=[compile_sequence('3 * fib11 + m_exp')]),
+            SearchExample(printer=printer,
+                          kind="items", source=[1, 0, 1, 2, 2, 7, 20, 32, 41],
+                          sequences=[compile_sequence('3 * fib11 - m_exp')]),
+            SearchExample(printer=printer,
+                          kind="items", source=[8, 12, 25, 42, 88, 143, 272, 456],
+                          sequences=[compile_sequence('(3 + fib11) * p')]),
+            """\
+The next algorithms try to find sequences such as 'S1 | S2', 'summation(S)', 'product(S)', 'integral(S)', 'derivative(S)', 'roundrobin(S1, S2)'.
+""",
         ],
         parent="search",
     )

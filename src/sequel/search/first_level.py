@@ -276,18 +276,14 @@ class PolynomialAlgorithm(Algorithm):
                     sequence = None
                     if poly[-1] == 0:
                         break
+                    powers = []
+                    coeffs = []
                     for power, value in enumerate(poly):
-                        coeff = int(round(value, 0))
-                        if coeff:
-                            if sequence is None:
-                                sequence = coeff * integer ** power
-                            else:
-                                if coeff > 0:
-                                    sequence += coeff * integer ** power
-                                else:
-                                    sequence -= (-coeff) * integer ** power
+                        coeffs.append(int(round(value, 0)))
+                        powers.append(int(round(power, 0)))
+                    iseqs = [integer for _ in coeffs]
+                    sequence = make_linear_combination(coeffs, iseqs, powers=powers)
                     if sequence is not None:
-                        sequence = sequence.simplify()
                         # can fail if len(items) > degree:
                         if sequence_matches(sequence, items):
                             yield sequence

@@ -68,9 +68,9 @@ def search_config(defaults=True):
     algorithm_types = [
         CatalogAlgorithm,
         ConstAlgorithm,
-        AffineTransformAlgorithm,
         ArithmeticAlgorithm,
         GeometricAlgorithm,
+        AffineTransformAlgorithm,
         PowerAlgorithm,
         FibonacciAlgorithm,
         TribonacciAlgorithm,
