@@ -453,6 +453,17 @@ The 'ifelse' function creates a new function according to a condition. For insta
             ShowExample(printer=printer,
                         kind='expression', source='ifelse(catalan % 2 == 0, 1000 + fib01, p)'),
             """\
+The 'where(condition, sequence)' function is the list of values of sequence for the indices where the condition is True.
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='where((p + 1) % 4 == 0, p)'),
+            """\
+This is the list of values p where p + 1 can be divided by 4.
+By default the sequence is 'i', so where(condition) is the list of indices where condition is True:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='where((p + 1) % 4 == 0)'),
+            """\
 Moreover, some parametric sequences are available. For instance, the geometric, arithmetic sequences:
 """,
             ShowExample(printer=printer,

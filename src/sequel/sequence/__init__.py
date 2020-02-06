@@ -29,7 +29,7 @@ from .polygonal import (
 from .functional import (
     derivative, integral,
     summation, product,
-    ifelse,
+    ifelse, where,
 )
 from .merge_join import (
     merge, join,
