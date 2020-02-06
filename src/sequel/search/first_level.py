@@ -34,6 +34,7 @@ from .base import Algorithm
 
 __all__ = [
     "CatalogAlgorithm",
+    "CatalogDiffAlgorithm",
     "ConstAlgorithm",
     "AffineTransformAlgorithm",
     "ArithmeticAlgorithm",
@@ -56,6 +57,19 @@ class CatalogAlgorithm(Algorithm):
         for x in manager.catalog.iter_matching_sequences(items):
             yield x
         #yield from manager.catalog.iter_matching_sequences(items)
+
+
+class CatalogDiffAlgorithm(Algorithm):
+    """Search for known sequences in catalog"""
+    __accepts_undefined__ = False
+    __min_items__ = 1
+
+    def iter_sequences(self, manager, items, rank):
+        for sequences, values in manager.catalog.iter_sequences_values():
+            vlist = [v - x for v, x in zip(items, values)]
+            if len(set(vlist)) == 1:
+                for sequence in sequences:
+                    yield sequence + vlist[0]
 
 
 class ConstAlgorithm(Algorithm):

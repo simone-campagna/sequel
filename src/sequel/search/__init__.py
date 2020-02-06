@@ -19,6 +19,7 @@ from .manager import (
 from .base import Algorithm
 from .first_level import (
     CatalogAlgorithm,
+    # CatalogDiffAlgorithm,
     ConstAlgorithm,
     AffineTransformAlgorithm,
     ArithmeticAlgorithm,
@@ -67,6 +68,7 @@ def search_config(defaults=True):
     configs = []
     algorithm_types = [
         CatalogAlgorithm,
+        # CatalogDiffAlgorithm,
         ConstAlgorithm,
         ArithmeticAlgorithm,
         GeometricAlgorithm,
