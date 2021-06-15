@@ -6,6 +6,7 @@ from sequel.sequence.sequence_utils import (
 )
 
 
+_one = sequence.compile_sequence('1')
 _p = sequence.compile_sequence('p')
 _fib01 = sequence.compile_sequence('fib01')
 _m_exp = sequence.compile_sequence('m_exp')
@@ -53,7 +54,7 @@ def test_make_linear_combination(coeffs, items, denom, result):
 
 
 @pytest.mark.parametrize("item, power, result", [
-    [_p, 0, _p ** 0],
+    [_p, 0, _one],
     [_p, 1, _p],
     [-_p, 1, -_p],
     [_p, 2, _p ** 2],

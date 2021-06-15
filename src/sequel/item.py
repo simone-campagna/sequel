@@ -14,6 +14,7 @@ __all__ = [
     "UpperBound",
     "LowerBound",
     "Interval",
+    "Set",
     "make_item",
     "simplify_item",
 ]
@@ -52,6 +53,9 @@ class Item(abc.ABC):
 
     def is_known(self):
         return False
+
+    def __str__(self):
+        return self.as_string()
 
 
 class Any(Item):
@@ -352,50 +356,3 @@ def make_item(x, simplify=True):
             return Value(int(x))
     else:
         raise TypeError("{!r}: not a valid Item".format(x))
-
-#             
-#         if x == '%':
-#             return ANY
-#         rw = re.compile(r'\D')
-#         m = rw.search(x)
-#         if m:
-#             c = m.group()
-#             if c.isalpha():
-#                 value = eval(x, {
-#                     'ANY': ANY,
-#                     'Any': Any,
-#                     'Interval': Interval,
-#                     'Set': Set,
-#                     'Value': Value,
-#                 })
-#                 if isinstance(value, Item):
-#                     if simplify and value.size == 1:
-#                         return next(value.iter_values())
-#                     else:
-#                         return value
-#                 elif gmpy2.is_integer(value):
-#                     return value
-#                 else:
-#                     raise ValueError(x)
-#             elif c == ',':
-#                 lst = []
-#                 for t in x.split(','):
-#                     lst.append(int(t.strip()))
-#                 if simplify and len(lst) == 1:
-#                     return lst[0]
-#                 else:
-#                     return Set(*lst)
-#             elif '..' in x:
-#                 lst = x.split('..', 1)
-#                 mn = int(lst[0])
-#                 mx = int(lst[1])
-#                 if simplify and mn == mx:
-#                     return mn
-#                 else:
-#                     return Interval(mn, mx)
-#         if simplify:
-#             return int(x)
-#         else:
-#             return Value(int(x))
-#     else:
-#         raise TypeError("{!r}: not a valid Item".format(x))

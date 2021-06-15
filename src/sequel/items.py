@@ -13,19 +13,18 @@ ___all__ = [
 
 def _compute_size(items):
     size = 0
-    lst = []
     for item in items:
         if isinstance(item, Item):
             isize = item.size
             if isize is None:
+                print("!!!0", item, isize)
                 return None
-            elif isize != 1:
-                return None
+            # elif isize != 1:
+            #     print("!!!1", item, isize)
+            #     return None
             else:
                 size += isize
-            lst.append((item, isize))
         else:
-            lst.append((item, 1))
             size += 1
     return size
 

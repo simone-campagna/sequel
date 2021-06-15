@@ -575,24 +575,43 @@ Search sequence matching items {}
 
 For instance:
 
-$ sequel search 2 3 5 7 11
+$ sequel search -i 2 3 5 7 11
     0] p
     2 3 5 7 11 13 17 19 23 29 ...
 
 The 'ANY' symbol matches with any value:
 
-$ sequel search 2 3 5 7 ANY
+$ sequel search -i 2 3 5 7 ANY
     0] p
     2 3 5 7 11 13 17 19 23 29 ...
     1] m_exp
     2 3 5 7 13 17 19 31 61 89 ...
 
-A value MIN..MAX matches with any value with MIN <= value <= MAX:
+A value MIN..MAX matches with any value in the interval MIN <= value <= MAX:
 
-$ sequel search 2 3 5 7 12..20
+$ sequel search -i 2 3 5 7 12..20
     0] m_exp
     2 3 5 7 13 17 19 31 61 89 ...
 
+An open interval is also accepted:
+
+$ sequel search -i 2 3 5 7 ..11
+    1] p
+    2 3 5 7 11 13 17 19 23 29 ...
+
+$ sequel search -i 2 3 5 7 11..
+    0] m_exp
+    2 3 5 7 13 17 19 31 61 89 ...
+    1] p
+    2 3 5 7 11 13 17 19 23 29 ...
+
+A value N1,N2 matches both N1 and N2 (any number of values is accepted):
+
+$ sequel search -i 2 3 5 7 11,13,14
+    0] m_exp
+    2 3 5 7 13 17 19 31 61 89 ...
+    1] p
+    2 3 5 7 11 13 17 19 23 29 ...
 """
     search_parser = create_parser(
         'search',
