@@ -20,9 +20,9 @@ class Factorial(Function):
     def __call__(self, i):
         return gmpy2.fac(i)
 
-    def description(self):
-        return """f(n) := n * f(n - 1), f(0) := 1"""
-
     @classmethod
     def register(cls):
-        cls.register_factory('factorial', cls)
+        cls.register_factory('factorial', cls,
+            oeis='A000142',
+            description='f(n) := n * f(n - 1), f(0) := 1',
+        )

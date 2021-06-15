@@ -37,8 +37,12 @@ class Power(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('square', lambda: cls(power=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
-        cls.register_factory('cube', lambda: cls(power=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('square', lambda: cls(power=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+            oeis='A000290',
+        )
+        cls.register_factory('cube', lambda: cls(power=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+            oeis='A000578',
+        )
 
 
 class Arithmetic(Function):
@@ -68,8 +72,12 @@ class Arithmetic(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('even', lambda: cls(start=0, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
-        cls.register_factory('odd', lambda: cls(start=1, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING, Trait.NON_ZERO))
+        cls.register_factory('even', lambda: cls(start=0, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+            oeis='A005843',
+        )
+        cls.register_factory('odd', lambda: cls(start=1, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING, Trait.NON_ZERO),
+            oeis='A005408',
+        )
 
 
 class Geometric(Function):
@@ -94,9 +102,15 @@ class Geometric(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('power_of_2', lambda: cls(base=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING))
-        cls.register_factory('power_of_3', lambda: cls(base=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING))
-        cls.register_factory('power_of_10', lambda: cls(base=10).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING))
+        cls.register_factory('power_of_2', lambda: cls(base=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING),
+            oeis='A000079',
+        )
+        cls.register_factory('power_of_3', lambda: cls(base=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING),
+            oeis='A000244',
+        )
+        cls.register_factory('power_of_10', lambda: cls(base=10).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING),
+            oeis='A011557',
+        )
 
 
 class ZeroOne(Function):
@@ -105,9 +119,9 @@ class ZeroOne(Function):
     def __call__(self, i):
         return i % 2
 
-    def description(self):
-        return """f(n) =  n % 2  => [0, 1, 0, 1, 0, 1, ...]"""
-
     @classmethod
     def register(cls):
-        cls.register_factory('zero_one', cls)
+        cls.register_factory('zero_one', cls,
+            oeis='A000035',
+            description='f(n) =  n % 2',
+        )

@@ -45,9 +45,6 @@ class Repunit(Sequence):
 class Demlo(Sequence):
     __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE, Trait.INCREASING]
 
-    def description(self):
-        return "f(n) := the Demlo numbers, defined as repunit ** 2"
-
     def __call__(self, i):
         return (((10 ** (i + 1)) - 1) // (10 - 1)) ** 2
 
@@ -60,4 +57,7 @@ class Demlo(Sequence):
 
     @classmethod
     def register(cls):
-        cls.register_factory('demlo', cls)
+        cls.register_factory('demlo', cls,
+            oeis='A002477',
+            description='f(n) := the Demlo numbers, defined as repunit ** 2',
+        )

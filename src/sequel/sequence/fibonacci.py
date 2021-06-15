@@ -27,12 +27,12 @@ class Fib01(Function):
     def __call__(self, i):
         return gmpy2.fib(i)
 
-    def description(self):
-        return """f(n) := f(n - 2) + f(n - 1), f(0) := 0, f(1) := 1 (Fibonacci sequence [0, 1, 1, 2, 3, 5, 8, ...])"""
-
     @classmethod
     def register(cls):
-        cls.register_factory('fib01', cls)
+        cls.register_factory('fib01', cls,
+            oeis='A000045',
+            description='f(n) := f(n - 2) + f(n - 1), f(0) := 0, f(1) := 1 (Fibonacci sequence [0, 1, 1, 2, 3, 5, 8, ...])',
+        )
 
 
 class Fib11(Function):
@@ -41,12 +41,11 @@ class Fib11(Function):
     def __call__(self, i):
         return gmpy2.fib(i + 1)
 
-    def description(self):
-        return """f(n) := f(n - 2) + f(n - 1), f(0) := 1, f(1) := 1 (Fibonacci sequence [1, 1, 2, 3, 5, 8, ...])"""
-
     @classmethod
     def register(cls):
-        cls.register_factory('fib11', cls)
+        cls.register_factory('fib11', cls,
+            description='f(n) := f(n - 2) + f(n - 1), f(0) := 1, f(1) := 1 (Fibonacci sequence [1, 1, 2, 3, 5, 8, ...])',
+        )
 
 
 class Lucas(Function):
@@ -57,7 +56,10 @@ class Lucas(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('lucas', cls)
+        cls.register_factory('lucas', cls,
+            oeis='A000032',
+            description='lucas(n) := lucas(n - 1) + lucas(n - 2), lucas(0) := 2, lucas(1) := 1', 
+        )
 
 
 class Fib(Iterator):
@@ -96,7 +98,9 @@ class Fib(Iterator):
 
     @classmethod
     def register(cls):
-        cls.register_factory('pell', lambda: cls(0, 1, 2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('pell', lambda: cls(0, 1, 2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+            oeis='A000129',
+        )
 
 
 class Trib(Iterator):
@@ -123,9 +127,6 @@ class Trib(Iterator):
             yield f
             f, s, t = s, t, t + f + s
 
-    def description(self):
-        return """f(n) := f(n - 1) + f(n - 2) + f(n - 3), f(0) := {obj.first}, f(1) := {obj.second}, f(2) := {obj.third}""".format(
-            obj=self)
 
     def equals(self, other):
         if super().equals(other):
@@ -133,9 +134,14 @@ class Trib(Iterator):
         else:
             return False
 
+    def description(self):
+        return 'f(n) := f(n - 1) + f(n - 2) + f(n - 3), f(0) := {obj.first}, f(1) := {obj.second}, f(2) := {obj.third}'.format(obj=self)
+
     @classmethod
     def register(cls):
-        cls.register_factory('tribonacci', lambda: cls(0, 1, 1).set_traits(Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('tribonacci', lambda: cls(0, 1, 1).set_traits(Trait.POSITIVE, Trait.INCREASING),
+            oeis='A000073',
+        )
 
 
 def make_fibonacci(first=0, second=1, scale=1):

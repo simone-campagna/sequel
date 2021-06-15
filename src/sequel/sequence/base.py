@@ -96,22 +96,30 @@ class LazyRegistry(collections.abc.Mapping):
 
     def __init__(self):
         self._data = collections.OrderedDict()
+        self._metadata = collections.defaultdict(dict)
 
-    def register_instance(self, name, instance):
-        # assert name not in self._data
-        self._data[name] = self.LazyValue(instance=instance, factory=None)
-        # assert name in self._data
+    def register_metadata(self, name, **kwargs):
+        for key, value in kwargs.items():
+            self._metadata[key][name] = value
 
-    def register_factory(self, name, factory):
-        # assert name not in self._data
-        self._data[name] = self.LazyValue(instance=None, factory=factory)
-        # assert name in self._data
+    def get_metadata(self, name, key):
+        return self._metadata[key].get(name, None)
+
+    def register_instance(self, name, instance, **metadata):
+        instance = self.LazyValue(instance=instance, factory=None)
+        self._data[name] = instance
+        self.register_medatata(name, **metadata)
+
+    def register_factory(self, name, factory, **metadata):
+        instance = self.LazyValue(instance=None, factory=factory)
+        self._data[name] = instance
+        self.register_metadata(name, **metadata)
 
     def unregister(self, name):
-        # assert name in self._data
         if name in self._data:
             del self._data[name]
-        # assert name not in self._data
+        for key, md in self._metadata.items():
+            md.pop(name, None)
 
     def __getitem__(self, name):
         return self._data[name].get(name)
@@ -124,6 +132,7 @@ class LazyRegistry(collections.abc.Mapping):
         
         
 class Sequence(metaclass=SMeta):
+    __metadata__ = {'description', 'oeis'}
     __instances__ = weakref.WeakValueDictionary()
     __registry__ = LazyRegistry()
     __traits__ = ()
@@ -139,7 +148,7 @@ class Sequence(metaclass=SMeta):
             instance = super().__new__(cls)
             instance._instance_parameters = parameters
             instance._instance_traits = frozenset(cls.__traits__)
-            instance._instance_symbol = None
+            instance._instance_name = None
             instance._instance_hash = None
             instance._instance_expr = None
             instance._instance_doc = None
@@ -163,16 +172,16 @@ class Sequence(metaclass=SMeta):
         return True
 
     def as_string(self):
-        if self._instance_symbol is None:
+        if self._instance_name is None:
             return self._str_impl()
-        return self._instance_symbol
+        return self._instance_name
 
     def _str_impl(self):
         return repr(self)
 
     def _make_expr(self):
-        if self._instance_symbol:
-            return sympy.symbols(self._instance_symbol, integer=True)
+        if self._instance_name:
+            return sympy.symbols(self._instance_name, integer=True)
 
     def _make_simplify_expr(self, vdict):
         expr = self.expr
@@ -205,12 +214,20 @@ class Sequence(metaclass=SMeta):
         return self
 
     @classmethod
-    def register_factory(cls, name, factory):
-        cls.__registry__.register_factory(name, factory)
+    def _check_metadata(cls, metadata):
+        for key in metadata:
+            if key not in cls.__metadata__:
+                raise ValueError("unknown metadata key: {}".format(key))
 
     @classmethod
-    def register_instance(cls, name, sequence):
-        cls.__registry__.register_instance(name, sequence)
+    def register_factory(cls, name, factory, **metadata):
+        cls._check_metadata(metadata)
+        cls.__registry__.register_factory(name, factory, **metadata)
+
+    @classmethod
+    def register_instance(cls, name, sequence, **metadata):
+        cls._check_metadata(metadata)
+        cls.__registry__.register_instance(name, sequence, **metadata)
 
     @classmethod
     def unregister(cls, name):
@@ -218,14 +235,14 @@ class Sequence(metaclass=SMeta):
 
     def forget(self):
         self.__class__.__instances__.pop(self._instance_parameters)
-        self.__class__.unregister(self._instance_symbol)
+        self.__class__.unregister(self._instance_name)
 
     @classmethod
     def register(cls):
         pass
 
     def _set_name(self, name):
-        self._instance_symbol = name
+        self._instance_name = name
 
     @abc.abstractmethod
     def __iter__(self):
@@ -242,6 +259,10 @@ class Sequence(metaclass=SMeta):
         """Returns the documentation"""
         if self._instance_doc:
             return self._instance_doc
+
+    @property
+    def name(self):
+        return getattr(self, '_instance_name', None)
 
     @abc.abstractmethod
     def __iter__(self):
@@ -263,7 +284,14 @@ class Sequence(metaclass=SMeta):
 
     def description(self):
         """Returns the sequence description"""
-        return repr(self)
+        value = self.__registry__.get_metadata(self.name, 'description')
+        if value is None:
+            value = repr(self)
+        return value
+
+    def oeis(self):
+        """Returns the sequence OEIS id"""
+        return self.__registry__.get_metadata(self.name, 'oeis')
 
     @classmethod
     def get_registry(cls):
@@ -864,12 +892,12 @@ class Integer(Function):
     def __call__(self, i):
         return i
 
-    def description(self):
-        return """f(i) := i"""
-
     @classmethod
     def register(cls):
-        cls.register_factory('i', cls)
+        cls.register_factory('i', cls,
+            oeis='A001477',
+            description='f(i) := i',
+        )
 
 
 class Natural(Function):
@@ -878,12 +906,12 @@ class Natural(Function):
     def __call__(self, i):
         return i + 1
 
-    def description(self):
-        return """f(i) := i + 1"""
-
     @classmethod
     def register(cls):
-        cls.register_factory('n', cls)
+        cls.register_factory('n', cls,
+            oeis='A000027',
+            description='f(i) := i + 1',
+        )
 
 
 class Const(Function):
