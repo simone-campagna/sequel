@@ -156,6 +156,7 @@ class Manager(object):
             # non-rec algorithms:
             while queue:
                 for algorithm in self.algorithms:
+                    #print("...", algorithm, items)
                     found_idxs = set()
                     for idx, entry in enumerate(queue):
                         items = entry.items
@@ -185,6 +186,7 @@ class Manager(object):
                 rank = entry.rank
                 items = entry.items
                 for rec_algorithm in rec_algorithms:
+                    #print("..r", rec_algorithm, items)
                     if timings_dict:
                         t0 = time.time()
                     for dummy in rec_algorithm(self, items, rank):

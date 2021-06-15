@@ -4,7 +4,8 @@ Functionals
 
 import abc
 
-from .base import Iterator, Add, Sub, Const
+from .base import Iterator, Add, Sub, Const, Integer
+
 
 __all__ = [
     'summation',
@@ -12,6 +13,7 @@ __all__ = [
     'derivative',
     'integral',
     'ifelse',
+    'where',
 ]
 
 
@@ -56,6 +58,9 @@ class derivative(Functional):
             item = next(it)
             yield item - prev
             prev = item
+
+    def __call__(self, i):
+        return self.operand(i + 1) - self.operand(i)
 
     def simplify(self):
         instance = super().simplify()
@@ -122,11 +127,18 @@ class ifelse(Functional):
         self.false_sequence = self.make_sequence(false_sequence)
 
     def __iter__(self):
+        # print(self.operand, ":::", self.true_sequence, ":::", self.false_sequence)
         for c, t, f in zip(self.operand, self.true_sequence, self.false_sequence):
             if c:
                 yield t
             else:
                 yield f
+
+    def __call__(self, i):
+        if self.operand(i):
+            return self.true_sequence(i)
+        else:
+            return self.false_sequence(i)
 
     def children(self):
         yield from super().children()
@@ -145,3 +157,20 @@ class ifelse(Functional):
         true_sequence = self.true_sequence.simplify()
         false_sequence = self.false_sequence.simplify()
         return self.__class__(operand, true_sequence, false_sequence)
+
+
+class where(Functional):
+    def __init__(self, condition, sequence=Integer()):
+        super().__init__(condition)
+        self.sequence = sequence
+
+    def __iter__(self):
+        for cond, value in zip(self.operand, self.sequence):
+            if cond:
+                yield value
+
+    def _str_impl(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            str(self.operand),
+            str(self.sequence))

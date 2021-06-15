@@ -50,6 +50,9 @@ class Item(abc.ABC):
     def iter_values(self):
         raise ValueError("infinite size")
 
+    def is_known(self):
+        return False
+
 
 class Any(Item):
     __singleton__ = None
@@ -115,6 +118,9 @@ class Value(Item):
 
     def iter_values(self):
         yield self._value
+
+    def is_known(self):
+        return True
 
 
 class LowerBound(Item):

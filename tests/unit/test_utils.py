@@ -5,7 +5,8 @@ import sequel
 from sequel import sequence
 from sequel.utils import (
     gcd, lcm, factorize, divisors, affine_transformation,
-    get_power, get_base,
+    get_power, get_base, perfect_power,
+    linear_combination,
 )
 
 import pytest
@@ -107,3 +108,66 @@ def test_get_power(x, result):
 ])
 def test_get_base(x, result):
     assert get_base(x) == result
+
+
+@pytest.mark.parametrize("x, result", [
+    (0, False),
+    (1, False),
+    (2, False),
+    (3, False),
+    (4, (2, 2)),
+    (8, (2, 3)),
+    (16, (2, 4)),
+    (32, (2, 5)),
+    (64, (2, 6)),
+    (125, (5, 3)),
+    (-4, False),
+    (-8, (-2, 3)),
+    (-16, False),
+    (-32, (-2, 5)),
+    (-64, False),
+])
+def test_perfect_power(x, result):
+    assert perfect_power(x) == result
+
+
+
+_iilist = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [2, 3, 5, 7, 11, 13, 17, 19, 23, 29],
+    [-1, -2, -3, -4, -5, -6, -7, -8, -9, 0],
+    [0, 1, 8, 27, 64, 125, 216, 343, 512, 729],
+    [-2, 4, -8, 16, -32, 64, -128, 256, -512, 1024],
+]
+_sol = [0, 2, -3, 0, 1]
+
+
+def _mkitems(ii, sol, denom):
+    print("====")
+    for x, y in zip(sol, ii):
+        print(x, y)
+    return [sum((x * yi)//denom for yi in y) for x, y in zip(sol, ii)]
+
+
+@pytest.mark.parametrize("input_items_list, solution, denom, kwargs, found", [
+    [_iilist, [0, 2, -3, 0, 1], 1, {}, True],
+    [_iilist, [4, 0, 0, 0, 1], 2, {}, True],
+    [_iilist, [4, 0, 0, 0, 1], 2, {'rationals': False, 'max_elapsed': 0.1}, False],
+])
+def test_linear_combination(input_items_list, solution, denom, kwargs, found):
+    # for c, ii in enumerate(input_items_list):
+    #     print("ii[{}]:".format(c), ii)
+    # print("solution:", solution)
+    # print("denom:", denom)
+    length = len(input_items_list[0])
+    # print("length:", length)
+    # print("====")
+    items = [sum(((coeff * input_items[i])//denom) for coeff, input_items in zip(solution, input_items_list)) for i in range(length)]
+    # print("items:", items)
+    # print("kwargs:", kwargs)
+    if found:
+        result = [(tuple(solution), denom)]
+    else:
+        result = []
+    #print("result:", result)
+    assert list(linear_combination(items, input_items_list, **kwargs)) == result

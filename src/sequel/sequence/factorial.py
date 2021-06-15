@@ -15,7 +15,7 @@ __all__ = [
 
 
 class Factorial(Function):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
 
     def __call__(self, i):
         return gmpy2.fac(i)

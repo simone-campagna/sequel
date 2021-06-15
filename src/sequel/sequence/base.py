@@ -10,7 +10,7 @@ import contextlib
 import functools
 import inspect
 import itertools
-import uuid
+import operator
 import weakref
 
 from ..item import (
@@ -26,6 +26,13 @@ from .trait import Trait
 
 __all__ = [
     'Sequence',
+    'SequenceError',
+    'RecursiveSequenceError',
+    'SequenceUnknownValueError',
+    'SequenceUnboundError',
+    'RecursiveSequence',
+    'BackIndexer',
+    'rseq',
     'compile_sequence',
     'StashMixin',
     'EnumeratedSequence',
@@ -39,11 +46,26 @@ __all__ = [
 ]
 
 
+_NUM_INDEXERS = 10
+
+
+def idem(x):
+    return x
+
+
 class SequenceError(Exception):
     pass
 
 
 class SequenceUnknownValueError(SequenceError):
+    pass
+
+
+class SequenceUnboundError(SequenceError):
+    pass
+
+
+class RecursiveSequenceError(SequenceError):
     pass
 
 
@@ -69,17 +91,27 @@ class LazyRegistry(collections.abc.Mapping):
         def get(self, name):
             if self.instance is None:
                 self.instance = self.factory()
-                self.instance._set_name(name)
+            self.instance._set_name(name)
             return self.instance
 
     def __init__(self):
         self._data = collections.OrderedDict()
 
     def register_instance(self, name, instance):
-        self._data[name] = LazyValue(instance=instance, factory=None)
+        # assert name not in self._data
+        self._data[name] = self.LazyValue(instance=instance, factory=None)
+        # assert name in self._data
 
     def register_factory(self, name, factory):
+        # assert name not in self._data
         self._data[name] = self.LazyValue(instance=None, factory=factory)
+        # assert name in self._data
+
+    def unregister(self, name):
+        # assert name in self._data
+        if name in self._data:
+            del self._data[name]
+        # assert name not in self._data
 
     def __getitem__(self, name):
         return self._data[name].get(name)
@@ -118,6 +150,17 @@ class Sequence(metaclass=SMeta):
         # WARNING: this empty __init__method is needed in order to correctly
         #          inspect default arguments in __new__
         pass
+
+    def _is_bound(self):
+        return True
+
+    def is_bound(self):
+        if not self._is_bound():
+            return False
+        for child in self.children():
+            if not child.is_bound():
+                return False
+        return True
 
     def as_string(self):
         if self._instance_symbol is None:
@@ -164,6 +207,18 @@ class Sequence(metaclass=SMeta):
     @classmethod
     def register_factory(cls, name, factory):
         cls.__registry__.register_factory(name, factory)
+
+    @classmethod
+    def register_instance(cls, name, sequence):
+        cls.__registry__.register_instance(name, sequence)
+
+    @classmethod
+    def unregister(cls, name):
+        cls.__registry__.unregister(name)
+
+    def forget(self):
+        self.__class__.__instances__.pop(self._instance_parameters)
+        self.__class__.unregister(self._instance_symbol)
 
     @classmethod
     def register(cls):
@@ -214,10 +269,25 @@ class Sequence(metaclass=SMeta):
     def get_registry(cls):
         return cls.__registry__
 
-    def has_traits(self, *traits):
-        traits = set(traits)
-        return traits == traits.intersection(self.traits)
+    def has_trait(self, trait):
+        return trait in self.traits
 
+    def has_traits(self, traits):
+        return self.traits >= frozenset(traits)
+
+    @classmethod
+    def iter_sequences_with_traits(cls, traits):
+        for seq in cls.get_registry().values():
+            if seq.has_traits(traits):
+                yield seq
+
+    @classmethod
+    def get_sequences_with_traits(cls, traits, order=False):
+        sequences = list(cls.iter_sequences_with_traits(traits))
+        if order:
+            sequences.sort(key=str)
+        return sequences
+        
     def __pos__(self):
         return self
 
@@ -327,6 +397,25 @@ class Sequence(metaclass=SMeta):
             sequence_type_list = new_list
     
     @classmethod
+    def get_locals(cls):
+        locals = {
+            "ANY": ANY,
+            "Any": Any,
+            "Interval": Interval,
+            "LowerBound": LowerBound,
+            "UpperBound": UpperBound,
+            "Set": Set,
+            "Value": Value,
+            "rseq": rseq,
+            "floor": idem,  # sympy: a / b -> floor(a/b)
+        }
+        for sequence_type in Sequence.sequence_types():
+            locals[sequence_type.__name__] = sequence_type
+        locals.update(Sequence.__registry__)
+        locals.update(BackIndexer.__registry__)
+        return locals
+
+    @classmethod
     def compile(cls, source, simplify=False, locals=None, check_type=True):
         """Compile sequence from source.
     
@@ -346,18 +435,7 @@ class Sequence(metaclass=SMeta):
            Sequence
                The compiled Sequence.
         """
-        globals = {
-            "ANY": ANY,
-            "Any": Any,
-            "Interval": Interval,
-            "LowerBound": LowerBound,
-            "UpperBound": UpperBound,
-            "Set": Set,
-            "Value": Value,
-        }
-        for sequence_type in Sequence.sequence_types():
-            globals[sequence_type.__name__] = sequence_type
-        globals.update(Sequence.__registry__)
+        globals = cls.get_locals()
         if locals is None:
             locals = {}
         sequence = eval(source, globals, locals)
@@ -511,7 +589,10 @@ class StashMixin(object):
 class EnumeratedSequence(StashMixin, Sequence):
 
     def __call__(self, i):
-        raise SequenceUnknownValueError("{}[{}]".format(self, i))
+        stash = self.get_stash()
+        if i >= len(stash):
+            raise SequenceUnknownValueError("{}[{}]".format(self, i))
+        return stash[i]
 
     def get_values(self, num, *, start=0):
         return self.get_stash()[start:start + num]
@@ -522,8 +603,6 @@ class Iterator(Sequence):
 
     @functools.lru_cache(maxsize=1024)
     def __call__(self, i):
-        if i < 0:
-            raise IndexError(i)
         it = iter(self)
         for _ in range(i):
             next(it)
@@ -780,7 +859,7 @@ class Compose(Sequence):
 
 
 class Integer(Function):
-    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE])
+    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING])
 
     def __call__(self, i):
         return i
@@ -794,7 +873,7 @@ class Integer(Function):
 
 
 class Natural(Function):
-    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO])
+    __traits__ = frozenset([Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING])
 
     def __call__(self, i):
         return i + 1
@@ -826,3 +905,166 @@ class Const(Function):
 
     def _str_impl(self):
         return str(self.__value)
+
+
+class BackIndexer(Sequence):
+    __registry__ = LazyRegistry()
+    __recursive_sequence__ = None
+
+    def __init__(self, offset):
+        if not isinstance(offset, int):
+            raise TypeError("{!r} is not a valid offset".format(offset))
+        if offset < 0:
+            raise ValueError("{!r} is not a valid offset".format(offset))
+        self._offset = offset
+        super().__init__()
+
+    @property
+    def offset(self):
+        return self._offset
+
+    @classmethod
+    @contextlib.contextmanager
+    def bind(cls, recursive_sequence):
+        if not (recursive_sequence is None or isinstance(recursive_sequence, RecursiveSequence)):
+            raise TypeError(recursive_sequence)
+        old_recursive_sequence = cls.__recursive_sequence__
+        try:
+            cls.__recursive_sequence__ = recursive_sequence
+            yield
+        finally:
+            cls.__recursive_sequence__ = old_recursive_sequence
+
+    def _is_bound(self):
+        return self.__recursive_sequence__ is not None
+
+    def _check_bound(self):
+        if self.__recursive_sequence__ is None:
+            raise SequenceUnboundError(self)
+
+    def __call__(self, i):
+        self._check_bound()
+        return self.__recursive_sequence__.get_item(i - self._offset)
+
+    def __iter__(self):
+        self._check_bound()
+        offset = self._offset
+        for i in itertools.count(start=0):
+            yield self(i + offset)
+
+    def __getitem__(self, i):
+        return self(i)
+
+    @classmethod
+    def register(cls):
+        def make_factory(index):
+            return lambda: cls(index)
+        for i in range(_NUM_INDEXERS):
+            cls.register_factory('I{}'.format(i), make_factory(i))
+
+    def __repr__(self):
+        if self._offset < _NUM_INDEXERS:
+            return "I{}".format(self._offset)
+        else:
+            return "rseq[{}]".format(self._offset)
+
+
+class RecursiveSequence(Sequence):
+    __maxlen__ = 100000
+
+    def __init__(self, known_items, generating_sequence):
+        self._known_items = tuple(gmpy2.mpz(x) for x in known_items)
+        if isinstance(generating_sequence, str):
+            generating_sequence = compile_sequence(generating_sequence)
+        generating_sequence = self.make_sequence(generating_sequence)
+        # if isinstance(generating_sequence, SequenceBuilder):
+        #     generating_sequence = generating_sequence({'recursive_sequence': self})
+        self._generating_sequence = generating_sequence
+        offsets = set()
+        set_maxlen = True
+        for depth, seq in self.walk():
+            if isinstance(seq, BackIndexer):
+                offset = seq.offset
+                offsets.add(seq.offset)
+        if offsets:
+            max_offset = max(offsets)
+            if len(self._known_items) < max_offset:
+                raise ValueError("sequence {}: too few known items: {} < {}".format(self, len(self._known_items), max_offset))
+        else:
+            max_offset = 0
+        self.__items = []
+        self.__items.extend(self._known_items)
+        super().__init__()
+
+    def simplify(self):
+        o = type(self)(self._known_items, self._generating_sequence.simplify())
+        return o
+
+    @property
+    def known_items(self):
+        return self._known_items
+
+    @property
+    def generating_sequence(self):
+        return self._generating_sequence
+
+    def children(self):
+        yield self._generating_sequence
+
+    def get_item(self, i):
+        items = self.__items
+        if i < 0 or i >= len(items):
+            raise RecursiveSequenceError("request for item {} in recursive sequence with {} items".format(i, len(items)))
+        return items[i]
+
+    def __getitem__(self, i):
+        return self(i)
+
+    def __call__(self, i):
+        with BackIndexer.bind(self):
+            items = self.__items
+            if i > self.__maxlen__:
+                raise SequenceUnknwonError("request for item {} > maxlen {}".format(i, self.__maxlen__))
+            if i < len(items):
+                return items[i]
+            generating_sequence = self._generating_sequence
+            for j in range(len(items), i + 1):
+                item = generating_sequence(j)
+                items.append(item)
+            return items[-1]
+
+    def __iter__(self):
+        with BackIndexer.bind(self):
+            items = self.__items
+            yield from items
+            generating_sequence = self._generating_sequence
+            for j in range(len(items), self.__maxlen__ + 1):
+                item = generating_sequence(j)
+                yield item
+                items.append(item)
+            raise SequenceUnknwonError("iteration over maxlen {}".format(self.__maxlen__))
+
+    def __repr__(self):
+        lst = [str(x) for x in self._known_items]
+        lst.append(str(self._generating_sequence))
+        return "rseq({})".format(', '.join(lst))
+
+
+class RecursiveSequenceMaker(object):
+    def __call__(self, arg0, *args):
+        if args:
+            known_items = (arg0,) + args[:-1]
+            generating_sequence = args[-1]
+        else:
+            known_items = ()
+            generating_sequence = arg0
+        return RecursiveSequence(
+            known_items=known_items,
+            generating_sequence=generating_sequence,
+        )
+        
+    def __getitem__(self, index):
+        return BackIndexer(index)
+
+
+rseq = RecursiveSequenceMaker()

@@ -13,14 +13,19 @@ ___all__ = [
 
 def _compute_size(items):
     size = 0
+    lst = []
     for item in items:
         if isinstance(item, Item):
             isize = item.size
             if isize is None:
                 return None
+            elif isize != 1:
+                return None
             else:
                 size += isize
+            lst.append((item, isize))
         else:
+            lst.append((item, 1))
             size += 1
     return size
 
@@ -34,6 +39,7 @@ class Items(tuple):
         return instance
 
     def is_fully_defined(self):
+        _compute_size(self)
         return self.__size == len(self)
 
     def is_finite(self):

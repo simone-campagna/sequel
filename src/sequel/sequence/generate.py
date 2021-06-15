@@ -7,21 +7,38 @@ import functools
 import json
 import random
 
-from .base import compile_sequence
+from .base import compile_sequence, rseq, Const
+from .fibonacci import make_fibonacci, make_tribonacci
+from .inspect_sequence import register_info, Flag
 from .roundrobin import roundrobin
 from .miscellanea import (
     Geometric,
     Arithmetic,
 )
+from .sequence_utils import make_linear_combination
+
+
+__all__ = [
+    'get_generate_algorithms',
+    'generate',
+    'generate_sequences',
+]
+
+
+def pick(value):
+    if isinstance(value, (list, tuple)):
+        return random.choice(value)
+    else:
+        return value
 
 
 CONFIG = """\
 {
     "macros": {
         "g0_sequences": [
-            "cube", "even", "factorial", "fib11", "i", "n",
-            "odd", "p", "power_of_2", "power_of_3", "square",
-            "triangular", "repunit"
+            "factorial", "fib11", "n",
+            "odd", "p", "power_of_2", "power_of_3",
+            "repunit"
         ],
         "g1_sequences": [
             "fib01", "lucas" 
@@ -36,7 +53,15 @@ CONFIG = """\
             "genocchi", "phi", "pi", "sigma", "tau"
         ],
         "g0_functionals": [
-            "summation", "product", "integral", "derivative"
+            "summation", "integral", "derivative"
+        ],
+        "g0_product_sequences": [
+            "n", "fib11", "lucas",
+            "odd", "power_of_2", "power_of_3",
+            "power_of_10", "p", "m_exp"
+        ],
+        "g1_product_sequences": [
+            "factorial", "catalan", "phi", "tau", "sigma", "bell"
         ],
         "g0_sides": [
             4, 7, 8, 9, 10
@@ -64,12 +89,53 @@ CONFIG = """\
             }
         },
         {
+            "level": 1,
+            "algorithm": "fibonacci",
+            "weight": 1.0,
+            "kwargs": {
+                "first": [-1, 2, -5],
+                "second": [-1, -2, 4]
+            }
+        },
+        {
+            "level": 1,
+            "algorithm": "tribonacci",
+            "weight": 1.0,
+            "kwargs": {
+                "first": [-2, 2, 3],
+                "second": [-1, 0, 1],
+                "third": [-3, -2, 2]
+            }
+        },
+        {
             "level": 0,
             "algorithm": "arithmetic",
             "weight": 1.0,
             "kwargs": {
                 "start_values": [0, 1, 2, 3, 4, 5],
                 "step_values": [1, 2, 3, 4, 5, 6, 7]
+            }
+        },
+        {
+            "level": 0,
+            "algorithm": "rseq",
+            "weight": 1.0,
+            "kwargs": {
+                "denom": [1],
+                "sequences": [["5", "1", "2"], ["I1", "I1 ** 2"]],
+                "coeffs": [[1], [1, 2, -1]],
+                "known_items": [[-1, 2, 1]]
+            }
+        },
+        {
+            "level": 0,
+            "algorithm": "rseq",
+            "weight": 0.0,
+            "kwargs": {
+                "denom": [1],
+                "sequences": ["I1", ["I2", "I2 ** 2"]],
+                "coeffs": [[1, 0, -1], [1, 2]],
+                "known_items": [[0, 1], [1, -1]]
             }
         },
         {
@@ -132,6 +198,7 @@ CONFIG = """\
             "algorithm": "linear_combination",
             "weight": 0.5,
             "kwargs": {
+                "num_items": [2],
                 "coeffs": "$coeffs",
                 "sequences": "$g0_sequences"
             }
@@ -150,6 +217,22 @@ CONFIG = """\
             "weight": 0.1,
             "kwargs": {
                 "sequences": "$g4_sequences"
+            }
+        },
+        {
+            "level": 2,
+            "algorithm": "product",
+            "weight": 0.3,
+            "kwargs": {
+                "sequences": "$g0_product_sequences"
+            }
+        },
+        {
+            "level": 3,
+            "algorithm": "product",
+            "weight": 0.1,
+            "kwargs": {
+                "sequences": "$g1_product_sequences"
             }
         },
         {
@@ -303,33 +386,44 @@ def generate_binary(operators, sequences):
     return ops[op](compile_sequence(ls), compile_sequence(rs))
 
 
-def generate_linear_combination(coeffs, sequences):
-    ls, rs = random.sample(sequences, 2)
-    lc, rc = random.sample(coeffs, 2)
-    return lc * compile_sequence(ls) + rc * compile_sequence(rs)
+def generate_linear_combination(coeffs, sequences, num_items):
+    num_items = random.choice(num_items)
+    slist = random.sample(sequences, num_items)
+    clist = random.sample(coeffs, num_items)
+    sequences = [compile_sequence(s) for s in slist]
+    sequence = make_linear_combination(clist, sequences)
+    register_info(sequence, flags={Flag.LINEAR_COMBINATION})
+    return sequence
 
 
 def generate_affine_transform(values, coeffs, sequences):
     sequence = compile_sequence(random.choice(sequences))
     value = random.choice(values)
     coeff = random.choice(coeffs)
-    return (value + coeff * sequence).simplify()
+    sequence = (value + coeff * sequence).simplify()
+    register_info(sequence, flags={Flag.AFFINE_TRANSFORM})
+    return sequence
 
 
 def generate_functional(functionals, sequences):
-    sequence = random.choice(sequences)
-    return (lc * compile_sequence(ls) + rc * compile_sequence(rs)).simplify()
-
-
-def generate_functional(functionals, sequences):
-    sequence = random.choice(sequences)
+    seq = random.choice(sequences)
     functional = random.choice(functionals)
-    return compile_sequence("{}({})".format(functional, sequence))
+    sequence = compile_sequence("{}({})".format(functional, seq))
+    register_info(sequence, flags={Flag.FUNCTIONAL})
+    return sequence
     
     
+def generate_product(sequences):
+    seq = random.choice(sequences)
+    sequence = compile_sequence("product({})".format(seq))
+    register_info(sequence, flags={Flag.FUNCTIONAL})
+    return sequence
+
 def generate_polygonal(sides):
     sides = random.choice(sides)
-    return compile_sequence("Polygonal({})".format(sides))
+    sequence = compile_sequence("Polygonal({})".format(sides))
+    register_info(sequence, flags={Flag.POLYGONAL})
+    return sequence
     
 
 def generate_compose(sequence_groups):
@@ -340,26 +434,59 @@ def generate_compose(sequence_groups):
             sequence = seq
         else:
             sequence = sequence | seq
+    register_info(sequence, flags={Flag.COMPOSE})
     return sequence
     
 
 def generate_roundrobin(sequences, num):
     sequences = [compile_sequence(seq) for seq in random.sample(sequences, num)]
-    return roundrobin(*sequences)
+    sequence = roundrobin(*sequences)
+    register_info(sequence, flags={Flag.ROUNDROBIN})
+    return sequence
     
 
 def generate_geometric(a_values, b_values, c_values):
     a_value = random.choice(a_values)
     b_value = random.choice(b_values)
     c_value = random.choice(c_values)
-    sequence = Geometric(c_value)
-    return (a_value + b_value * sequence).simplify()
+    seq = Geometric(c_value)
+    sequence = (a_value + b_value * seq).simplify()
+    register_info(sequence, flags={Flag.GEOMETRIC})
+    return sequence
 
 
 def generate_arithmetic(start_values, step_values):
     start_value = random.choice(start_values)
     step_value = random.choice(step_values)
-    return Arithmetic(start=start_value, step=step_value)
+    sequence = Arithmetic(start=start_value, step=step_value)
+    register_info(sequence, flags={Flag.ARITHMETIC})
+    return sequence
+
+
+def generate_rseq(sequences, coeffs, denom, known_items):
+    clist = []
+    slist = []
+    for coeff, sequence in zip(coeffs, sequences):
+        clist.append(pick(coeff))
+        slist.append(compile_sequence(pick(sequence)))
+    denom = pick(denom)
+    gseq = make_linear_combination(clist, slist, denom)
+    args = [pick(x) for x in known_items] + [gseq]
+    sequence = rseq(*args)
+    register_info(sequence, flags={Flag.RECURSIVE_SEQUENCE})
+    return sequence
+        
+
+def generate_fibonacci(first, second):
+    sequence = make_fibonacci(pick(first), pick(second))
+    register_info(sequence, flags={Flag.FIBONACCI})
+    return sequence
+
+
+def generate_tribonacci(first, second, third):
+    sequence = make_tribonacci(pick(first), pick(second), pick(third))
+    register_info(sequence, flags={Flag.TRIBONACCI})
+    return sequence
 
 
 ALGORITHMS = {
@@ -368,11 +495,15 @@ ALGORITHMS = {
     "linear_combination": generate_linear_combination,
     "affine_transform": generate_affine_transform,
     "functional": generate_functional,
+    "product": generate_product,
     "polygonal": generate_polygonal,
     "compose": generate_compose,
     "roundrobin": generate_roundrobin,
     "arithmetic": generate_arithmetic,
     "geometric": generate_geometric,
+    "rseq": generate_rseq,
+    "fibonacci": generate_fibonacci,
+    "tribonacci": generate_tribonacci,
 }
 
 
@@ -407,13 +538,18 @@ def compile_config(config):
     return cfg
         
 
-def generate(level=None, algorithm=None):
+def get_generate_algorithms():
+    return list(sorted(ALGORITHMS))
+
+
+def generate(level=None, algorithms=None, simplify=False):
     config = compile_config(json.loads(CONFIG))
 
-    def make_select(level, algorithm):
+    def make_select(level, algorithms):
         select_functions = []
-        if algorithm:
-            select_functions.append(lambda algorithm_config: algorithm_config.name == algorithm)
+        if algorithms is not None:
+            algorithms = set(algorithms)
+            select_functions.append(lambda algorithm_config: algorithm_config.name in algorithms)
         if level:
             levels = set()
             if isinstance(level, int):
@@ -441,14 +577,19 @@ def generate(level=None, algorithm=None):
     def run_algorithm(algorithm_config):
         return algorithm_config.function(**algorithm_config.kwargs)
 
-    select = make_select(level, algorithm)
+    def simplify_sequence(sequence):
+        if simplify:
+            sequence = sequence.simplify()
+        return sequence
+
+    select = make_select(level, algorithms)
     selected = []
     for level_config in config.values():
         for algorithm_config in level_config:
             if select(algorithm_config):
                 selected.append(algorithm_config)
     if len(selected) == 1:
-        return run_algorithm(selected[0])
+        return simplify_sequence(run_algorithm(selected[0]))
     elif selected:
         lst = []
         tot = sum(algorithm_config.weight for algorithm_config in selected)
@@ -460,4 +601,9 @@ def generate(level=None, algorithm=None):
         p = random.random()
         for cumulated_p, algorithm_config in lst:
             if p <= cumulated_p:
-                return run_algorithm(algorithm_config)
+                return simplify_sequence(run_algorithm(algorithm_config))
+
+
+def generate_sequences(level=None, algorithms=None):
+    while True:
+        yield generate(level=level, algorithms=algorithms)

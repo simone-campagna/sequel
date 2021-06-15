@@ -19,6 +19,7 @@ from .manager import (
 from .base import Algorithm
 from .first_level import (
     CatalogAlgorithm,
+    # CatalogDiffAlgorithm,
     ConstAlgorithm,
     AffineTransformAlgorithm,
     ArithmeticAlgorithm,
@@ -29,6 +30,7 @@ from .first_level import (
     PolynomialAlgorithm,
     LinearCombinationAlgorithm,
     RepunitAlgorithm,
+    RecursiveSequenceAlgorithm,
 )
 from .common_factors import (
     CommonFactorsAlgorithm,
@@ -48,6 +50,7 @@ from .binary import (
     MulAlgorithm,
     DivAlgorithm,
     PowAlgorithm,
+    ConstPowAlgorithm,
 )
 from .roundrobin import (
     RoundrobinAlgorithm,
@@ -65,16 +68,19 @@ def search_config(defaults=True):
     configs = []
     algorithm_types = [
         CatalogAlgorithm,
+        # CatalogDiffAlgorithm,
         ConstAlgorithm,
-        AffineTransformAlgorithm,
         ArithmeticAlgorithm,
         GeometricAlgorithm,
+        AffineTransformAlgorithm,
         PowerAlgorithm,
         FibonacciAlgorithm,
         TribonacciAlgorithm,
         PolynomialAlgorithm,
         RepunitAlgorithm,
+        RecursiveSequenceAlgorithm,
         LinearCombinationAlgorithm,
+        ConstPowAlgorithm,
         AddAlgorithm,
         SubAlgorithm,
         MulAlgorithm,
@@ -123,3 +129,8 @@ def create_manager(size, config=None):
         manager.add_algorithm(algorithm)
     return manager
 
+
+def search(items):
+    size = min(10, len(items))
+    manager = create_manager(size)
+    yield from manager.search(items)

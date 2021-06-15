@@ -4,15 +4,28 @@ Print utils
 
 import collections
 import contextlib
+import enum
 import functools
+import io
+import itertools
+import os
+import readline
+import shutil
 import sys
 import textwrap
 
 import termcolor
 
 from ..config import get_config, register_config
+from ..item import Item
 from ..lazy import gmpy2
-from ..sequence import Sequence
+from ..sequence import (
+    Sequence, SequenceUnboundError,
+    compile_sequence,
+    inspect_sequence,
+    classify as classify_sequence,
+    Trait,
+)
 
 
 
@@ -21,6 +34,10 @@ __all__ = [
     'Printer',
 ]
 
+
+UNDEF = object()
+QUIT = object()
+HINT = object()
 
 register_config(
     name="display",
@@ -39,6 +56,38 @@ register_config(
     })
 
 
+def evaluate(expr):
+    try:
+        return eval(expr)
+    except:
+        return compile_sequence(expr)
+
+
+class ItemType(enum.Enum):
+    KNOWN = 0
+    PATTERN = 1
+    GUESS = 2
+
+
+KNOWN = lambda : itertools.repeat(ItemType.KNOWN)
+GUESS = lambda : itertools.repeat(ItemType.GUESS)
+PATTERN = lambda : itertools.repeat(ItemType.PATTERN)
+
+
+def iter_item_types(items):
+    def item_types():
+        for item in items:
+            if isinstance(item, Item):
+                if item.is_known():
+                    yield ItemType.KNOWN
+                else:
+                    yield ItemType.PATTERN
+            else:
+                yield ItemType.KNOWN
+        yield from GUESS()
+    return item_types
+
+    
 class Printer(object):
     def __init__(self, base=None, max_full_digits=None, max_compact_digits=None,
                  big_int=None, ellipsis=None, item_mode=None, num_items=None,
@@ -78,6 +127,12 @@ class Printer(object):
         finally:
             self.file = old_file
 
+    @contextlib.contextmanager
+    def set_ios(self):
+        ios = io.StringIO()
+        with self.set_file(ios):
+            yield ios
+
     def _colored(self, string, color):
         if self.colored:
             return termcolor.colored(string, color)
@@ -89,6 +144,12 @@ class Printer(object):
 
     def red(self, string):
         return self._colored(string, "red")
+
+    def green(self, string):
+        return self._colored(string, "green")
+
+    def guess(self, string):
+        return string
 
     def bold(self, string):
         if self.colored:
@@ -112,7 +173,18 @@ class Printer(object):
     def repr_items(self, items):
         return [self.repr_item(i) for i in items]
 
+    def colorize_item(self, item, item_type):
+        if item_type is ItemType.KNOWN:
+            fn_color = self.blue
+        elif item_type is ItemType.GUESS:
+            fn_color = self.red
+        else:
+            fn_color = self.guess
+        return fn_color(self.repr_item(item))
+
     def repr_item(self, item):
+        if isinstance(item, Item):
+            return str(item)
         item = gmpy2.mpz(item)
         num_digits = item.num_digits(self.base)
         if num_digits >= self.max_compact_digits:
@@ -129,77 +201,149 @@ class Printer(object):
             else:
                 return digits
 
-    def _oneline_items(self, items, num_known=0):
-        known_items = [
-            self.blue(self.repr_item(item)) for item in items[:num_known]
-        ]
-        unknown_items = [
-            self.red(self.repr_item(item)) for item in items[num_known:]
-        ]
-        r_items = known_items + unknown_items
-        data = "    {} ...".format(self.separator.join(known_items + unknown_items))
+    def _oneline_items(self, items, item_types=KNOWN):
+        r_items = []
+        for item, item_type in zip(items, item_types()):
+            r_items.append(self.colorize_item(item, item_type))
+        data = "    {} ...".format(self.separator.join(r_items))
         return data
 
-    def print_items(self, items, num_known=0, item_mode=None):
+    def print_items(self, items, item_types=KNOWN, item_mode=None, header=""):
         if item_mode is None:
             item_mode = self.item_mode
         if item_mode == "oneline":
-            data = self._oneline_items(items, num_known=num_known)
+            data = self._oneline_items(items, item_types=item_types)
             if False and self.wraps:
-                data = textwrap.fill(data, subsequent_indent='    ', break_long_words=False)
+                data = textwrap.fill(data, initial_indent=header, subsequent_indent=header + '    ', break_long_words=False)
             self(data)
         elif item_mode == "multiline":
-            for index, item in enumerate(items):
-                if index < num_known:
-                   fn = self.bold
-                else:
-                   fn = self.blue
-                item = fn(self.repr_item(item))
-                self(self.item_format.format(index=index, item=item))
+            for index, (item, item_type) in enumerate(zip(items, item_types())):
+                self(header + self.item_format.format(index=index, item=self.colorize_item(item, item_type)))
                 
-    def print_doc(self, sources=None, num_items=None, full=False, simplify=False):
+    def print_doc(self, sources=None, num_items=None, traits=False, classify=False, simplify=False, sort=True):
         if sources is None:
-            sources = [str(sequence) for sequence in Sequence.get_registry().values()]
+            sources = [sequence for sequence in Sequence.get_registry().values() if sequence.is_bound()]
+        sequences = []
+        s_sequences = set()
+        for source in sources:
+            if isinstance(source, Sequence):
+                sequence = source
+                if simplify:
+                    sequence = sequence.simplify()
+            else:
+                sequence = Sequence.compile(source, simplify=simplify)
+            s_sequence = str(sequence)
+            if s_sequence not in s_sequences:
+                s_sequences.add(s_sequence)
+                sequences.append(sequence)
+        if sort:
+            sequences.sort(key=lambda x: str(x))
         first = True
-        for source in sorted(sources):
+        for sequence in sequences:
             if not first:
                 self()
             first = False
-            if isinstance(source, Sequence):
-                sequence = source
-            else:
-                sequence = Sequence.compile(source, simplify=simplify)
-            if num_items is None:
-                num_items = self.num_items
             self(self.bold(str(sequence)) + " : " + sequence.doc())
-            if full:
-                self(" " + self.bold("*") + " traits: {}".format("|".join(self.bold(trait.name) for trait in sequence.traits)))
-            if num_items:
-                items = sequence.get_values(num_items)
-                self.print_items(items)
+            if traits or classify:
+                self.print_sequence_traits(sequence, classify=classify)
+            self.print_sequence_items(sequence, num_items)
 
-    
-    def print_sequence(self, sequence, num_items=None, num_known=0, header=""):
+    def print_sequence(self, sequence, num_items=None, tree=False, traits=False, classify=False, inspect=False, doc=False, item_types=KNOWN, header=""):
         """Print a sequence.
     
            Parameters
            ----------
            sequence: Sequence
                the sequence
+           doc: bool, optional
+               print sequence doc (defaults to False)
            num_items: int, optional
                number of items to be shown (defaults to ``10``)
+           tree: bool, optional
+               print sequence tree (defaults to False)
+           traits: bool, optional
+               print sequence traits (defaults to False)
+           classify: bool, optional
+               classify sequence traits (defaults to False)
+           inspect: bool, optional
+               inspect sequence (defaults to False)
         """
-        if num_items is None:
-            num_items = self.num_items
         s_sequence = str(sequence)
         s_sequence = self.bold(str(sequence))
-        self("{}{}".format(header, s_sequence))
+        if doc:
+            s_doc = " : " + sequence.doc()
+        else:
+            s_doc = ""
+        self("{}{}{}".format(header, s_sequence, s_doc))
+        self.print_sequence_items(sequence, num_items, item_types=item_types, header=header + "    ")
+        if traits or classify:
+            self.print_sequence_traits(sequence, classify=classify, header=header + "    ")
+        if inspect:
+            self.print_sequence_info(sequence, header + "    ")
+        if tree:
+            self(header + "    tree:")
+            self.print_tree(sequence, header=header + "        ")
+    
+    def print_sequence_traits(self, sequence, classify=False, header=""):
+        sequence_traits = set(sequence.traits)
+        if classify:
+            classified_traits_d = classify_sequence(sequence)
+            colored_traits = []
+            self(header + "   {:30s} DECLARED CLASSIFIED".format("TRAIT"))
+            on_txt = self.bold('X')
+            off_txt = ' '
+            for trait in sorted(Trait, key=lambda x: x.value):
+                show = False
+                c_value = classified_traits_d[trait]
+                if trait in sequence_traits:
+                    d_txt = 'X'
+                    show = True
+                    if c_value is None:
+                        c_txt = '?'
+                        color = self.color
+                    elif c_value:
+                        c_txt = 'X'
+                        color = self.green
+                    else:
+                        c_txt = '-'
+                        color = self.red
+                else:
+                    d_txt = '-'
+                    if c_value is None:
+                        c_txt = '?'
+                        color = self.color
+                    elif c_value:
+                        c_txt = 'X'
+                        color = self.blue
+                        show = True
+                    else:
+                        c_txt = '-'
+                        color = self.green
+                if show:
+                    trait_txt = color("{:30s}".format(trait))
+                    self(header + "   + " + trait_txt + "      " + d_txt + "          " + c_txt)
+        else:
+            colored_traits = []
+            for trait in sorted(sequence_traits, key=lambda x: x.value):
+                colored_traits.append(trait.name)
+            self(header + "traits: {}".format("|".join(colored_traits)))
+
+    def print_sequence_info(self, sequence, header=""):
+        info = inspect_sequence(sequence)
+        self(header + "contains: " + " ".join(self.bold(str(seq)) for seq in info.contains))
+        self(header + "flags: " + " " .join(self.blue(flag.name) for flag in info.flags))
+
+    def print_sequence_items(self, sequence, num_items, item_types=KNOWN, header=""):
+        if num_items is None:
+            num_items = self.num_items
         if num_items:
-            items = sequence.get_values(num_items)
-            self.print_items(items, num_known=num_known)
-    
-    
-    def print_sequences(self, sequences, num_items=None, num_known=0, header="", target_sequence=None):
+            try:
+                items = sequence.get_values(num_items)
+                self.print_items(items, item_types=item_types, header=header)
+            except SequenceUnboundError:
+                pass
+
+    def print_search_result(self, sequences, num_items=None, item_types=KNOWN, header="", target_sequence=None):
         best_match, best_match_complexity = None, 1000000
         if target_sequence is not None:
             found = False
@@ -215,7 +359,7 @@ class Printer(object):
                 complexity = sequence.complexity()
                 if best_match_complexity > complexity:
                     best_match, best_match_complexity = sequence, complexity
-                self.print_sequence(sequence, header=header, num_known=num_known)
+                self.print_sequence(sequence, header=header, item_types=item_types)
         except KeyboardInterrupt:
             self(self.red("[search interrupted]"))
         if target_sequence is not None:
@@ -230,7 +374,7 @@ class Printer(object):
             self("best match: {}".format(self.bold(str(best_match))))
 
 
-    def print_tree(self, sequence):
+    def print_tree(self, sequence, header=""):
         max_complexity = sequence.complexity()
         max_len = 1
         while True:
@@ -251,7 +395,7 @@ class Printer(object):
             if schild != rchild:
                 lst.append(":")
                 lst.append(rchild)
-            hdr = "{} ".format(self.blue(complexity)) + ("  " * depth)
+            hdr = "{}{} ".format(header, self.blue(complexity)) + ("  " * depth)
             self(hdr + " ".join(lst))
     
     
@@ -275,119 +419,52 @@ class Printer(object):
         for row in table:
             self(fmt.format(*row))
 
-    def print_test(self, source, sequence, items, sequences):
-        self(self.bold("###") + " compiling " + self.bold(str(source)) + " ...")
-        self.print_sequence(sequence)
+    def print_generate_sequence_header(self):
+        self(self.bold("###") + " generating random sequence ...")
+
+    def print_evaluate_expression_header(self, expression):
+        self(self.bold("###") + " evaluating " + self.bold(str(expression)) + " ...")
+
+    def print_search_header(self, items):
         self(self.bold("###") + " searching " + self.bold(" ".join(self.repr_items(items))) + " ...")
-        self.print_sequences(sequences, num_items=0, num_known=0, target_sequence=sequence)
 
     @contextlib.contextmanager
-    def overwrite(self, base=None, num_items=None):
-        old_base = self.base
-        old_num_items = self.num_items
+    def overwrite(self, **kwargs):
+        old_values = {key: getattr(self, key) for key in kwargs}
         try:
-            if base is not None:
-                self.base = base
-            if num_items is not None:
-                self.num_items = num_items
+            for key, value in kwargs.items():
+                setattr(self, key, value)
             yield self
         finally:
-            self.num_items = old_num_items
-            self.base = old_base
+            for key, value in old_values.items():
+                setattr(self, key, value)
 
-    def print_quiz(self, source):
-        item_format = "    {index:4d}: {item:20s}"
-        def show_items(items):
-            for index, item in enumerate(items):
-                item = self.bold(self.repr_item(item))
-                self(item_format.format(index=index, item=item))
-        items_format = "    {index:4d}: {item:20s} {user_item:20s} {equals}"
-        def compare_items(items, user_items):
-            nexact = 0
-            ndiff = 0
-            for index, (item, user_item) in enumerate(zip(items, user_items)):
-                s_item = self.bold(self.repr_item(item))
-                s_user_item = self.repr_item(user_item)
-                if user_item == item:
-                    s_user_item = self.blue(s_user_item)
-                    equals = "[ok]"
-                    nexact += 1
-                else:
-                    s_user_item = self.red(s_user_item)
-                    equals = "!!!"
-                    ndiff += 1
-                self(items_format.format(index=index, item=s_item, user_item=s_user_item, equals=equals))
-            return nexact, ndiff
-
-        if isinstance(source, str):
-            sequence = Sequence.compile(source, simplify=True)
-        else:
-            sequence = source
-       
-        commands = collections.OrderedDict()
-        
-        def _show_help(command, items, sequence):
-            for key, (doc, function) in commands.items():
-                self("{:20s} {}".format(self.bold(key), doc))
-
-        def _get_tag(command, items, sequence):
-            return command[1:]
-
-        def _print_doc(command, items, sequence):
-            self.print_doc()
-
-        def _spoiler(command, items, sequence):
-            self("The hidden sequence is: " + self.bold(sequence))
-
-        def _show_items(command, items, sequence):
-            show_items(items)
-
-        commands[':quit'] = ("quit", _get_tag)
-        commands[':items'] = ("items", _show_items)
-        commands[':spoiler'] = ("show the hidden sequences", _spoiler)
-        commands[':doc'] = ("show available sequences", _print_doc)
-        commands[':help'] = ("show available commands", _show_help)
-
-        # self(str(sequence))
-        num_items = self.num_items
-        item_mode = 'multiline'
-        items = []
-        ntries = 0
-        self("(enter ':help' to show commands)")
-        while True:
-            if len(items) != num_items:
-                items = sequence.get_values(num_items)
-            show_items(items)
-            while True:
-                hdr = "[{}] ".format(ntries)
-                try:
-                    ans = input(hdr + "sequence > ").strip()
-                except EOFError:
-                    self('')
-                    return
-                if not ans:
-                    continue
-                if ans in commands:
-                    fn = commands[ans][1]
-                    result = fn(ans, items, sequence)
-                    if result == 'quit':
-                        return
-                else:
-                    ntries += 1
-                    hdr = "[{}] ".format(ntries)
-                    try:
-                        user_sequence = Sequence.compile(ans, simplify=True)
-                    except Exception as err:
-                        self(hdr + self.red("ERROR:") + str(err))
-                        continue
-                    user_items = user_sequence.get_values(num_items)
-                    nexact, ndiff = compare_items(items, user_items)
-                    if ndiff:
-                        self(hdr + "{} errors - try again".format(ndiff))
-                    else:
-                        if user_sequence == sequence:
-                            self(hdr + "Wow! You found the exact solution {}".format(self.bold(str(user_sequence))))
-                        else:
-                            self(hdr + "Good! You found the solution {}; the exact solution was {}".format(self.bold(str(user_sequence)), self.bold(str(sequence))))
-                        return
+    def pager(self, *args, **kwargs):
+        return Pager(self, *args, **kwargs)
       
+
+class Pager(object):
+    def __init__(self, printer, max_lines=None, interactive=True, continue_text=None):
+        self.printer = printer
+        if max_lines is None:
+            max_lines = shutil.get_terminal_size((80, 20)).lines
+        self.max_lines = max_lines
+        self.num_lines = 0
+        self.interactive = interactive
+        if continue_text is None:
+            continue_text = printer.bold("⟪ press ") + printer.blue("ENTER") + printer.bold(" to continue ⟫") + ' '
+        self.continue_text = continue_text
+
+    def interrupt(self):
+        input(self.continue_text)
+        self.printer('\r' + ' ' * len(self.continue_text) + '\r')
+
+    def __call__(self, text):
+        num_new_lines = text.count('\n') + 1
+        if self.interactive:
+            if self.num_lines > 0 and self.num_lines + num_new_lines >= self.max_lines:
+                self.interrupt()
+                self.num_lines = 0
+        printer = self.printer
+        printer(text)
+        self.num_lines += num_new_lines

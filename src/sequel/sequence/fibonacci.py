@@ -22,7 +22,7 @@ __all__ = [
 
 
 class Fib01(Function):
-    __traits__ = [Trait.POSITIVE]
+    __traits__ = [Trait.POSITIVE, Trait.INCREASING]
 
     def __call__(self, i):
         return gmpy2.fib(i)
@@ -36,7 +36,7 @@ class Fib01(Function):
 
 
 class Fib11(Function):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
 
     def __call__(self, i):
         return gmpy2.fib(i + 1)
@@ -96,7 +96,7 @@ class Fib(Iterator):
 
     @classmethod
     def register(cls):
-        cls.register_factory('pell', lambda: cls(0, 1, 2))
+        cls.register_factory('pell', lambda: cls(0, 1, 2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
 
 
 class Trib(Iterator):
@@ -135,12 +135,12 @@ class Trib(Iterator):
 
     @classmethod
     def register(cls):
-        cls.register_factory('tribonacci', lambda: cls(0, 1, 1))
+        cls.register_factory('tribonacci', lambda: cls(0, 1, 1).set_traits(Trait.POSITIVE, Trait.INCREASING))
 
 
 def make_fibonacci(first=0, second=1, scale=1):
     g = gcd(first, second,)
-    if g != 1:
+    if abs(g) > 1:
         first //= g
         second //= g
     key = (first, second, scale)
@@ -160,7 +160,7 @@ def make_fibonacci(first=0, second=1, scale=1):
 
 def make_tribonacci(first=0, second=1, third=1):
     g = gcd(first, second,)
-    if g != 1:
+    if abs(g) > 1:
         first //= g
         second //= g
         return g * Trib(first, second, third)

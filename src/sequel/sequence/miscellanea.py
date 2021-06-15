@@ -37,8 +37,8 @@ class Power(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('square', lambda: cls(power=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
-        cls.register_factory('cube', lambda: cls(power=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('square', lambda: cls(power=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('cube', lambda: cls(power=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
 
 
 class Arithmetic(Function):
@@ -68,8 +68,8 @@ class Arithmetic(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('even', lambda: cls(start=0, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
-        cls.register_factory('odd', lambda: cls(start=1, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE))
+        cls.register_factory('even', lambda: cls(start=0, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING))
+        cls.register_factory('odd', lambda: cls(start=1, step=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING, Trait.NON_ZERO))
 
 
 class Geometric(Function):
@@ -94,9 +94,9 @@ class Geometric(Function):
 
     @classmethod
     def register(cls):
-        cls.register_factory('power_of_2', lambda: cls(base=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO))
-        cls.register_factory('power_of_3', lambda: cls(base=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO))
-        cls.register_factory('power_of_10', lambda: cls(base=10).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO))
+        cls.register_factory('power_of_2', lambda: cls(base=2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING))
+        cls.register_factory('power_of_3', lambda: cls(base=3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING))
+        cls.register_factory('power_of_10', lambda: cls(base=10).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING))
 
 
 class ZeroOne(Function):

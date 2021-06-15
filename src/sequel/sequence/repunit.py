@@ -15,7 +15,7 @@ __all__ = [
 
 
 class Repunit(Sequence):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE, Trait.INCREASING]
 
     def __init__(self, base=10):
         self.__base = gmpy2.mpz(base)
@@ -43,7 +43,7 @@ class Repunit(Sequence):
 
 
 class Demlo(Sequence):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INJECTIVE, Trait.INCREASING]
 
     def description(self):
         return "f(n) := the Demlo numbers, defined as repunit ** 2"

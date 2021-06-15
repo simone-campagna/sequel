@@ -22,6 +22,8 @@ from ..config import (
     show_config,
     edit_config,
 )
+from ..declaration import declared
+
 from ..item import make_item
 from ..items import make_items
 from ..search import (
@@ -31,25 +33,21 @@ from ..search import (
     # StopAtNum,
     StopBelowComplexity,
 )
-from ..sequence import compile_sequence, Sequence, generate
+from ..sequence import compile_sequence, Sequence, generate, generate_sequences
 from ..profiler import Profiler
 from ..utils import assert_sequence_matches
 
-from .display import Printer
+from .display import Printer, iter_item_types
+from .help_pages import create_help
+from .quiz import QuizShell
+from .shell import SequelShell
 
 __all__ = [
     'main',
 ]
 
 
-def make_printer(display_kwargs=None):
-    if display_kwargs is None:
-        display_kwargs = {}
-    return Printer(**display_kwargs)
-
-
-# def type_stop_at_num(string):
-#     return StopAtNum(int(string))
+RANDOM_SEQUENCE = object()
 
 
 def type_stop_below_complexity(string):
@@ -103,75 +101,112 @@ def function_config_reset():
     reset_config()
 
 
-def function_compile(sources, simplify=False, tree=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    if tree:
-        print_function = printer.print_tree
+def function_show(sequence, level=None, algorithms=None, simplify=False, tree=False, inspect=False, traits=False, classify=False, doc=False):
+    printer = Printer()
+    if sequence is RANDOM_SEQUENCE:
+        sequence = generate(level=level, algorithms=algorithms, simplify=simplify)
     else:
-        print_function = printer.print_sequence
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        print_function(sequence)
+        sequence = compile_sequence(sequence, simplify=simplify)
+    printer.print_sequence(sequence, tree=tree, inspect=inspect, traits=traits, classify=classify, doc=doc)
 
     
-def function_tree(sources, simplify=False, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        printer.print_tree(sequence)
-
-    
-def function_doc(sources, simplify=False, full=False, display_kwargs=None):
-    if not sources:
-        sources = None
-    printer = make_printer(display_kwargs)
-    printer.print_doc(sources=sources, simplify=simplify, full=full)
-
-
-def function_search(items, limit=None, sort=False, reverse=False, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    if profile:
-        profiler = Profiler()
+def function_doc(expressions, sequence_traits, simplify=False, traits=False, classify=False):
+    all_sequences = True
+    sequences = []
+    if expressions:
+        all_sequences = False
+        sequences.extend(expressions)
+        sort = False
+    elif sequence_traits:
+        all_sequences = False
+        sequences.extend(Sequence.get_sequences_with_traits(sequence_traits))
+        sort = True
     else:
-        profiler = None
-    config = get_config()
-    size = len(items)
-    manager = create_manager(size, config=config)
-    found_sequences = manager.search(items, handler=handler, profiler=profiler)
-    sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-    printer.print_sequences(sequences, num_known=len(items))
-    if profile:
-        printer.print_stats(profiler)
+        sequences = None
+        sort = True
+    printer = Printer()
+    printer.print_doc(sources=sequences, simplify=simplify, traits=traits, classify=classify, sort=sort)
 
 
-def function_test(sources, simplify=False, sort=False, reverse=False, limit=None, display_kwargs=None, handler=None, profile=False):
-    printer = make_printer(display_kwargs)
-    config = get_config()
-    size = printer.num_items
-    manager = create_manager(size, config=config)
-    if profile:
-        profiler = Profiler()
-    else:
-        profiler = None
-    for source in sources:
-        sequence = compile_sequence(source, simplify=simplify)
-        items = sequence.get_values(printer.num_items)
+def function_search(sequence, limit=None, sort=False, reverse=False, handler=None, profile=False, declarations=None, simplify=False, level=None, algorithms=None):
+    if declarations is None:
+        declarations = ()
+    with declared(*declarations):
+        printer = Printer()
+        num_items = printer.num_items
+        print_search_result_kwargs = {}
+        if sequence is RANDOM_SEQUENCE:
+            rev_search = True
+            printer.print_generate_sequence_header()
+            sequence = generate(level=level, algorithms=algorithms, simplify=simplify)
+            printer.print_sequence(sequence)
+            expression = None
+            items = sequence.get_values(num_items)
+            print_search_result_kwargs['target_sequence'] = sequence
+        elif isinstance(sequence, str):
+            rev_search = True
+            expression = sequence
+            printer.print_evaluate_expression_header(expression)
+            sequence = compile_sequence(sequence, simplify=simplify)
+            printer.print_sequence(sequence)
+            sequence = compile_sequence(expression, simplify=simplify)
+            items = sequence.get_values(num_items)
+            print_search_result_kwargs['target_sequence'] = sequence
+        else:
+            items = sequence
+            print_search_result_kwargs['item_types'] = iter_item_types(items)
+            sequence = None
+            expression = None
+            rev_search = False
+        if profile:
+            profiler = Profiler()
+        else:
+            profiler = None
+        config = get_config()
+        manager = create_manager(len(items), config=config)
+        printer.print_search_header(items)
         found_sequences = manager.search(items, handler=handler, profiler=profiler)
         sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-        printer.print_test(source, sequence, items, sequences)
-    if profile:
-        printer.print_stats(profiler)
+        printer.print_search_result(sequences, **print_search_result_kwargs)
+        if profile:
+            printer.print_stats(profiler)
+
+
+def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=None, handler=None, profile=False, declarations=None):
+    if declarations is None:
+        declarations = ()
+    with declared(*declarations):
+        printer = Printer()
+        config = get_config()
+        size = printer.num_items
+        manager = create_manager(size, config=config)
+        if profile:
+            profiler = Profiler()
+        else:
+            profiler = None
+        for source in sources:
+            sequence = compile_sequence(source, simplify=simplify)
+            items = sequence.get_values(printer.num_items)
+            found_sequences = manager.search(items, handler=handler, profiler=profiler)
+            sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+            printer.print_rsearch(source, sequence, items, sequences)
+        if profile:
+            printer.print_stats(profiler)
             
 
-def function_generate(level, algorithm, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    sequence = generate(level=level, algorithm=algorithm)
-    if sequence is not None:
-        printer.print_doc(sources=[sequence])
+def function_play(level, algorithms):
+    printer = Printer()
+    sequence_iterator = generate_sequences(level=level, algorithms=algorithms)
+    quiz_shell = QuizShell(sequence_iterator=sequence_iterator)
+    quiz_shell.interact()
 
 
-def function_quiz(level, algorithm, display_kwargs=None):
-    printer = make_printer(display_kwargs)
-    sequence = generate(level=level, algorithm=algorithm)
-    if sequence is not None:
-        printer.print_quiz(source=sequence)
+def function_shell():
+    printer = Printer()
+    shell = SequelShell(printer=printer)
+    shell.interact()
+
+
+def function_help(link=None, home=None, interactive=None):
+    help_pages = create_help()
+    help_pages.navigate(home=home, start_links=link, interactive=interactive)

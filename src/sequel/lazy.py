@@ -80,6 +80,7 @@ class _Sympy(object):
         self.factorint = _lazy_method(self, 'factorint')
         self.divisors = _lazy_method(self, 'divisors')
         self.mobius = _lazy_method(self, 'mobius')
+        self.perfect_power = _lazy_method(self, 'perfect_power')
 
     def _init(self):
         # print(">>> import sympy")
@@ -98,6 +99,7 @@ class _Sympy(object):
         self.factorint = sympy_module.factorint
         self.divisors = sympy_module.divisors
         self.mobius = sympy_module.mobius
+        self.perfect_power = sympy_module.perfect_power
 
     def _module_lazy(self):
         self._init()
