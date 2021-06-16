@@ -21,8 +21,9 @@ from .fibonacci import (
     Trib, make_tribonacci,
 )
 from .goldbach import (
-    GoldbachIncreasingPartition,
-    GoldbachSmallestPrime,
+    GoldbachPartitionsCount,
+    GoldbachPartitionsIncreasingValues,
+    GoldbachPartitionsSmallestPrimes,
 )
 from .miscellanea import (
     Power, Geometric, Arithmetic,

@@ -23,8 +23,9 @@ from sequel.sequence import (
     Demlo,
     LookAndSay,
     VanEck,
-    GoldbachIncreasingPartition,
-    GoldbachSmallestPrime,
+    GoldbachPartitionsCount,
+    GoldbachPartitionsIncreasingValues,
+    GoldbachPartitionsSmallestPrimes,
     verify_traits,
     merge, join,
     summation,
@@ -155,8 +156,9 @@ _refs = [
     ["rseq(0, 1, summation(I0) | i - 1)", rseq(0, 1, summation(rseq[0]) | Integer() - 1), [0, 1, 1, 2, 4, 8, 16, 32, 64, 128]],
     ["rseq(2, 1, product(I0) | i - 1)", rseq(2, 1, product(rseq[0]) | Integer() - 1), [2, 1, 2, 4, 16, 16**2, 16**4, 16**8]],
     ["rseq(3, 1, summation(I0 * 2) - 1 | i - 1)", rseq(3, 1, summation(rseq[0] * 2) - 1 | Integer() - 1), [3, 1, 7, 21, 63, 189]],
-    ["goldbach_increasing_partition", GoldbachIncreasingPartition(), [4, 6, 12, 30, 98, 220, 308, 556]],
-    ["goldbach_smallest_prime", GoldbachSmallestPrime(), [2, 3, 5, 7, 19, 23, 31, 47]],
+    ["g_part_count", GoldbachPartitionsCount(), [0, 1, 1, 1, 2, 1, 2, 2, 2, 2, 3, 3, 3, 2, 3, 2, 4, 4, 2, 3, 4]],
+    ["g_part_incr", GoldbachPartitionsIncreasingValues(), [4, 6, 12, 30, 98, 220, 308, 556]],
+    ["g_part_pmin", GoldbachPartitionsSmallestPrimes(), [2, 3, 5, 7, 19, 23, 31, 47]],
 ]
 
 
