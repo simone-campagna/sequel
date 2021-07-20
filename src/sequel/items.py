@@ -17,7 +17,7 @@ def _compute_size(items):
         if isinstance(item, Item):
             isize = item.size
             if isize is None:
-                print("!!!0", item, isize)
+                # print("!!!0", item, isize)
                 return None
             # elif isize != 1:
             #     print("!!!1", item, isize)
