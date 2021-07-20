@@ -3,6 +3,7 @@ Functionals
 """
 
 import abc
+from itertools import chain, count, repeat
 
 from .base import Iterator, Add, Sub, Const, Integer
 
@@ -14,6 +15,7 @@ __all__ = [
     'integral',
     'ifelse',
     'where',
+    'moessner',
 ]
 
 
@@ -174,3 +176,64 @@ class where(Functional):
             type(self).__name__,
             str(self.operand),
             str(self.sequence))
+
+
+class moessner(Functional):
+    """Moessner algorithm (see https://www.youtube.com/watch?v=rGlpyFHfMgI):
+
+moessner(1):
+
+1   2 | 3   4 | 5   6 | 7   8 | 9  10 | ...
+    ^       ^       ^       ^       ^
+1       4       9       16      25
+^       ^       ^       ^       ^
+moessner(2):
+
+1   2   3 | 4   5   6 | 7   8   9 |10   ...
+        ^           ^           ^
+1   3       7  12      19  27
+    ^           ^           ^
+1           8          27
+^           ^           ^
+
+Try:
+    moessner(1)   -> n ** 2
+    moessner(2)   -> n ** 3
+    moessner(i)   -> factorial | n
+"""
+    def __init__(self, sequence=Const(1), start=1):
+        super().__init__(sequence)
+        self.start = start
+
+    def _reduce_block(self, prev, block):
+        if len(block) == 1:
+            return block
+        offsets = chain(prev[1:], repeat(0))
+        values = block
+        result = []
+        result.append(block[-1])
+        while len(values) > 1:
+            offset = next(offsets)
+            new_value = offset
+            new_values = []
+            for value in values[:-1]:
+                new_value += value
+                new_values.append(new_value)
+            values = new_values
+            result.append(values[-1])
+        return result
+
+    def _iter_blocks(self):
+        index = self.start
+        for item in self.operand:
+            items = list(range(index, index + item + 1))
+            yield items
+            index += item + 1
+
+    def __iter__(self):
+        reduce_block = self._reduce_block
+        prev = []
+        for block in self._iter_blocks():
+            reduced_block = reduce_block(prev, block)
+            yield reduced_block[-1]
+            prev = reduced_block

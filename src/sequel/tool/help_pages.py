@@ -448,6 +448,19 @@ Other available functions are 'integral', 'derivative', 'summation', 'product':
             ShowExample(printer=printer,
                         kind='expression', source='product(p)'),
             """\
+The 'moessner' functional applies the Moessner algorithm (see https://thatsmaths.com/2017/09/14/moessners-magical-method/ or https://www.youtube.com/watch?v=rGlpyFHfMgI). The input sequence
+defines the length of the blocks used by the algorithm; if it is a const sequence of value m, the resulting sequence is n ** (m + 1):
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(1)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(2)'),
+            """\
+Notice that moessner(i) returns the factorials of the natural numbers:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(i)'),
+            """\
 The 'ifelse' function creates a new function according to a condition. For instance, the following sequence is '1000 + fib01' for the indices where catalan is even, and p for the indices where catalan is odd:
 """,
             ShowExample(printer=printer,

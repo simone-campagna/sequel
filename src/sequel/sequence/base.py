@@ -108,7 +108,7 @@ class LazyRegistry(collections.abc.Mapping):
     def register_instance(self, name, instance, **metadata):
         instance = self.LazyValue(instance=instance, factory=None)
         self._data[name] = instance
-        self.register_medatata(name, **metadata)
+        self.register_metadata(name, **metadata)
 
     def register_factory(self, name, factory, **metadata):
         instance = self.LazyValue(instance=None, factory=factory)

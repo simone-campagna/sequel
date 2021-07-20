@@ -35,6 +35,7 @@ from .functional import (
     derivative, integral,
     summation, product,
     ifelse, where,
+    moessner,
 )
 from .merge_join import (
     merge, join,
