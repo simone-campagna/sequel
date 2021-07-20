@@ -243,12 +243,13 @@ class Printer(object):
             if not first:
                 self()
             first = False
-            lst = []
+            lst = [self.bold(str(sequence))]
             oeis_id = sequence.oeis()
             if oeis_id is not None:
-                lst.append('[oeis: {}]'.format(self.green(oeis_id)))
+                lst.append('[{}]'.format(self.green(oeis_id)))
+            lst.append(":")
             lst.append(sequence.doc())
-            self(self.bold(str(sequence)) + " : " + " ".join(lst))
+            self(" ".join(lst))
             if traits or classify:
                 self.print_sequence_traits(sequence, classify=classify)
             self.print_sequence_items(sequence, num_items)

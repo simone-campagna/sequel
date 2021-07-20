@@ -16,7 +16,7 @@ __all__ = [
 
 
 class GoldbachPartitionsCount(StashMixin, Function):
-    __traits__ = [Trait.POSITIVE]
+    __traits__ = [Trait.POSITIVE, Trait.SLOW]
     __stash__ = None
 
     def __call__(self, i):

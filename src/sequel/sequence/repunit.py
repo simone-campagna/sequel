@@ -39,7 +39,10 @@ class Repunit(Sequence):
 
     @classmethod
     def register(cls):
-        cls.register_factory('repunit', cls)
+        cls.register_factory('repunit', cls,
+            oeis='A000042',
+            description='f(n) := the repunit sequence (unary representation of natural numbers)',
+        )
 
 
 class Demlo(Sequence):

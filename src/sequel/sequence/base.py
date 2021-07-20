@@ -441,6 +441,10 @@ class Sequence(metaclass=SMeta):
             locals[sequence_type.__name__] = sequence_type
         locals.update(Sequence.__registry__)
         locals.update(BackIndexer.__registry__)
+        for sequence in Sequence.__registry__.values():
+            oeis = sequence.oeis()
+            if oeis:
+                locals[oeis] = sequence
         return locals
 
     @classmethod
