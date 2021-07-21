@@ -12,6 +12,7 @@ import inspect
 import itertools
 import operator
 import weakref
+from itertools import islice
 
 from ..item import (
     Any, ANY, Interval, Set, Value,
@@ -26,6 +27,8 @@ from .trait import Trait
 
 __all__ = [
     'Sequence',
+    'SequenceProxy',
+    'SequenceSlicer',
     'SequenceError',
     'RecursiveSequenceError',
     'SequenceUnknownValueError',
@@ -252,9 +255,6 @@ class Sequence(metaclass=SMeta):
     def __call__(self, i):
         raise NotImplementedError()
 
-    def __getitem__(self, i):
-        return self(i)
-
     def doc(self):
         """Returns the documentation"""
         if self._instance_doc:
@@ -273,6 +273,8 @@ class Sequence(metaclass=SMeta):
         raise NotImplementedError()
 
     def __getitem__(self, i):
+        if isinstance(i, slice):
+            return SequenceSlicer(self, i.start, i.stop, i.step)
         return self(i)
 
     def doc(self):
@@ -586,6 +588,99 @@ class Sequence(metaclass=SMeta):
         return tuple(lst)
 
 
+class SequenceProxy(Sequence):
+    def __init__(self, sequence):
+        self.sequence = sequence
+
+    def __call__(self, i):
+        return self.sequence(i)
+
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            return SequenceSlicer(self, i.start, i.stop, i.step)
+        return self.sequence[i]
+
+    def __iter__(self):
+        yield from self.sequence
+
+    def doc(self):
+        return self.sequence.doc()
+
+    @property
+    def expr(self):
+        return self.sequence.expr
+
+    @property
+    def traits(self):
+        return self.sequence.traits
+
+    @property
+    def name(self):
+        return self.sequence.name
+
+    def as_string(self):
+        return self.sequence.as_string()
+
+
+class SequenceSlicer(SequenceProxy):
+    def __init__(self, sequence, start=0, stop=None, step=1):
+        self.sequence = sequence
+        self.start = start
+        self.stop = stop
+        self.step = step
+        if start is None:
+            self._istart = 0
+        else:
+            self._istart = start
+        if step is None:
+            self._istep = 1
+        else:
+            self._istep = step
+            
+
+    def __iter__(self):
+        yield from islice(self.sequence, self.start, self.stop, self.step)
+
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            return SequenceSlicer(self, i.start, i.stop, i.step)
+        return self(i)
+
+    def __call__(self, i):
+        k = self._istart + self._istep * i
+        if self.stop is not None:
+            if (self._istep > 0 and k >= self.stop) or (self._istep < 0 and k <= self.stop):
+                raise IndexError(i)
+        return self.sequence[k]
+
+    def _slice_repr(self):
+        tokens = []
+        for item in self.start, self.stop:
+            if item is None:
+                tokens.append('')
+            else:
+                tokens.append(str(item))
+        if self.step is not None:
+            tokens.append(str(self.step))
+        return ':'.join(tokens)
+
+    def name(self):
+        return '{}[{}]'.format(
+            self.sequence.name(),
+            self._slice_repr())
+
+    def as_string(self):
+        return '{}[{}]'.format(
+            self.sequence.as_string(),
+            self._slice_repr())
+
+    @property
+    def expr(self):
+        return '{}[{}]'.format(
+            self.sequence.expr,
+            self._slice_repr())
+
+
 def compile_sequence(source, simplify=False):
     return Sequence.compile(source, simplify=simplify)
 
@@ -605,6 +700,8 @@ class StashMixin(object):
         raise NotImplementedError()
 
     def __getitem__(self, i):
+        if isinstance(i, slice):
+            return SequenceSlicer(self, i.start, i.stop, i.step)
         stash = self.get_stash()
         if 0 <= i < len(stash):
             return stash[i]
@@ -985,6 +1082,8 @@ class BackIndexer(Sequence):
             yield self(i + offset)
 
     def __getitem__(self, i):
+        if isinstance(i, slice):
+            return SequenceSlicer(self, i.start, i.stop, i.step)
         return self(i)
 
     @classmethod
@@ -1050,6 +1149,8 @@ class RecursiveSequence(Sequence):
         return items[i]
 
     def __getitem__(self, i):
+        if isinstance(i, slice):
+            return SequenceSlicer(self, i.start, i.stop, i.step)
         return self(i)
 
     def __call__(self, i):
