@@ -399,6 +399,7 @@ Sequel knows many sequences; the DOC subcommand without arguments shows informat
                        kind='all', source=None),
         ],
     )
+
     ### SEQUENCE_EXPRESSIONS
     navigator.new_page(
         name="expressions",
@@ -429,6 +430,18 @@ Powers are also available: the sequence 'Power(3)' is the sequence i**3':
             ShowExample(printer=printer,
                         kind='expression', source='Power(7)'),
             """\
+The python slicing syntax allows to create SLICES, both finite and infinite: for instance:
+""",
+            Quotation("""\
+ * 'p[:3]' is a finite sequence producing the values [2, 3, 5]
+ * 'p[1:]' is an infinite sequence producing the values [3, 5, 7, 11, 13, ...]
+ * 'p[1:6]' is a finite sequence producing the values [3, 5, 7, 11, 13]
+ * 'p[1::2]' is an infinite sequence producing the values [3, 7, 13, 19, ...]
+ * 'p[1:10:2]' is a finite sequence producing the values [3, 7, 13, 19, 29]
+"""),
+            ShowExample(printer=printer,
+                        kind='expression', source='p[1:10:2]'),
+            """\
 Sequences can be composed with the '|' operator. The sequence 'p | n' is the sequence primes 'p' computed on the values of the natural numers sequence 'n':
 """,
             ShowExample(printer=printer,
@@ -438,6 +451,13 @@ The 'roundrobin' function creates a new sequence by taking values from other seq
 """,
             ShowExample(printer=printer,
                         kind='expression', source='roundrobin(p, 0, 7 * n - 10)'),
+            """\
+It is possible to MERGE multiple sequences or lists of items; for instance:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='merge(-p[:3], p[3:6], i)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='merge(-p[:3], [102, 101, 100], i)'),
             """\
 Other available functions are 'integral', 'derivative', 'summation', 'product':
 """,
@@ -506,6 +526,48 @@ Additionally, a generic RECURSIVE-SEQUENCE can be defined; the following sequenc
 """,
             ShowExample(printer=printer,
                         kind='expression', source='rseq(1, I1 * i)'),
+        ],
+    )
+
+    ### SLICES
+    navigator.new_page(
+        name="slices",
+        parent="expressions",
+        elements=[
+            """\
+The slicing syntax can be used to create a new sequence from an existing one by selecting only a subset of elements. For instance:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='p[:3]'),
+            ShowExample(printer=printer,
+                        kind='expression', source='p[1:]'),
+            ShowExample(printer=printer,
+                        kind='expression', source='p[1:6]'),
+            ShowExample(printer=printer,
+                        kind='expression', source='p[1::2]'),
+            ShowExample(printer=printer,
+                        kind='expression', source='p[1:10:2]'),
+        ],
+    )
+
+    ### MERGE
+    navigator.new_page(
+        name="merge",
+        parent="expressions",
+        elements=[
+            """\
+The 'merge' function merges items from multiple sequences or lists of values; for instance, 'merge([1, 3, 1], p)'
+is an infinite sequence producing the values [1, 3, 1, 2, 3, 5, 7, 11, ...]:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='merge([1, 3, 1], p)'),
+            """\
+Notice that all the arguments but the last one should be finite sequences (for instance limited SLICES) or lists,
+otherwise the next sequences are pointless. For instance, the following expression will produce only items from
+the infinite sequence 'p[1:]', while the 'm_exp' sequence is not used.
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='merge(p[1:], m_exp)'),
         ],
     )
 

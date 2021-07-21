@@ -1,57 +1,59 @@
 """
-Merge & join
+Merge sequences
 """
 
 import abc
 
-from .base import Iterator
+from .base import Sequence, Iterator
+from ..lazy import gmpy2
+
 
 __all__ = [
-    'join',
+    'BlockSequence',
     'merge',
+    'join',
 ]
 
 
-class basemerge(Iterator):
-    def __init__(self, sequence, *cuts, join=True):
-        self._sequence = self.make_sequence(sequence)
-        self._cuts = []
-        cuts = list(cuts)
-        while cuts:
-            cut = int(cuts.pop(0))
-            seq = self.make_sequence(cuts.pop(0))
-            self._cuts.append((cut, seq))
-        self._cuts.sort(key=lambda x: x[0])
-        self._join = join
+class BlockSequence(Iterator):
+    def __new__(cls, *iterables):
+        c_iterables = []
+        for iterable in iterables:
+            if isinstance(iterable, float) or gmpy2.is_integer(iterable):
+                iterable = (int(iterable),)
+            elif isinstance(iterable, list):
+                iterable = tuple(iterable)
+            if isinstance(iterable, (tuple, Sequence)):
+                c_iterables.append(iterable)
+            else:
+                raise TypeError(iterable)
+        return super().__new__(cls, *c_iterables)
 
+    def __init__(self, *iterables):
+        self._iterables = iterables
+
+
+class merge(BlockSequence):
     def __iter__(self):
-        itsequence = iter(self._sequence)
-        cuts = list(self._cuts)
-        if cuts:
-            next_cut, next_sequence = cuts.pop(0)
-        else:
-            next_cut, next_sequence = None, None
-        index = 0
+        for iterable in self._iterables:
+            yield from iterable
+
+
+class join(BlockSequence):
+    def __iter__(self):
+        iterators = [iter(iterable) for iterable in self._iterables]
         while True:
-            if next_cut and index >= next_cut:
-                itsequence = iter(next_sequence)
-                if not self._join:
-                   # advance sequence:
-                   for item in zip(range(index), itsequence):
-                       pass
-                if cuts:
-                    next_cut, next_sequence = cuts.pop(0)
-                else:
-                    next_cut, next_sequence = None, None
-            yield next(itsequence)
-            index += 1
-
-
-class merge(basemerge):
-    def __init__(self, sequence, *cuts):
-        super().__init__(sequence, *cuts, join=False)
-
-
-class join(basemerge):
-    def __init__(self, sequence, *cuts):
-        super().__init__(sequence, *cuts, join=True)
+            value = None
+            unset = True
+            for iterator in iterators:
+                try:
+                    if unset:
+                        value = next(iterator)
+                        unset = False
+                    else:
+                        next(iterator)
+                except StopIteration:
+                    pass
+            if unset:
+                raise StopIteration
+            yield value

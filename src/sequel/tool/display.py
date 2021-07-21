@@ -201,18 +201,30 @@ class Printer(object):
             else:
                 return digits
 
-    def _oneline_items(self, items, item_types=KNOWN):
+    def _oneline_items(self, items, num_items=None, sequence=None, item_types=KNOWN):
+        tokens = ['    ']
         r_items = []
         for item, item_type in zip(items, item_types()):
             r_items.append(self.colorize_item(item, item_type))
-        data = "    {} ...".format(self.separator.join(r_items))
+        tokens.append(self.separator.join(r_items))
+        if sequence is None:
+            max_items = None
+        else:
+            max_items = sequence.length()
+        if max_items is None:
+            if num_items is None or num_items <= len(items):
+                tokens.append(' ...')
+        else:
+            if len(items) < max_items:
+                tokens.append(' ...(+{})'.format(max_items - len(items)))
+        data = ''.join(tokens)
         return data
 
-    def print_items(self, items, item_types=KNOWN, item_mode=None, header=""):
+    def print_items(self, items, item_types=KNOWN, num_items=None, item_mode=None, sequence=None, header=""):
         if item_mode is None:
             item_mode = self.item_mode
         if item_mode == "oneline":
-            data = self._oneline_items(items, item_types=item_types)
+            data = self._oneline_items(items, item_types=item_types, num_items=num_items, sequence=sequence)
             if False and self.wraps:
                 data = textwrap.fill(data, initial_indent=header, subsequent_indent=header + '    ', break_long_words=False)
             self(data)
@@ -345,7 +357,7 @@ class Printer(object):
         if num_items:
             try:
                 items = sequence.get_values(num_items)
-                self.print_items(items, item_types=item_types, header=header)
+                self.print_items(items, item_types=item_types, num_items=num_items, sequence=sequence, header=header)
             except SequenceUnboundError:
                 pass
 

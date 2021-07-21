@@ -158,6 +158,16 @@ class Sequence(metaclass=SMeta):
             cls.__instances__[parameters] = instance
             return instance
 
+    def length(self):
+        """Return the sequence length, or None for infinite sequences"""
+        return None
+
+    def is_finite(self):
+        return self.length() is not None
+
+    def is_infinite(self):
+        return self.length() is None
+
     def __init__(self):
         # WARNING: this empty __init__method is needed in order to correctly
         #          inspect default arguments in __new__
@@ -621,10 +631,15 @@ class SequenceProxy(Sequence):
     def as_string(self):
         return self.sequence.as_string()
 
+    def length(self):
+        return self.sequence.length()
+
 
 class SequenceSlicer(SequenceProxy):
     def __init__(self, sequence, start=0, stop=None, step=1):
-        self.sequence = sequence
+        self.sequence = self.make_sequence(sequence)
+        if start is None:
+            start = 0
         self.start = start
         self.stop = stop
         self.step = step
@@ -637,6 +652,11 @@ class SequenceSlicer(SequenceProxy):
         else:
             self._istep = step
             
+    def length(self):
+        if self.stop is None:
+            return None
+        else:
+            return (self.stop - self._istart) // self._istep
 
     def __iter__(self):
         yield from islice(self.sequence, self.start, self.stop, self.step)
