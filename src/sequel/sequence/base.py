@@ -45,6 +45,7 @@ __all__ = [
     'Integer',
     'Natural',
     'Const',
+    'Values',
     'Compose',
     'chain',
 ]
@@ -496,6 +497,8 @@ only as a hint of the expected sequence len.
                 sequence = Const(value=sequence)
             elif isinstance(sequence, float):
                 sequence = Const(value=int(sequence))
+            elif isinstance(sequence, (list, tuple)):
+                sequence = Values(*sequence)
             elif not isinstance(sequence, Sequence):
                 raise TypeError("{!r} is not a Sequence".format(sequence))
         if isinstance(sequence, Sequence) and simplify:
@@ -557,6 +560,8 @@ only as a hint of the expected sequence len.
             return Const(value=operand)
         elif isinstance(operand, float):
             return Const(value=int(operand))
+        elif isinstance(operand, (list, tuple)):
+            return Values(*operand)
         elif isinstance(operand, str):
             return Sequence.compile(operand)
         else:
@@ -813,6 +818,9 @@ class UnOp(Sequence):
     def __init__(self, operand):
         self.operand = self.make_sequence(operand)
 
+    def len_hint(self):
+        return self.operand.len_hint()
+
     @classmethod
     @abc.abstractmethod
     def _unop(cls, value):
@@ -879,6 +887,17 @@ class BinOp(Sequence):
     @abc.abstractmethod
     def _binop(cls, l, r):
         raise NotImplementedError()
+
+    def len_hint(self):
+        l_len = self.left.len_hint()
+        r_len = self.right.len_hint()
+        if l_len is None:
+            return r_len
+        else:
+            if r_len is None:
+                return l_len
+            else:
+                return min(l_len, r_len)
 
     def __call__(self, i):
         return gmpy2.mpz(self._binop(self.left[i], self.right[i]))
@@ -1067,6 +1086,26 @@ class Natural(Function):
             oeis='A000027',
             description='f(i) := i + 1',
         )
+
+
+class Values(Sequence):
+    def __new__(cls, *values):
+        values = tuple(int(value) for value in values)
+        instance = super().__new__(cls, *values)
+        instance._values = values
+        return instance
+
+    def __init__(self, *values):
+        super().__init__()
+
+    def __call__(self, i):
+        return self._values[i]
+
+    def __iter__(self):
+        yield from self._values
+
+    def len_hint(self):
+        return len(self._values)
 
 
 class Const(Function):
@@ -1262,17 +1301,19 @@ class chain(Iterator):
         c_iterables = []
         for iterable in iterables:
             if isinstance(iterable, float) or gmpy2.is_integer(iterable):
-                iterable = (int(iterable),)
+                iterable = Const(int(iterable))
             elif isinstance(iterable, list):
                 iterable = tuple(iterable)
             if isinstance(iterable, (tuple, Sequence)):
                 c_iterables.append(iterable)
             else:
                 raise TypeError(iterable)
-        return super().__new__(cls, *c_iterables)
+        instance = super().__new__(cls, *c_iterables)
+        instance._iterables = c_iterables
+        return instance
 
     def __init__(self, *iterables):
-        self._iterables = iterables
+        super().__init__()
 
     def len_hint(self):
         l_sum = 0

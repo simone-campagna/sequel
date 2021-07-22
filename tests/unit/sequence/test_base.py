@@ -32,7 +32,10 @@ from sequel.sequence import (
     summation,
     product,
     moessner,
+    moessner_ext_index,
+    moessner_ext,
     chain,
+    Values,
 )
 
 
@@ -159,10 +162,16 @@ _refs = [
     ["g_part_count", GoldbachPartitionsCount(), [0, 1, 1, 1, 2, 1, 2, 2, 2, 2, 3, 3, 3, 2, 3, 2, 4, 4, 2, 3, 4]],
     ["g_part_incr", GoldbachPartitionsIncreasingValues(), [4, 6, 12, 30, 98, 220, 308, 556]],
     ["g_part_pmin", GoldbachPartitionsSmallestPrimes(), [2, 3, 5, 7, 19, 23, 31, 47]],
-    ["moessner(0)", moessner(0), [1, 2, 3, 4, 5, 6]],
-    ["moessner(1)", moessner(1), [1, 4, 9, 16, 25, 36]],
-    ["moessner(2)", moessner(2), [1, 8, 27, 64, 125, 216]],
-    ["moessner(i)", moessner(Integer()), [1, 2, 6, 24, 120, 720]],
+    ["moessner(n)", moessner(Natural()), [1, 2, 3, 4, 5, 6]],
+    ["moessner(n * 2)", moessner(Natural()*2), [1, 4, 9, 16, 25, 36]],
+    ["moessner(n * 3)", moessner(Natural()*3), [1, 8, 27, 64, 125, 216]],
+    ["moessner(triangular[1:])", moessner(Polygonal(3)[1:]), [1, 2, 6, 24, 120, 720]],
+    ["moessner_ext_index(chain((1,), 0))", moessner_ext_index(chain([1], 0)), [1, 2, 3, 4, 5]],
+    ["moessner_ext_index(chain((2,), 0))", moessner_ext_index(chain([2], 0)), [2, 4, 6, 8, 10]],
+    ["moessner_ext_index(chain((3,), 0))", moessner_ext_index(chain([3], 0)), [3, 6, 9, 12, 15]],
+    ["moessner_ext(chain((1,), 0))", moessner_ext(chain([1], 0)), [1, 2, 3, 4, 5, 6]],
+    ["moessner_ext(chain((2,), 0))", moessner_ext(chain([2], 0)), [1, 4, 9, 16, 25, 36]],
+    ["moessner_ext(chain((3,), 0))", moessner_ext(chain([3], 0)), [1, 8, 27, 64, 125, 216]],
     # slice
     ["i[::2]", SequenceSlicer(Integer(), None, None, 2), [0, 2, 4, 6]],
     ["i[:4:2]", SequenceSlicer(Integer(), None, 4, 2), [0, 2]],
@@ -170,6 +179,8 @@ _refs = [
     ["p[1:10:2]", SequenceSlicer(Prime(), 1, 10, 2), [3, 7]],
     ["p[1:15:2]", SequenceSlicer(Prime(), 1, 15, 2), [3, 7, 13]],
     ["rseq(0, 1, I1 ** 2 - I2)[1::2]", SequenceSlicer(RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), 1, None, 2), [1, 0, 1, 3, 46]],
+    # values
+    ["Values(1, 2, 4)", Values(1, 2, 4), [1, 2, 4]],
 ]
 
 
@@ -399,6 +410,12 @@ def test_slice_len_hint(seq, start, stop, step, values):
     [summation(Integer()[2:10:2]), 4],  # summation([2, 4, 6, 8])
     [product(Integer()), None],
     [product(Integer()[2:10:2]), 4],  # product([2, 4, 6, 8])
+    [Values(1, 2, 3), 3],
+    [Natural() + Values(1, 2, 3), 3],
+    [Values(2, 3, 4) + Natural(), 3],
+    [Values(2, 3, 4) + Values(2, 3, 4, 5), 3],
+    [Values(2, 3, 4, 5) + Values(2, 3, 4), 3],
+    [-Values(2, 3, 4), 3],
 ])
 def test_sequence_len_hint(seq, length):
     assert seq.len_hint() == length

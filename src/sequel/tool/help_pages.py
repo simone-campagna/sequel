@@ -447,6 +447,13 @@ Sequences can be composed with the '|' operator. The sequence 'p | n' is the seq
             ShowExample(printer=printer,
                         kind='expression', source='p | n'),
             """\
+Sequences can also be created by enumerating a (limited) set of values:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='Values(1, 5, 0, 10)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='Values(1, 5, 0, 10) * n'),
+            """\
 The 'roundrobin' function creates a new sequence by taking values from other sequences:
 """,
             ShowExample(printer=printer,
@@ -468,13 +475,15 @@ Other available functions are 'integral', 'derivative', 'summation', 'product':
             ShowExample(printer=printer,
                         kind='expression', source='product(p)'),
             """\
-The 'moessner' functional applies the Moessner algorithm (see https://thatsmaths.com/2017/09/14/moessners-magical-method/ or https://www.youtube.com/watch?v=rGlpyFHfMgI). The input sequence
-defines the length of the blocks used by the algorithm; if it is a const sequence of value m, the resulting sequence is n ** (m + 1):
+The 'moessner' functional applies the MOESSNER-ALGORITHM;
+the input sequence defines the selected indices (starting from 1).
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='moessner(1)'),
+                        kind='expression', source='moessner(n * 2)'),
             ShowExample(printer=printer,
-                        kind='expression', source='moessner(2)'),
+                        kind='expression', source='moessner(n * 3)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(triangular[1:])'),
             """\
 Notice that moessner(i) returns the factorials of the natural numbers:
 """,
@@ -569,6 +578,101 @@ the infinite sequence 'p[1:]', while the 'm_exp' sequence is not used.
             ShowExample(printer=printer,
                         kind='expression', source='chain(p[1:], m_exp)'),
         ],
+    )
+
+    ### MOESSNER-ALGORITHM
+    navigator.new_page(
+        name="moessner algorithm",
+        parent="expressions",
+        elements=[
+            """\
+The Moessner algorithm creates a new sequence from a sequence of indices starting with 1.
+See https://thatsmaths.com/2017/09/14/moessners-magical-method/ or https://www.youtube.com/watch?v=rGlpyFHfMgI.
+""",
+            Quotation("""\
+Consider the list of positive integers:
+
+    1    2    3    4    5    6    7    8    9
+
+The consider a non-negative, non-decreasing, non-null sequence of highlighted indices
+starting with 1; for instance, the sequence [3, 6, 9, ...]:
+
+    1    2   (3)   4    5   (6)   7    8   (9)
+
+For each of the blocks [1, 2, 3], [4, 5, 6], [7, 8, 9], ... the Moessner
+algorithm is implemented as follows:
+
+    1    2   (3)   4    5   (6)   7    8   (9)
+    1   (3)        7  (12)       19  (27)
+   (1)            (8)           (27)
+
+In each line, each block has one element less than the block above; the values are
+the sum of the values on the left and above. For instance, on the second block, 12 is the sum
+of 7 (left) and 5 (above); 8 is the sum of 1 (left) and 7 (above).
+
+These are the cubes of the highlighted indices.
+"""),
+            """\
+Some interesting index sequences:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(n * 2)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(n * 3)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(triangular[1:])'),
+            """\
+An interesting property of the Moessner algorithm is that it seems to transform sums into products and
+products into powers.
+""",
+            Quotation("""\
+Consider an arbitraty non-decreasing non-null sequence of items
+
+    S := [a, b, c, d, ...]
+
+Then consider the following sequence:
+    I == moessner_ext_index(S) := [
+        (1 * a),
+        (2 * a) + (1 * b),
+        (3 * a) + (2 * b) + (1 * c),
+        (4 * a) + (3 * b) + (2 * c) + (1 * d),
+        ...
+    ]
+
+The Moessner algorithm applied to the sequence I produces:
+
+    moessner(I) := [
+        (1 ** a),
+        (2 ** a) * (1 ** b),
+        (3 ** a) * (2 ** b) * (1 ** c),
+        (4 ** a) * (3 ** b) * (2 ** c) * (1 ** d),
+        ...
+    ]
+
+For instance, if a is 2 and b, c, d, ... are all equal to 0 (i.e. S := 'chain([2], 0)'), then
+"""),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner_ext_index(chain([2], 0))'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(moessner_ext_index(chain([2], 0)))'),
+            """\
+This is the same as 'moessner(n ** 2)'. Or:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner_ext_index(1)'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner(moessner_ext_index(1))'),
+            """\
+This is the same as 'moessner(triangular[1:])'.
+
+The 'moessner_ext' function is a fast implementation of the Moessner algorithm based on the property above, to obtain directly
+moessner(I) from S:
+""",
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner_ext(chain([2], 0))'),
+            ShowExample(printer=printer,
+                        kind='expression', source='moessner_ext(1)'),
+        ]
     )
 
     ### RECURSIVE-SEQUENCE_EXPRESSIONS

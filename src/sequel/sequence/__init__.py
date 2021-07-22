@@ -14,6 +14,7 @@ from .base import (
     Compose,
     compile_sequence,
     chain,
+    Values,
 )
 
 from .factorial import Factorial
@@ -37,6 +38,8 @@ from .functional import (
     summation, product,
     ifelse, where,
     moessner,
+    moessner_ext_index,
+    moessner_ext,
 )
 from .number_theory import (
     Catalan,
