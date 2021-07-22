@@ -13,6 +13,7 @@ from .base import (
     Const,
     Compose,
     compile_sequence,
+    chain,
 )
 
 from .factorial import Factorial
@@ -36,9 +37,6 @@ from .functional import (
     summation, product,
     ifelse, where,
     moessner,
-)
-from .merge_join import (
-    merge, join,
 )
 from .number_theory import (
     Catalan,

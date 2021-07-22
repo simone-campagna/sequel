@@ -12,6 +12,7 @@ from sequel.sequence import (
     Prime, Sigma, Tau, Phi, Pi,
     Euler, Bell, Genocchi,
     Power, Geometric, Arithmetic,
+    MersenneExponent, MersennePrime,
     Polygonal,
     Factorial,
     Catalan,
@@ -28,10 +29,10 @@ from sequel.sequence import (
     GoldbachPartitionsIncreasingValues,
     GoldbachPartitionsSmallestPrimes,
     verify_traits,
-    merge, join,
     summation,
     product,
     moessner,
+    chain,
 )
 
 
@@ -139,12 +140,9 @@ _refs = [
     ["demlo", Demlo(), [i ** 2 for i, _ in zip(Repunit(), range(10))]],
     ["look_and_say", LookAndSay(), [1, 11, 21, 1211, 111221, 312211, 13112221, 1113213211]],
     ["vaneck", VanEck(), [0, 0, 1, 0, 2, 0, 2, 2, 1, 6, 0, 5, 0, 2, 6, 5, 4, 0, 5, 3, 0, 3, 2, 9, 0, 4, 9, 3, 6, 14, 0, 6, 3, 5, 15, 0, 5, 3, 5, 2, 17, 0, 6, 11, 0, 3, 8, 0, 3, 3, 1, 42, 0, 5, 15, 20, 0, 4, 32, 0, 3, 11, 18, 0, 4, 7, 0, 3, 7, 3, 2, 31, 0, 6, 31, 3, 6, 3, 2, 8, 33, 0, 9, 56, 0, 3, 8, 7, 19, 0, 5, 37, 0, 3, 8, 8, 1]],
-    ["merge((1, 7), p)", merge([1, 7], Prime()), [1, 7, 2, 3, 5, 7, 11, 13]],
-    ["join((1, 7), p)", join([1, 7], Prime()), [1, 7, 5, 7, 11, 13]],
-    ["merge(i[:4], p)", merge(SequenceSlicer(Integer(), None, 4, None), Prime()), [0, 1, 2, 3, 2, 3, 5, 7, 11, 13]],
-    ["join(i[:4], p)", join(SequenceSlicer(Integer(), None, 4, None), Prime()), [0, 1, 2, 3, 11, 13, 17, 19]],
-    ["merge(i[:4], p[4:])", merge(SequenceSlicer(Integer(), None, 4, None), SequenceSlicer(Prime(), 4, None, None)), [0, 1, 2, 3, 11, 13, 17, 19, 23, 29]],
-    ["join(i[:4], p[4:])", join(SequenceSlicer(Integer(), None, 4, None), SequenceSlicer(Prime(), 4, None, None)), [0, 1, 2, 3, 23, 29, 31, 37]],
+    ["chain((1, 7), p)", chain([1, 7], Prime()), [1, 7, 2, 3, 5, 7, 11, 13]],
+    ["chain(i[:4], p)", chain(SequenceSlicer(Integer(), None, 4, None), Prime()), [0, 1, 2, 3, 2, 3, 5, 7, 11, 13]],
+    ["chain(i[:4], p[4:])", chain(SequenceSlicer(Integer(), None, 4, None), SequenceSlicer(Prime(), 4, None, None)), [0, 1, 2, 3, 11, 13, 17, 19, 23, 29]],
     ["rseq(0, 1, I1 ** 2 - I2)", RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
     ["rseq(0, 1, I1 ** 2 - I2)", rseq(0, 1, rseq[1] ** 2 - rseq[2]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
     ["rseq(1001, 0, 1, I1 ** 2 - I2)", rseq(1001, 0, 1, rseq[1] ** 2 - rseq[2]), [1001, 0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
@@ -342,3 +340,86 @@ def test_rseq_fail(sequence, index, rs_index, rs_len):
     with pytest.raises(RecursiveSequenceError) as exc_info:
         print(sequence(index))
     assert str(exc_info.value) == "request for item {} in recursive sequence with {} items".format(rs_index, rs_len)
+
+
+class Limited(Sequence):
+    def __init__(self, num, start=0):
+        self.num = num
+        self.start = start
+
+    def len_hint(self):
+        return self.num
+
+    def __iter__(self):
+        yield from range(self.start, self.start + self.num)
+
+    def __call__(self, i):
+        if 0 <= i < self.num:
+            return i
+        else:
+            raise IndexError(i)
+
+
+@pytest.mark.parametrize("seq, start, stop, step, values", [
+    [Limited(10), None, None, None, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+    [Limited(10), None, 100, None, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+    [Limited(10), None, 5, None, [0, 1, 2, 3, 4]],
+    [Limited(10), None, 4, 2, [0, 2]],
+    [Limited(10), None, 5, 2, [0, 2, 4]],
+    [Limited(10), None, 4, 3, [0, 3]],
+    [Limited(10), None, 5, 3, [0, 3]],
+    [Limited(10), None, 6, 3, [0, 3]],
+    [Limited(10), None, 7, 3, [0, 3, 6]],
+    [Limited(10), None, 8, 3, [0, 3, 6]],
+    [Limited(10), 1, 7, 3, [1, 4]],
+    [Limited(10), 1, 8, 3, [1, 4, 7]],
+])
+def test_slice_len_hint(seq, start, stop, step, values):
+    sseq = seq[start:stop:step]
+    items = list(sseq)
+    assert items == values
+    assert sseq.len_hint() == len(values)
+
+
+@pytest.mark.parametrize("seq, length", [
+    [chain(Limited(10)[:5]), 5],
+    [chain(Limited(2)[:5]), 2],
+    [chain([1, 2]), 2],
+    [chain(Limited(2)[:5], Limited(20)), 2 + 20],
+    [chain(Limited(2)[:5], Limited(20), Prime()[:3]), 2 + 20 + 3],
+    [chain(Limited(2)[:5], [1, 2], Prime()[:3]), 2 + 2 + 3],
+    [chain(Integer()), None],
+    [chain(Limited(2)[:5], Integer()), None],
+    [chain(Integer(), Limited(2)[:5]), None],
+    [derivative(Integer()), None],
+    [derivative(Integer()[2:10:2]), 3],  # integral([2, 4, 6, 8])
+    [integral(Integer()), None],
+    [integral(Integer()[2:10:2]), 5],  # integral([2, 4, 6, 8])
+    [summation(Integer()), None],
+    [summation(Integer()[2:10:2]), 4],  # summation([2, 4, 6, 8])
+    [product(Integer()), None],
+    [product(Integer()[2:10:2]), 4],  # product([2, 4, 6, 8])
+])
+def test_sequence_len_hint(seq, length):
+    assert seq.len_hint() == length
+    if length is not None:
+        print(seq)
+        items = list(seq)
+        print(items)
+        assert len(items) == length
+
+
+@pytest.mark.parametrize("seq", [
+    MersenneExponent(),
+    MersennePrime(),
+    Euler(),
+    Bell(),
+    Genocchi(),
+    GoldbachPartitionsIncreasingValues(),
+    GoldbachPartitionsSmallestPrimes(),
+])
+def test_enumerated_sequence_len_hint(seq):
+    len_hint = seq.len_hint()
+    assert len_hint is not None
+    items = list(seq)
+    assert len(items) == len_hint

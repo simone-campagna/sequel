@@ -46,6 +46,7 @@ __all__ = [
     'Natural',
     'Const',
     'Compose',
+    'chain',
 ]
 
 
@@ -57,6 +58,10 @@ def idem(x):
 
 
 class SequenceError(Exception):
+    pass
+
+
+class SequenceSlicingError(SequenceError):
     pass
 
 
@@ -158,15 +163,18 @@ class Sequence(metaclass=SMeta):
             cls.__instances__[parameters] = instance
             return instance
 
-    def length(self):
-        """Return the sequence length, or None for infinite sequences"""
+    def len_hint(self):
+        """Return an hint of the sequence length, or None for infinite sequences
+WARNING: there is no guarantee about the correctness of this value; it is used
+only as a hint of the expected sequence len.
+        """
         return None
 
-    def is_finite(self):
-        return self.length() is not None
+    def is_finite_hint(self):
+        return self.len_hint() is not None
 
-    def is_infinite(self):
-        return self.length() is None
+    def is_infinite_hint(self):
+        return self.len_hint() is None
 
     def __init__(self):
         # WARNING: this empty __init__method is needed in order to correctly
@@ -631,35 +639,52 @@ class SequenceProxy(Sequence):
     def as_string(self):
         return self.sequence.as_string()
 
-    def length(self):
-        return self.sequence.length()
+    def len_hint(self):
+        return self.sequence.len_hint()
+
+
+def _default_value(value, default):
+    if value is None:
+        return default
+    return value
 
 
 class SequenceSlicer(SequenceProxy):
-    def __init__(self, sequence, start=0, stop=None, step=1):
+    def __init__(self, sequence, start=None, stop=None, step=1):
         self.sequence = self.make_sequence(sequence)
         if start is None:
             start = 0
+        if step is None:
+            step = 1
+        istart = _default_value(start, 0)
+        if istart < 0:
+            raise SequenceSlicingError("invalid start={!r}: a non-negative integer is required".format(start))
+        if stop is not None and stop < 0:
+            raise SequenceSlicingError("invalid stop={!r}: a non-negative integer is required".format(stop))
+        istep = _default_value(step, 1)
+        if istep < 0:
+            raise SequenceSlicingError("invalid step={!r}: a non-negative integer is required".format(step))
         self.start = start
         self.stop = stop
         self.step = step
-        if start is None:
-            self._istart = 0
-        else:
-            self._istart = start
-        if step is None:
-            self._istep = 1
-        else:
-            self._istep = step
-            
-    def length(self):
-        if self.stop is None:
+        self._istart = istart
+        self._istep = istep
+
+    def len_hint(self):
+        stop = self.stop
+        s_len = self.sequence.len_hint()
+        if stop is None:
+            stop = s_len
+        elif s_len is not None:
+            stop = min(stop, s_len)
+        if stop is None:
             return None
         else:
-            return (self.stop - self._istart) // self._istep
+            
+            return (stop - self._istart + self._istep - 1) // self._istep
 
     def __iter__(self):
-        yield from islice(self.sequence, self.start, self.stop, self.step)
+        yield from islice(self.sequence, self._istart, self.stop, self._istep)
 
     def __getitem__(self, i):
         if isinstance(i, slice):
@@ -675,12 +700,15 @@ class SequenceSlicer(SequenceProxy):
 
     def _slice_repr(self):
         tokens = []
-        for item in self.start, self.stop:
-            if item is None:
-                tokens.append('')
-            else:
-                tokens.append(str(item))
-        if self.step is not None:
+        if self.start in {0, None}:
+            tokens.append('')
+        else:
+            tokens.append(str(self._istart))
+        if self.stop is None:
+            tokens.append('')
+        else:
+            tokens.append(str(self.stop))
+        if self.step not in {1, None}:
             tokens.append(str(self.step))
         return ':'.join(tokens)
 
@@ -736,6 +764,12 @@ class StashMixin(object):
 
 
 class EnumeratedSequence(StashMixin, Sequence):
+    def len_hint(self):
+        return len(self.get_stash())
+
+    def __iter__(self):
+        stash = self.get_stash()
+        yield from stash
 
     def __call__(self, i):
         stash = self.get_stash()
@@ -1221,3 +1255,38 @@ class RecursiveSequenceMaker(object):
 
 
 rseq = RecursiveSequenceMaker()
+
+
+class chain(Iterator):
+    def __new__(cls, *iterables):
+        c_iterables = []
+        for iterable in iterables:
+            if isinstance(iterable, float) or gmpy2.is_integer(iterable):
+                iterable = (int(iterable),)
+            elif isinstance(iterable, list):
+                iterable = tuple(iterable)
+            if isinstance(iterable, (tuple, Sequence)):
+                c_iterables.append(iterable)
+            else:
+                raise TypeError(iterable)
+        return super().__new__(cls, *c_iterables)
+
+    def __init__(self, *iterables):
+        self._iterables = iterables
+
+    def len_hint(self):
+        l_sum = 0
+        for iterable in self._iterables:
+            if isinstance(iterable, Sequence):
+                i_len = iterable.len_hint()
+                if i_len is None:
+                    return None
+                l_sum += i_len
+            else:
+                l_sum += len(iterable)
+        return l_sum
+
+    def __iter__(self):
+        for iterable in self._iterables:
+            yield from iterable
+

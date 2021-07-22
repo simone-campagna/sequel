@@ -452,12 +452,12 @@ The 'roundrobin' function creates a new sequence by taking values from other seq
             ShowExample(printer=printer,
                         kind='expression', source='roundrobin(p, 0, 7 * n - 10)'),
             """\
-It is possible to MERGE multiple sequences or lists of items; for instance:
+It is possible to CHAIN multiple sequences or lists of items; for instance:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='merge(-p[:3], p[3:6], i)'),
+                        kind='expression', source='chain(-p[:3], p[3:6], i)'),
             ShowExample(printer=printer,
-                        kind='expression', source='merge(-p[:3], [102, 101, 100], i)'),
+                        kind='expression', source='chain(-p[:3], [102, 101, 100], i)'),
             """\
 Other available functions are 'integral', 'derivative', 'summation', 'product':
 """,
@@ -550,24 +550,24 @@ The slicing syntax can be used to create a new sequence from an existing one by 
         ],
     )
 
-    ### MERGE
+    ### CHAIN
     navigator.new_page(
-        name="merge",
+        name="chain",
         parent="expressions",
         elements=[
             """\
-The 'merge' function merges items from multiple sequences or lists of values; for instance, 'merge([1, 3, 1], p)'
+The 'chain' function chains items from multiple sequences or lists of values; for instance, 'chain([1, 3, 1], p)'
 is an infinite sequence producing the values [1, 3, 1, 2, 3, 5, 7, 11, ...]:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='merge([1, 3, 1], p)'),
+                        kind='expression', source='chain([1, 3, 1], p)'),
             """\
 Notice that all the arguments but the last one should be finite sequences (for instance limited SLICES) or lists,
 otherwise the next sequences are pointless. For instance, the following expression will produce only items from
 the infinite sequence 'p[1:]', while the 'm_exp' sequence is not used.
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='merge(p[1:], m_exp)'),
+                        kind='expression', source='chain(p[1:], m_exp)'),
         ],
     )
 

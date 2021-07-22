@@ -210,7 +210,7 @@ class Printer(object):
         if sequence is None:
             max_items = None
         else:
-            max_items = sequence.length()
+            max_items = sequence.len_hint()
         if max_items is None:
             if num_items is None or num_items <= len(items):
                 tokens.append(' ...')

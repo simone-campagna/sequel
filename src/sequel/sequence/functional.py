@@ -23,6 +23,9 @@ class Functional(Iterator):
     def __init__(self, operand):
         self.operand = self.make_sequence(operand)
 
+    def len_hint(self):
+        return self.operand.len_hint()
+
     def children(self):
         yield self.operand
 
@@ -55,11 +58,21 @@ class product(Functional):
 class derivative(Functional):
     def __iter__(self):
         it = iter(self.operand)
-        prev = next(it)
-        while True:
-            item = next(it)
-            yield item - prev
-            prev = item
+        try:
+            prev = next(it)
+            while True:
+                item = next(it)
+                yield item - prev
+                prev = item
+        except StopIteration:
+            return
+
+    def len_hint(self):
+        l_operand = self.operand.len_hint()
+        if l_operand is None:
+            return None
+        else:
+            return max(0, l_operand - 1)
 
     def __call__(self, i):
         return self.operand(i + 1) - self.operand(i)
@@ -88,6 +101,13 @@ class integral(Functional):
     def __init__(self, operand, start=0):
         super().__init__(operand)
         self.start = start
+
+    def len_hint(self):
+        l_operand = self.operand.len_hint()
+        if l_operand is None:
+            return None
+        else:
+            return l_operand + 1
 
     def __iter__(self):
         value = self.start
