@@ -54,6 +54,7 @@ from .repunit import (
     Repunit,
     Demlo,
 )
+from .somos import somos, somos_break
 from .trait import (
     Trait,
     verify_traits,
