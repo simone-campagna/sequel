@@ -16,6 +16,11 @@ SomosData = namedtuple(
 
 
 class somos(Iterator):
+    """Somos-k sequence is defined as follows:
+
+         a(n) = 1 for n <= k, then:
+         a(n) * a(n-k) = a(n-1)*a(n-k+1) + a(n-2)*a(n-k+2) + ... + a(n-k//2)*a(n-k+k//2)
+    """
     __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
     __somos__ = {
         4: SomosData(oeis_id='A006720', stash=[

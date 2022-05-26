@@ -146,6 +146,7 @@ class Sequence(metaclass=SMeta):
     __registry__ = LazyRegistry()
     __traits__ = ()
     __ignored_errors__ = (ArithmeticError, OverflowError, ValueError, IndexError, SequenceUnknownValueError)
+    __variables__ = None
 
     def __new__(cls, *args, **kwargs):
         bound_args = cls.__signature__.bind(None, *args, **kwargs)
@@ -447,7 +448,7 @@ only as a hint of the expected sequence len.
     
     @classmethod
     def get_locals(cls):
-        locals = {
+        d_locals = {
             "ANY": ANY,
             "Any": Any,
             "Interval": Interval,
@@ -459,14 +460,26 @@ only as a hint of the expected sequence len.
             "floor": idem,  # sympy: a / b -> floor(a/b)
         }
         for sequence_type in Sequence.sequence_types():
-            locals[sequence_type.__name__] = sequence_type
-        locals.update(Sequence.__registry__)
-        locals.update(BackIndexer.__registry__)
+            d_locals[sequence_type.__name__] = sequence_type
+        d_locals.update(Sequence.__registry__)
+        d_locals.update(BackIndexer.__registry__)
         for sequence in Sequence.__registry__.values():
             oeis = sequence.oeis()
             if oeis:
-                locals[oeis] = sequence
-        return locals
+                d_locals[oeis] = sequence
+        if cls.__variables__:
+            d_locals.update(cls.__variables__)
+        return d_locals
+
+    @classmethod
+    @contextlib.contextmanager
+    def set_variables(cls, variables):
+        old_variables = cls.__variables__
+        cls.__variables__ = variables
+        try:
+            yield
+        finally:
+            cls.__variables__ = old_variables
 
     @classmethod
     def compile(cls, source, simplify=False, locals=None, check_type=True):

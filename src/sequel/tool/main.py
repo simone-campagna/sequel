@@ -32,8 +32,9 @@ from ..sequence.generate import (
     get_generate_algorithms,
 )
 from ..declaration import (
-    sequence_declaration,
+    parse_declaration,
     catalog_declaration,
+    declared,
 )
 from .subcommands import (
     RANDOM_SEQUENCE,
@@ -283,17 +284,17 @@ def add_reverse_argument(parser):
         help="reverse sorting")
 
 
-@arg('declarations')
+# @arg('declarations')
 def add_declarations_argument(parser):
     parser.add_argument(
-        "-d", "--declare-sequence",
+        "-d", "--declare",
         dest="declarations",
         metavar="[N:=]SEQ",
         action="append",
-        type=sequence_declaration,
-        help="declare a new sequence, i.e. newseq=ifelse(pentagonal%%2==0, p, 1000-m_exp)")
+        type=parse_declaration,
+        help="declare a new sequence or const, i.e. newseq:=ifelse(pentagonal%%2==0, p, 1000-m_exp) or N::5")
     parser.add_argument(
-        "-c", "--catalog-file",
+        "-D", "--declarations-file",
         dest="declarations",
         metavar="FILE",
         action="append",
@@ -543,6 +544,7 @@ To enable completion run the following command:
         function=_HELP, function_args=['pymodules', 'config_filename', 'config_keys'] + common_display_args,
         **common_parser_kwargs)
 
+    add_declarations_argument(parser)
     parser.add_argument(
         "--version",
         action="version",
@@ -619,7 +621,7 @@ $ sequel search -i 2 3 5 7 11,13,14
         subparsers=subparsers,
         function=function_search,
         function_args=['sequence:with-items', 'limit', 'sort', 'reverse', 'simplify',
-                       'handler', 'profile', 'declarations', 'level', 'algorithms'],
+                       'handler', 'profile', 'level', 'algorithms'],
         **common_parser_kwargs)
 
     # DOC
@@ -707,6 +709,7 @@ Reset config file""",
 
     argcomplete.autocomplete(parser)
     namespace = parser.parse_args()
+    declarations = namespace.declarations or ()
 
     config = load_config(namespace.config_filename)
     setup_config(config)
@@ -727,7 +730,8 @@ Reset config file""",
 
     set_config(config)
     kwargs = {arg: getattr(namespace, arg) for arg in namespace.function_args}
-    result = namespace.function(**kwargs)
+    with declared(*declarations):
+        result = namespace.function(**kwargs)
     return result
 
 
