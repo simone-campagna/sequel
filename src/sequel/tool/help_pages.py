@@ -11,8 +11,8 @@ import sys
 import traceback
 
 from ..declaration import (
-    parse_sequence_declaration,
-    sequence_declaration, declared,
+    parse_declaration,
+    declared,
     DeclarationType,
 )
 from .display import Printer, iter_item_types
@@ -79,26 +79,6 @@ class TraitsElement(OutputLines):
 
         
 class Example(OutputLines):
-    def example_args(self):
-        return []
-
-    def _format_lines(self, lines):
-        return '\n'.join("  " + line for line in lines)
-
-
-class SimplifyMixIn(object):
-    def __init__(self, *, simplify=None, **kwargs):
-        self.simplify = simplify
-        super().__init__(**kwargs)
-
-    def example_args(self):
-        args = super().example_args()
-        if self.simplify:
-            args.append("--simplify")
-        return args
-
-
-class DeclarationsMixIn(object):
     def __init__(self, *, declarations=None, **kwargs):
         if declarations is None:
             declarations = ()
@@ -111,24 +91,48 @@ class DeclarationsMixIn(object):
         for declaration in self._declarations:
             if isinstance(declaration, DummyCatalogDeclaration):
                 for decl in declaration.sources:
-                    declarations.append(sequence_declaration(decl))
+                    declarations.append(parse_declaration(decl))
             else:
                 declarations.append(declaration)
         with declared(*declarations):
             yield
 
-    def example_args(self):
-        args = super().example_args()
+    def global_args(self):
+        args = []
         for declaration in self._declarations:
             if isinstance(declaration, DummyCatalogDeclaration):
                 args.append("--catalog={!r}".format(declaration.filename))
             elif declaration.decl_type is DeclarationType.SEQUENCE:
-                sequence_declaration = parse_sequence_declaration(declaration.value)
-                if sequence_declaration.name is None:
-                    decl = sequence_declaration.source
+                if declaration.name is None:
+                    decl = declaration.source
                 else:
-                    decl = "{}:={}".format(sequence_declaration.name, sequence_declaration.source)
+                    decl = "{}:={}".format(declaration.name, declaration.source)
                 args.append("--declare={!r}".format(decl))
+        return args
+
+    def command_args(self):
+        return []
+
+    def command_line(self, command):
+        #g_args = [shlex.quote(arg) for arg in self.global_args()]
+        #c_args = [shlex.quote(arg) for arg in self.command_args()]
+        g_args = self.global_args()
+        c_args = self.command_args()
+        return " ".join(["$ sequel"] + g_args + [command] + c_args)
+
+    def _format_lines(self, lines):
+        return '\n'.join("  " + line for line in lines)
+
+
+class SimplifyMixIn(object):
+    def __init__(self, *, simplify=None, **kwargs):
+        self.simplify = simplify
+        super().__init__(**kwargs)
+
+    def command_args(self):
+        args = super().command_args()
+        if self.simplify:
+            args.append("--simplify")
         return args
 
 
@@ -160,14 +164,14 @@ class RaisingMixIn(object):
 
             
 class DocExample(SimplifyMixIn, Example):
-    def __init__(self, printer, kind, source, simplify=False, max_lines=None):
-        super().__init__(printer=printer, simplify=simplify, max_lines=max_lines)
+    def __init__(self, printer, kind, source, simplify=False, max_lines=None, declarations=None):
+        super().__init__(printer=printer, simplify=simplify, max_lines=max_lines, declarations=declarations)
         self.kind = kind
         self.source = source
         self.simplify = simplify
 
-    def example_args(self):
-        args = super().example_args()
+    def command_args(self):
+        args = super().command_args()
         if self.kind == 'expressions':
             args.append('-e')
             args.extend(self.source)
@@ -187,26 +191,25 @@ class DocExample(SimplifyMixIn, Example):
             sources = Sequence.get_sequences_with_traits(traits, order=True)
         with self.printer.set_file(ios):
             self.printer.print_doc(sources=sources, simplify=self.simplify)
-        args = self.example_args()
         lines = []
-        lines.append("$ sequel doc " + " ".join(args))
+        lines.append(self.command_line("doc"))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
 
 class ShowExample(SimplifyMixIn, RaisingMixIn, Example):
-    def __init__(self, printer, kind, source, simplify=False, expected_exception=False, max_lines=None, num_items=None):
-        super().__init__(printer=printer, simplify=simplify, expected_exception=expected_exception, max_lines=max_lines)
+    def __init__(self, printer, kind, source, simplify=False, expected_exception=False, max_lines=None, num_items=None, declarations=None):
+        super().__init__(printer=printer, simplify=simplify, expected_exception=expected_exception, max_lines=max_lines, declarations=declarations)
         self.kind = kind
         self.source = source
         self.simplify = simplify
         self.num_items = num_items
 
-    def example_args(self):
-        args = super().example_args()
+    def command_args(self):
+        args = super().command_args()
         if self.kind == 'expression':
             args.append('-e')
-            args.append(str(self.source))
+            args.append(repr(str(self.source)))
         if self.kind == 'random':
             args.append('-r')
         return args
@@ -215,18 +218,18 @@ class ShowExample(SimplifyMixIn, RaisingMixIn, Example):
         ios = StringIO()
         with self.printer.set_file(ios):
             with self.raising(ios):
-                sequence = compile_sequence(self.source, simplify=self.simplify)
+                with self.declare():
+                    sequence = compile_sequence(self.source, simplify=self.simplify)
                 self.printer.print_sequence(sequence, num_items=self.num_items)
-        args = self.example_args()
         lines = []
-        lines.append("$ sequel show " + " ".join(shlex.quote(arg) for arg in args))
+        lines.append(self.command_line("show"))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
 
-class SearchExample(DeclarationsMixIn, Example):
+class SearchExample(Example):
     def __init__(self, *, printer, kind, source, sequences, max_lines=None, declarations=None):
-        super().__init__(printer=printer, declarations=declarations, max_lines=max_lines)
+        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations)
         self.kind = kind
         self.source = source
         self.target_sequence = None
@@ -250,14 +253,14 @@ class SearchExample(DeclarationsMixIn, Example):
         for sequence in self.sequences:
             assert_sequence_matches(sequence, self.items)
 
-    def example_args(self):
-        args = super().example_args()
+    def command_args(self):
+        args = super().command_args()
         if self.kind == 'items':
             args.append('-i')
             args.extend(str(i) for i in self.orig_items)
         elif self.kind == 'expression':
             args.append('-e')
-            args.extend(repr(self.source))
+            args.append(repr(self.source))
         elif self.kind == 'random':
             args.append('-r')
         return args
@@ -276,15 +279,14 @@ class SearchExample(DeclarationsMixIn, Example):
             printer.print_search_header(self.items)
             printer.print_search_result(self.sequences, **kwargs)
         lines = []
-        args = self.example_args()
-        lines.append("$ sequel search " + " ".join(args))
+        lines.append(self.command_line("search"))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
 
 class Shellxample(Example):
-    def __init__(self, printer, commands, max_lines=None):
-        super().__init__(printer=printer, max_lines=max_lines)
+    def __init__(self, printer, commands, max_lines=None, declarations=None):
+        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations)
         self.commands = list(commands)
 
     def get_text(self):
@@ -293,24 +295,23 @@ class Shellxample(Example):
         with self.printer.set_file(ios):
             with redirect(ios, ios):
                 shell.run_commands(self.commands, echo=True)
-        args = self.example_args()
         lines = []
-        lines.append("$ sequel shell " + " ".join(args))
+        lines.append(self.command_line("shell"))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
 
 class PlayExample(Example):
-    def __init__(self, printer, sequences, commands, num_items=5, max_lines=None, banner=None, max_games=1):
-        super().__init__(printer=printer, max_lines=max_lines)
+    def __init__(self, printer, sequences, commands, num_items=5, max_lines=None, banner=None, max_games=1, declarations=None):
+        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations)
         self.sequences = [Sequence.make_sequence(x) for x in sequences]
         self.commands = list(commands)
         self.num_items = num_items
         self.banner = banner
         self.max_games = max_games
 
-    def example_args(self):
-        return super().example_args() + ['--num-items={}'.format(self.num_items)]
+    def command_args(self):
+        return super().command_args() + ['--num-items={}'.format(self.num_items)]
 
     def get_text(self):
         ios = StringIO()
@@ -319,9 +320,8 @@ class PlayExample(Example):
                 quiz_shell = QuizShell(printer=self.printer, sequence_iterator=itertools.cycle(self.sequences),
                                        num_known_items=self.num_items, max_games=self.max_games)
                 quiz_shell.run_commands(self.commands, echo=True, banner=self.banner)
-        args = self.example_args()
         lines = []
-        lines.append("$ sequel play " + " ".join(args))
+        lines.append(self.command_line("play"))
         lines.extend(self._output_lines(ios.getvalue()))
         return self._format_lines(lines)
 
@@ -970,21 +970,21 @@ If you have reasons to guess that the p ** 2 sequence is probably part of the so
             SearchExample(printer=printer,
                           kind="items", source=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
                           sequences=['catalan + p ** 2'],
-                          declarations=[sequence_declaration('p ** 2')]),
+                          declarations=[parse_declaration('p ** 2')]),
             """\
 It is possible to give a name to the declared sequence, for instance:
 """,
             SearchExample(printer=printer,
                           kind="items", source=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
                           sequences=['catalan + p2'],
-                          declarations=[sequence_declaration('p2:=p ** 2')]),
+                          declarations=[parse_declaration('p2:=p ** 2')]),
             """\
 It is possible to register more than one sequence:
 """,
             SearchExample(printer=printer,
                           kind="items", source=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
                           sequences=['c + p2'],
-                          declarations=[sequence_declaration('p2:=p ** 2'), sequence_declaration('c:=catalan - m_exp')]),
+                          declarations=[parse_declaration('p2:=p ** 2'), parse_declaration('c:=catalan - m_exp')]),
             """\
 Sequence declarations can be collected in files; for instance, suppose the file 'catalog.txt' contains the two declarations 'p2:=p ** 2' and 'c:=catalan - m_exp':
 """,
@@ -992,6 +992,15 @@ Sequence declarations can be collected in files; for instance, suppose the file 
                           kind="items", source=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
                           sequences=['c + p2'],
                           declarations=[DummyCatalogDeclaration('catalog.txt', ['p2:=p ** 2', 'c:=catalan - m_exp'])]),
+            """\
+In the following example, 'somos.txt' contains a const declaration 'N::5' and a sequence declaration 'somos_5:=rseq(*[1 for i in range(N)], sum(rseq[i]*rseq[N-i] for i in range(1, 1+N//2))/rseq[N])':
+""",
+            ShowExample(printer=printer,
+                          kind="items", source='somos_5',
+                          #sequences=['somos_5'],
+                          declarations=[DummyCatalogDeclaration('somos.txt', [
+                              'N::5', 'somos_5:=rseq(*[1 for i in range(N)], sum(rseq[i]*rseq[N-i] for i in range(1, 1+N//2))/rseq[N])'
+                          ])]),
             """\
 Be aware that adding too many sequence declaration can slow down some catalog-based search algorithms.
 """,

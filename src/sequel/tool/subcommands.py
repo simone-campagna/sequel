@@ -22,7 +22,6 @@ from ..config import (
     show_config,
     edit_config,
 )
-from ..declaration import declared
 
 from ..item import make_item
 from ..items import make_items
@@ -128,70 +127,64 @@ def function_doc(expressions, sequence_traits, simplify=False, traits=False, cla
     printer.print_doc(sources=sequences, simplify=simplify, traits=traits, classify=classify, sort=sort)
 
 
-def function_search(sequence, limit=None, sort=False, reverse=False, handler=None, profile=False, declarations=None, simplify=False, level=None, algorithms=None):
-    if declarations is None:
-        declarations = ()
-    with declared(*declarations):
-        printer = Printer()
-        num_items = printer.num_items
-        print_search_result_kwargs = {}
-        if sequence is RANDOM_SEQUENCE:
-            rev_search = True
-            printer.print_generate_sequence_header()
-            sequence = generate(level=level, algorithms=algorithms, simplify=simplify)
-            printer.print_sequence(sequence)
-            expression = None
-            items = sequence.get_values(num_items)
-            print_search_result_kwargs['target_sequence'] = sequence
-        elif isinstance(sequence, str):
-            rev_search = True
-            expression = sequence
-            printer.print_evaluate_expression_header(expression)
-            sequence = compile_sequence(sequence, simplify=simplify)
-            printer.print_sequence(sequence)
-            sequence = compile_sequence(expression, simplify=simplify)
-            items = sequence.get_values(num_items)
-            print_search_result_kwargs['target_sequence'] = sequence
-        else:
-            items = sequence
-            print_search_result_kwargs['item_types'] = iter_item_types(items)
-            sequence = None
-            expression = None
-            rev_search = False
-        if profile:
-            profiler = Profiler()
-        else:
-            profiler = None
-        config = get_config()
-        manager = create_manager(len(items), config=config)
-        printer.print_search_header(items)
+def function_search(sequence, limit=None, sort=False, reverse=False, handler=None, profile=False, simplify=False, level=None, algorithms=None):
+    printer = Printer()
+    num_items = printer.num_items
+    print_search_result_kwargs = {}
+    if sequence is RANDOM_SEQUENCE:
+        rev_search = True
+        printer.print_generate_sequence_header()
+        sequence = generate(level=level, algorithms=algorithms, simplify=simplify)
+        printer.print_sequence(sequence)
+        expression = None
+        items = sequence.get_values(num_items)
+        print_search_result_kwargs['target_sequence'] = sequence
+    elif isinstance(sequence, str):
+        rev_search = True
+        expression = sequence
+        printer.print_evaluate_expression_header(expression)
+        sequence = compile_sequence(sequence, simplify=simplify)
+        printer.print_sequence(sequence)
+        sequence = compile_sequence(expression, simplify=simplify)
+        items = sequence.get_values(num_items)
+        print_search_result_kwargs['target_sequence'] = sequence
+    else:
+        items = sequence
+        print_search_result_kwargs['item_types'] = iter_item_types(items)
+        sequence = None
+        expression = None
+        rev_search = False
+    if profile:
+        profiler = Profiler()
+    else:
+        profiler = None
+    config = get_config()
+    manager = create_manager(len(items), config=config)
+    printer.print_search_header(items)
+    found_sequences = manager.search(items, handler=handler, profiler=profiler)
+    sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
+    printer.print_search_result(sequences, **print_search_result_kwargs)
+    if profile:
+        printer.print_stats(profiler)
+
+
+def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=None, handler=None, profile=False):
+    printer = Printer()
+    config = get_config()
+    size = printer.num_items
+    manager = create_manager(size, config=config)
+    if profile:
+        profiler = Profiler()
+    else:
+        profiler = None
+    for source in sources:
+        sequence = compile_sequence(source, simplify=simplify)
+        items = sequence.get_values(printer.num_items)
         found_sequences = manager.search(items, handler=handler, profiler=profiler)
         sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-        printer.print_search_result(sequences, **print_search_result_kwargs)
-        if profile:
-            printer.print_stats(profiler)
-
-
-def function_rsearch(sources, simplify=False, sort=False, reverse=False, limit=None, handler=None, profile=False, declarations=None):
-    if declarations is None:
-        declarations = ()
-    with declared(*declarations):
-        printer = Printer()
-        config = get_config()
-        size = printer.num_items
-        manager = create_manager(size, config=config)
-        if profile:
-            profiler = Profiler()
-        else:
-            profiler = None
-        for source in sources:
-            sequence = compile_sequence(source, simplify=simplify)
-            items = sequence.get_values(printer.num_items)
-            found_sequences = manager.search(items, handler=handler, profiler=profiler)
-            sequences = iter_selected_sequences(found_sequences, sort=sort, limit=limit)
-            printer.print_rsearch(source, sequence, items, sequences)
-        if profile:
-            printer.print_stats(profiler)
+        printer.print_rsearch(source, sequence, items, sequences)
+    if profile:
+        printer.print_stats(profiler)
             
 
 def function_play(level, algorithms):

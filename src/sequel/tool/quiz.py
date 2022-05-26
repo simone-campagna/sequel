@@ -207,14 +207,14 @@ class Quiz(object):
             printer("""\
 Look at the items and try to find the hidden sequence.
 
-If you guess the sequence, try to solve the game with the command q.solve(); for instance:
+If you guess the sequence, try to solve the game with the command q.guess(); for instance:
 
-  >>> q.solve(lucas)
+  >>> q.guess(lucas)
 
 You can also try to guess the next item, for instance:
 
-  >>> q.solve(11)
-  >>> q.solve(p(5))
+  >>> q.guess(11)
+  >>> q.guess(p(5))
 
 If you need to see more items, you can run the q.hint() command; a new item will be added.
 
