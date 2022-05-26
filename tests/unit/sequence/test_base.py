@@ -3,7 +3,7 @@ import pytest
 from sequel.sequence import (
     Sequence,
     SequenceSlicer,
-    RecursiveSequence, BackIndexer, rseq,
+    RecursiveSequence, BackIndexer, rec,
     RecursiveSequenceError,
     Compose,
     Integer, Natural,
@@ -146,19 +146,19 @@ _refs = [
     ["chain((1, 7), p)", chain([1, 7], Prime()), [1, 7, 2, 3, 5, 7, 11, 13]],
     ["chain(i[:4], p)", chain(SequenceSlicer(Integer(), None, 4, None), Prime()), [0, 1, 2, 3, 2, 3, 5, 7, 11, 13]],
     ["chain(i[:4], p[4:])", chain(SequenceSlicer(Integer(), None, 4, None), SequenceSlicer(Prime(), 4, None, None)), [0, 1, 2, 3, 11, 13, 17, 19, 23, 29]],
-    ["rseq(0, 1, I1 ** 2 - I2)", RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
-    ["rseq(0, 1, I1 ** 2 - I2)", rseq(0, 1, rseq[1] ** 2 - rseq[2]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
-    ["rseq(1001, 0, 1, I1 ** 2 - I2)", rseq(1001, 0, 1, rseq[1] ** 2 - rseq[2]), [1001, 0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
-    ["rseq(4, 3, 2, 1, I0 | i - 1)", rseq(4, 3, 2, 1, rseq[0] | Integer() - 1), [4, 3, 2, 1, 1, 1, 1, 1, 1]],
-    ["rseq(4, 3, 2, 1, I1)", rseq(4, 3, 2, 1, rseq[1]), [4, 3, 2, 1, 1, 1, 1, 1, 1]],
-    ["rseq(4, 3, 2, 1, I1 | i - 1)", rseq(4, 3, 2, 1, rseq[1] | (Integer() - 1)), [4, 3, 2, 1, 2, 1, 2, 1, 2]],
-    ["rseq(4, 3, 2, 1, I2)", rseq(4, 3, 2, 1, rseq[2]), [4, 3, 2, 1, 2, 1, 2, 1, 2]],
-    ["rseq(4, 3, 2, 1, I2 | i - 1)", rseq(4, 3, 2, 1, rseq[2] | (Integer() - 1)), [4, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3]],
-    ["rseq(4, 3, 2, 1, I3)", rseq(4, 3, 2, 1, rseq[3]), [4, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3]],
-    ["rseq(4, 3, 2, 1, I3 | i - 1)", rseq(4, 3, 2, 1, rseq[3] | (Integer() - 1)), [4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4]],
-    ["rseq(0, 1, summation(I0) | i - 1)", rseq(0, 1, summation(rseq[0]) | Integer() - 1), [0, 1, 1, 2, 4, 8, 16, 32, 64, 128]],
-    ["rseq(2, 1, product(I0) | i - 1)", rseq(2, 1, product(rseq[0]) | Integer() - 1), [2, 1, 2, 4, 16, 16**2, 16**4, 16**8]],
-    ["rseq(3, 1, summation(I0 * 2) - 1 | i - 1)", rseq(3, 1, summation(rseq[0] * 2) - 1 | Integer() - 1), [3, 1, 7, 21, 63, 189]],
+    ["rec(0, 1, I1 ** 2 - I2)", RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rec(0, 1, I1 ** 2 - I2)", rec(0, 1, rec[1] ** 2 - rec[2]), [0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rec(1001, 0, 1, I1 ** 2 - I2)", rec(1001, 0, 1, rec[1] ** 2 - rec[2]), [1001, 0, 1, 1, 0, -1, 1, 2, 3, 7, 46]],
+    ["rec(4, 3, 2, 1, I0 | i - 1)", rec(4, 3, 2, 1, rec[0] | Integer() - 1), [4, 3, 2, 1, 1, 1, 1, 1, 1]],
+    ["rec(4, 3, 2, 1, I1)", rec(4, 3, 2, 1, rec[1]), [4, 3, 2, 1, 1, 1, 1, 1, 1]],
+    ["rec(4, 3, 2, 1, I1 | i - 1)", rec(4, 3, 2, 1, rec[1] | (Integer() - 1)), [4, 3, 2, 1, 2, 1, 2, 1, 2]],
+    ["rec(4, 3, 2, 1, I2)", rec(4, 3, 2, 1, rec[2]), [4, 3, 2, 1, 2, 1, 2, 1, 2]],
+    ["rec(4, 3, 2, 1, I2 | i - 1)", rec(4, 3, 2, 1, rec[2] | (Integer() - 1)), [4, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3]],
+    ["rec(4, 3, 2, 1, I3)", rec(4, 3, 2, 1, rec[3]), [4, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3]],
+    ["rec(4, 3, 2, 1, I3 | i - 1)", rec(4, 3, 2, 1, rec[3] | (Integer() - 1)), [4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4]],
+    ["rec(0, 1, summation(I0) | i - 1)", rec(0, 1, summation(rec[0]) | Integer() - 1), [0, 1, 1, 2, 4, 8, 16, 32, 64, 128]],
+    ["rec(2, 1, product(I0) | i - 1)", rec(2, 1, product(rec[0]) | Integer() - 1), [2, 1, 2, 4, 16, 16**2, 16**4, 16**8]],
+    ["rec(3, 1, summation(I0 * 2) - 1 | i - 1)", rec(3, 1, summation(rec[0] * 2) - 1 | Integer() - 1), [3, 1, 7, 21, 63, 189]],
     ["g_part_count", GoldbachPartitionsCount(), [0, 1, 1, 1, 2, 1, 2, 2, 2, 2, 3, 3, 3, 2, 3, 2, 4, 4, 2, 3, 4]],
     ["g_part_incr", GoldbachPartitionsIncreasingValues(), [4, 6, 12, 30, 98, 220, 308, 556]],
     ["g_part_pmin", GoldbachPartitionsSmallestPrimes(), [2, 3, 5, 7, 19, 23, 31, 47]],
@@ -178,7 +178,7 @@ _refs = [
     ["i[:5:2]", SequenceSlicer(Integer(), None, 5, 2), [0, 2, 4]],
     ["p[1:10:2]", SequenceSlicer(Prime(), 1, 10, 2), [3, 7]],
     ["p[1:15:2]", SequenceSlicer(Prime(), 1, 15, 2), [3, 7, 13]],
-    ["rseq(0, 1, I1 ** 2 - I2)[1::2]", SequenceSlicer(RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), 1, None, 2), [1, 0, 1, 3, 46]],
+    ["rec(0, 1, I1 ** 2 - I2)[1::2]", SequenceSlicer(RecursiveSequence((0, 1), BackIndexer(1) ** 2 - BackIndexer(2)), 1, None, 2), [1, 0, 1, 3, 46]],
     # values
     ["Values(1, 2, 4)", Values(1, 2, 4), [1, 2, 4]],
 ]
@@ -304,7 +304,7 @@ def test_BackIndexer_error(index, exc):
 
 
 @pytest.mark.parametrize("known_args, generating_sequence, exc", [
-    [(0, 1), rseq[3] ** 3, ValueError("sequence rseq(0, 1, I3 ** 3): too few known items: 2 < 3")],
+    [(0, 1), rec[3] ** 3, ValueError("sequence rec(0, 1, I3 ** 3): too few known items: 2 < 3")],
 ])
 def test_RecursiveSequence_error(known_args, generating_sequence, exc):
     with pytest.raises(type(exc)) as exc_info:
@@ -312,42 +312,42 @@ def test_RecursiveSequence_error(known_args, generating_sequence, exc):
     assert str(exc_info.value) == str(exc)
 
 
-def test_rseq_index_maker():
-    v = rseq[2]
+def test_rec_index_maker():
+    v = rec[2]
     assert isinstance(v, BackIndexer)
     assert v.offset == 2
 
 
-def test_rseq_maker():
-    v = rseq(1001, 0, 1, rseq[1] ** 2 - rseq[2])
+def test_rec_maker():
+    v = rec(1001, 0, 1, rec[1] ** 2 - rec[2])
     assert isinstance(v, RecursiveSequence)
     assert v.known_items == (1001, 0, 1)
-    assert v.generating_sequence == rseq[1] ** 2 - rseq[2]
+    assert v.generating_sequence == rec[1] ** 2 - rec[2]
 
 
 @pytest.mark.parametrize("sequence, index, ref_value", [
-    [rseq(111, rseq[0]), 0, 111],
-    [rseq(111, rseq[1]), 1, 111],
-    [rseq(111, 112, rseq[0]), 0, 111],
-    [rseq(111, 112, rseq[0]), 1, 112],
-    [rseq(1, 3, 10, derivative(rseq[2])), 0, 1],
-    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 0, 1],
-    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 1, 3],
-    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 2, 10],
-    [rseq(1, 3, 10, derivative(rseq[0]) | Integer() - 2), 3, 7],
+    [rec(111, rec[0]), 0, 111],
+    [rec(111, rec[1]), 1, 111],
+    [rec(111, 112, rec[0]), 0, 111],
+    [rec(111, 112, rec[0]), 1, 112],
+    [rec(1, 3, 10, derivative(rec[2])), 0, 1],
+    [rec(1, 3, 10, derivative(rec[0]) | Integer() - 2), 0, 1],
+    [rec(1, 3, 10, derivative(rec[0]) | Integer() - 2), 1, 3],
+    [rec(1, 3, 10, derivative(rec[0]) | Integer() - 2), 2, 10],
+    [rec(1, 3, 10, derivative(rec[0]) | Integer() - 2), 3, 7],
 ])
-def test_rseq_ok(sequence, index, ref_value):
+def test_rec_ok(sequence, index, ref_value):
     assert int(sequence(index)) == int(ref_value)
 
 
 @pytest.mark.parametrize("sequence, index, rs_index, rs_len", [
-    [rseq(rseq[0]), 0, 0, 0],
-    [rseq(rseq[0] | (Integer() - 1)), 0, -1, 0],
-    [rseq(111, 112, rseq[0] | Natural()), 2, 3, 2],
-    [rseq(4, 3, 2, 1, rseq[0] | (Integer() - 5)), 4, -1, 4],
-    [rseq(1, 3, 10, derivative(rseq[0])), 3, 4, 3],
+    [rec(rec[0]), 0, 0, 0],
+    [rec(rec[0] | (Integer() - 1)), 0, -1, 0],
+    [rec(111, 112, rec[0] | Natural()), 2, 3, 2],
+    [rec(4, 3, 2, 1, rec[0] | (Integer() - 5)), 4, -1, 4],
+    [rec(1, 3, 10, derivative(rec[0])), 3, 4, 3],
 ])
-def test_rseq_fail(sequence, index, rs_index, rs_len):
+def test_rec_fail(sequence, index, rs_index, rs_len):
     with pytest.raises(RecursiveSequenceError) as exc_info:
         print(sequence(index))
     assert str(exc_info.value) == "request for item {} in recursive sequence with {} items".format(rs_index, rs_len)

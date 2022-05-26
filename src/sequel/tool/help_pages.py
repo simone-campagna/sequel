@@ -534,7 +534,7 @@ The polygonal numbers are also available:
 Additionally, a generic RECURSIVE-SEQUENCE can be defined; the following sequence is the recursive definition of the factorial function:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(1, I1 * i)'),
+                        kind='expression', source='rec(1, I1 * i)'),
         ],
     )
 
@@ -681,10 +681,10 @@ moessner(I) from S:
         parent="expressions",
         elements=[
             """\
-Generic recursive sequences can be defined using the "rseq" function: it takes a list of known values and a generating sequence. The generating sequence is a special sequence that, given the last generated items, produces the next one. The form of a recursive sequence definition is
+Generic recursive sequences can be defined using the "rec" function: it takes a list of known values and a generating sequence. The generating sequence is a special sequence that, given the last generated items, produces the next one. The form of a recursive sequence definition is
 """,
             Quotation("""\
-  rseq(K0, K1, ..., KN, GS)
+  rec(K0, K1, ..., KN, GS)
 
 where:
 
@@ -692,26 +692,26 @@ where:
   GS is a generatong sequence
 """),
             """\
-The generating sequence is used to produce the items for i >= N; for instance, in 'rseq(4, 8, p)', the generating sequence is 'p', and it is used to produce the items with index 2, 3, ...:
+The generating sequence is used to produce the items for i >= N; for instance, in 'rec(4, 8, p)', the generating sequence is 'p', and it is used to produce the items with index 2, 3, ...:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(4, 8, 0)'),
+                        kind='expression', source='rec(4, 8, 0)'),
             """
 The generating sequence can be a generic sequence; nevertheless it may contain references to the recursive sequence itself:
 """,
             Quotation("""\
-  I0      is the recursive sequence itself
-  I1      is equivalent to I0 | i - 1
-  I2      is equivalent to I0 | i - 2 (or I1 | i - 1)
+  I0     is the recursive sequence itself
+  I1     is equivalent to I0 | i - 1
+  I2     is equivalent to I0 | i - 2 (or I1 | i - 1)
   ...
-  I9      is equivalent to I0 | i - 9
-  rseq[n] is equivalent to I0 | i - n
+  I9     is equivalent to I0 | i - 9
+  rec[n] is equivalent to I0 | i - n
 """),
             """\
-For instance, 'rseq(1, I1 * i)' defines a new sequence starting with 1 and producing new items as the product of the last item ('I1') with the value of the sequence 'i' ([0, 1, 2, 3, ...]). The values are:
+For instance, 'rec(1, I1 * i)' defines a new sequence starting with 1 and producing new items as the product of the last item ('I1') with the value of the sequence 'i' ([0, 1, 2, 3, ...]). The values are:
 """,
             Quotation("""\
-  rseq(1, I1 * i):
+  rec(1, I1 * i):
     [0] ->                                   1  (the initial value)
     [1] -> I1 * i(1) == [0] * 1 == 1 * 1 ==  1
     [2] -> I1 * i(2) == [1] * 2 == 1 * 2 ==  2
@@ -722,13 +722,13 @@ For instance, 'rseq(1, I1 * i)' defines a new sequence starting with 1 and produ
 This is the same as the factorial sequence.
 """),
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(1, I1 * i)'),
+                        kind='expression', source='rec(1, I1 * i)'),
             """\
-As a second example, consider 'rseq(0, 1, I1 + I2)'; in this case the known items are two (0 and 1) and the next items are generated as the sum of the last two values (I1 and I2):
+As a second example, consider 'rec(0, 1, I1 + I2)'; in this case the known items are two (0 and 1) and the next items are generated as the sum of the last two values (I1 and I2):
 """,
 
             Quotation("""\
-  rseq(0, 1, I1 + I2):
+  rec(0, 1, I1 + I2):
     [0] ->                                   0  (the first known item)
     [1] ->                                   1  (the second known item)
     [2] -> I1 + I2 == [1] + [0] == 0 + 0 ==  1
@@ -741,25 +741,25 @@ As a second example, consider 'rseq(0, 1, I1 + I2)'; in this case the known item
 This is the same as the fib01 sequence.
 """),
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(0, 1, I1 + I2)'),
+                        kind='expression', source='rec(0, 1, I1 + I2)'),
             """\
 A recursive sequence definition must contain at least N known elements, where N is the max used index in the generating expression; so, if the generating expression is 'I1 + 3 * I3',
 the recursive sequence definition must contain at least 3 values. Anyway, it is accepted to define more than N+1 known values, for instance:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(3, 2, 1, 0, I1 + 1)'),
+                        kind='expression', source='rec(3, 2, 1, 0, I1 + 1)'),
             """\
 Another constraint on the generating sequence is obviously that it cannot be used to generate items with index N >= the index of the last generated item.
 For instance, 'I0', wich is a reference to the recursive sequence itself, is not a valid generating sequence:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(0, I0)', expected_exception=RecursiveSequenceError),
+                        kind='expression', source='rec(0, I0)', expected_exception=RecursiveSequenceError),
             """\
 In the definition above the item 1 of the recursive sequence is defined as the item 1 of the recursive sequence itself; this is an error.
-Anyway, I0 can be used in a generating sequence definition; for instance 'rseq(1, summation(I0) | i - 1)' is defined as follow:
+Anyway, I0 can be used in a generating sequence definition; for instance 'rec(1, summation(I0) | i - 1)' is defined as follow:
 """,
             Quotation("""\
-  rseq(1, summation(I0) | i - 1):
+  rec(1, summation(I0) | i - 1):
     [0] ->                                         1  (the first known item)
     [1] -> summation(I0)[0] == sum(1)              1
     [2] -> summation(I0)[1] == sum(1, 1) ==        2
@@ -768,14 +768,14 @@ Anyway, I0 can be used in a generating sequence definition; for instance 'rseq(1
     ...
 """),
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(0, 1, summation(I0) | i - 1)'),
+                        kind='expression', source='rec(0, 1, summation(I0) | i - 1)'),
             """\
 The following sequence computes the items of the Collatz sequence starting with n=19:
 """,
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(19, ifelse(I1 % 2 == 0, I1 // 2, 3 * I1 + 1))', num_items=24),
+                        kind='expression', source='rec(19, ifelse(I1 % 2 == 0, I1 // 2, 3 * I1 + 1))', num_items=24),
             """\
-Be aware that I0, I1, ... are "limited" sequences: they cannot be used outside a rseq(...) definition. Moreover, as stated above, I<N> cannot be used to generate items with index n >= N.
+Be aware that I0, I1, ... are "limited" sequences: they cannot be used outside a rec(...) definition. Moreover, as stated above, I<N> cannot be used to generate items with index n >= N.
 """
         ],
     )
@@ -822,37 +822,37 @@ Sequence traits are:
 The PLAY command generates an hidden random sequence and asks you to guess that sequence:
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=[]),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], commands=[]),
             """\
 The 'q' instance can be used to play the game; run the 'q' command to have an help:
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q']),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], commands=['q']),
             """\
 In order to win the game you have to guess a sequence matching the shown items. 
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(p)', 'x = rseq(2, 3, I1 * I2 - 1)', 'print_sequence(x)', 'q.guess(x)']),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(p)', 'x = rec(2, 3, I1 * I2 - 1)', 'print_sequence(x)', 'q.guess(x)']),
             """\
 You can also try to guess the next item of the sequence:
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(100)']),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(100)']),
             """\
 If the guess is correct, the item is added to the list:
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(965)']),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], commands=['q.show()', 'q.guess(965)']),
             """\
 If you guess 3 items you win the game:
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], num_items=3, commands=['q.show()', 'q.guess(14)', 'q.guess(69)', 'q.guess(965)']),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], num_items=3, commands=['q.show()', 'q.guess(14)', 'q.guess(69)', 'q.guess(965)']),
             """\
 You can ask for new items:
 """,
             PlayExample(printer=printer,
-                        sequences=['rseq(2, 3, I1 * I2 - 1)'], num_items=3, commands=['q.new_item()', 'q.new_item()']),
+                        sequences=['rec(2, 3, I1 * I2 - 1)'], num_items=3, commands=['q.new_item()', 'q.new_item()']),
             """\
 If the current game is too difficult for you, the 'new_game' command will start a new one:
 """,
@@ -879,12 +879,12 @@ The SHOW command shows information about sequence EXPRESSIONS, for instance:
             ShowExample(printer=printer,
                         kind='expression', source='p * zero_one'),
             ShowExample(printer=printer,
-                        kind='expression', source='rseq(0, 1, 1 - I1 ** 2 + I2 ** 2)'),
+                        kind='expression', source='rec(0, 1, 1 - I1 ** 2 + I2 ** 2)'),
             """\
 The SHOW command can also generate random sequences:
 """,
             ShowExample(printer=printer,
-                        kind='random', source='rseq(0, 0, I1 ** 2 - 2 * I2 + 1)'),
+                        kind='random', source='rec(0, 0, I1 ** 2 - 2 * I2 + 1)'),
             ShowExample(printer=printer,
                         kind='random', source='product(lucas)'),
         ],
@@ -949,7 +949,7 @@ For instance:
             SearchExample(printer=printer,
                                  kind='expression', source='p * zero_one', sequences=None),
             SearchExample(printer=printer,
-                                 kind='random', source='rseq(1, 2, 2 * I2**2 - I1)', sequences=None),
+                                 kind='random', source='rec(1, 2, 2 * I2**2 - I1)', sequences=None),
     ])
 
     ### DECLARATION
@@ -993,13 +993,13 @@ Sequence declarations can be collected in files; for instance, suppose the file 
                           sequences=['c + p2'],
                           declarations=[DummyCatalogDeclaration('catalog.txt', ['p2:=p ** 2', 'c:=catalan - m_exp'])]),
             """\
-In the following example, 'somos.txt' contains a const declaration 'N::5' and a sequence declaration 'somos_5:=rseq(*[1 for i in range(N)], sum(rseq[i]*rseq[N-i] for i in range(1, 1+N//2))/rseq[N])':
+In the following example, 'somos.txt' contains a const declaration 'N::5' and a sequence declaration 'somos_5:=rec(*[1 for i in range(N)], sum(rec[i]*rec[N-i] for i in range(1, 1+N//2))/rec[N])':
 """,
             ShowExample(printer=printer,
                           kind="items", source='somos_5',
                           #sequences=['somos_5'],
                           declarations=[DummyCatalogDeclaration('somos.txt', [
-                              'N::5', 'somos_5:=rseq(*[1 for i in range(N)], sum(rseq[i]*rseq[N-i] for i in range(1, 1+N//2))/rseq[N])'
+                              'N::5', 'somos_5:=rec(*[1 for i in range(N)], sum(rec[i]*rec[N-i] for i in range(1, 1+N//2))/rec[N])'
                           ])]),
             """\
 Be aware that adding too many sequence declaration can slow down some catalog-based search algorithms.
@@ -1072,7 +1072,7 @@ The next algorithm tries to see if the sequence is a RECURSIVE-SEQUENCE:
 """,
             SearchExample(printer=printer,
                           kind="items", source=[0, 1, 0, 2, -3, -4, -6, -19, -324, -104614],
-                          sequences=[compile_sequence('rseq(0, 1, 1 - I1 ** 2 + I2 ** 2)')]),
+                          sequences=[compile_sequence('rec(0, 1, 1 - I1 ** 2 + I2 ** 2)')]),
             """\
 The next algorithm tries to see if the sequence is a linear combination of known sequences:
 """,

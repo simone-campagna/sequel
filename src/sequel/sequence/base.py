@@ -35,7 +35,7 @@ __all__ = [
     'SequenceUnboundError',
     'RecursiveSequence',
     'BackIndexer',
-    'rseq',
+    'rec',
     'compile_sequence',
     'StashMixin',
     'EnumeratedSequence',
@@ -456,7 +456,7 @@ only as a hint of the expected sequence len.
             "UpperBound": UpperBound,
             "Set": Set,
             "Value": Value,
-            "rseq": rseq,
+            "rec": rec,
             "floor": idem,  # sympy: a / b -> floor(a/b)
         }
         for sequence_type in Sequence.sequence_types():
@@ -1203,7 +1203,7 @@ class BackIndexer(Sequence):
         if self._offset < _NUM_INDEXERS:
             return "I{}".format(self._offset)
         else:
-            return "rseq[{}]".format(self._offset)
+            return "rec[{}]".format(self._offset)
 
 
 class RecursiveSequence(Sequence):
@@ -1286,7 +1286,7 @@ class RecursiveSequence(Sequence):
     def __repr__(self):
         lst = [str(x) for x in self._known_items]
         lst.append(str(self._generating_sequence))
-        return "rseq({})".format(', '.join(lst))
+        return "rec({})".format(', '.join(lst))
 
 
 class RecursiveSequenceMaker(object):
@@ -1306,7 +1306,7 @@ class RecursiveSequenceMaker(object):
         return BackIndexer(index)
 
 
-rseq = RecursiveSequenceMaker()
+rec = RecursiveSequenceMaker()
 
 
 class chain(Iterator):

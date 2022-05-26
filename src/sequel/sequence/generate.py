@@ -7,7 +7,7 @@ import functools
 import json
 import random
 
-from .base import compile_sequence, rseq, Const
+from .base import compile_sequence, rec, Const
 from .fibonacci import make_fibonacci, make_tribonacci
 from .inspect_sequence import register_info, Flag
 from .roundrobin import roundrobin
@@ -118,7 +118,7 @@ CONFIG = """\
         },
         {
             "level": 0,
-            "algorithm": "rseq",
+            "algorithm": "rec",
             "weight": 1.0,
             "kwargs": {
                 "denom": [1],
@@ -129,7 +129,7 @@ CONFIG = """\
         },
         {
             "level": 0,
-            "algorithm": "rseq",
+            "algorithm": "rec",
             "weight": 0.0,
             "kwargs": {
                 "denom": [1],
@@ -463,7 +463,7 @@ def generate_arithmetic(start_values, step_values):
     return sequence
 
 
-def generate_rseq(sequences, coeffs, denom, known_items):
+def generate_rec(sequences, coeffs, denom, known_items):
     clist = []
     slist = []
     for coeff, sequence in zip(coeffs, sequences):
@@ -472,7 +472,7 @@ def generate_rseq(sequences, coeffs, denom, known_items):
     denom = pick(denom)
     gseq = make_linear_combination(clist, slist, denom)
     args = [pick(x) for x in known_items] + [gseq]
-    sequence = rseq(*args)
+    sequence = rec(*args)
     register_info(sequence, flags={Flag.RECURSIVE_SEQUENCE})
     return sequence
         
@@ -501,7 +501,7 @@ ALGORITHMS = {
     "roundrobin": generate_roundrobin,
     "arithmetic": generate_arithmetic,
     "geometric": generate_geometric,
-    "rseq": generate_rseq,
+    "rec": generate_rec,
     "fibonacci": generate_fibonacci,
     "tribonacci": generate_tribonacci,
 }

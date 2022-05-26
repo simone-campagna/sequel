@@ -8,7 +8,7 @@ import sys as _sys
 from .base import (
     SequenceError, SequenceUnknownValueError, SequenceUnboundError, RecursiveSequenceError,
     Sequence, SequenceProxy, SequenceSlicer, Function, Iterator,
-    RecursiveSequence, BackIndexer, rseq,
+    RecursiveSequence, BackIndexer, rec,
     Integer, Natural,
     Const,
     Compose,
