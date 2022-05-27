@@ -110,14 +110,11 @@ def function_show(sequence, level=None, algorithms=None, simplify=False, tree=Fa
 
     
 def function_doc(expressions, sequence_traits, simplify=False, traits=False, classify=False):
-    all_sequences = True
     sequences = []
     if expressions:
-        all_sequences = False
         sequences.extend(expressions)
         sort = False
     elif sequence_traits:
-        all_sequences = False
         sequences.extend(Sequence.get_sequences_with_traits(sequence_traits))
         sort = True
     else:

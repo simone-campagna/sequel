@@ -38,8 +38,8 @@ class Repunit(Sequence):
             s += base ** i
 
     @classmethod
-    def register(cls):
-        cls.register_factory('repunit', cls,
+    def declare(cls):
+        cls.declare_factory('repunit', cls,
             oeis='A000042',
             description='f(n) := the repunit sequence (unary representation of natural numbers)',
         )
@@ -59,8 +59,8 @@ class Demlo(Sequence):
             s += base ** i
 
     @classmethod
-    def register(cls):
-        cls.register_factory('demlo', cls,
+    def declare(cls):
+        cls.declare_factory('demlo', cls,
             oeis='A002477',
             description='f(n) := the Demlo numbers, defined as repunit ** 2',
         )

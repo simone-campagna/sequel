@@ -85,8 +85,8 @@ class GoldbachPartitionsCount(StashMixin, Function):
         ]
 
     @classmethod
-    def register(cls):
-        cls.register_factory('g_part_count', cls,
+    def declare(cls):
+        cls.declare_factory('g_part_count', cls,
             # oeis='A025018',
             description='g_part_count(n) := number of Goldbach partitions for 2 * n',
         )
@@ -105,8 +105,8 @@ class GoldbachPartitionsIncreasingValues(EnumeratedSequence):
         ]
 
     @classmethod
-    def register(cls):
-        cls.register_factory('g_part_incr', cls,
+    def declare(cls):
+        cls.declare_factory('g_part_incr', cls,
             oeis='A025018',
             description='g_part_incr(n) := numbers k such that least prime in the Goldbach partition of k increases',
         )
@@ -125,8 +125,8 @@ class GoldbachPartitionsSmallestPrimes(EnumeratedSequence):
         ]
 
     @classmethod
-    def register(cls):
-        cls.register_factory('g_part_pmin', cls,
+    def declare(cls):
+        cls.declare_factory('g_part_pmin', cls,
             oeis='A025019',
             description='g_part_pmin(n) := smallest prime in Goldbach partition of g_part_incr(n)',
         )

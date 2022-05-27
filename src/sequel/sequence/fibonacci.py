@@ -28,8 +28,8 @@ class Fib01(Function):
         return gmpy2.fib(i)
 
     @classmethod
-    def register(cls):
-        cls.register_factory('fib01', cls,
+    def declare(cls):
+        cls.declare_factory('fib01', cls,
             oeis='A000045',
             description='f(n) := f(n - 2) + f(n - 1), f(0) := 0, f(1) := 1 (Fibonacci sequence [0, 1, 1, 2, 3, 5, 8, ...])',
         )
@@ -42,8 +42,8 @@ class Fib11(Function):
         return gmpy2.fib(i + 1)
 
     @classmethod
-    def register(cls):
-        cls.register_factory('fib11', cls,
+    def declare(cls):
+        cls.declare_factory('fib11', cls,
             description='f(n) := f(n - 2) + f(n - 1), f(0) := 1, f(1) := 1 (Fibonacci sequence [1, 1, 2, 3, 5, 8, ...])',
         )
 
@@ -55,8 +55,8 @@ class Lucas(Function):
         return gmpy2.lucas(i)
 
     @classmethod
-    def register(cls):
-        cls.register_factory('lucas', cls,
+    def declare(cls):
+        cls.declare_factory('lucas', cls,
             oeis='A000032',
             description='lucas(n) := lucas(n - 1) + lucas(n - 2), lucas(0) := 2, lucas(1) := 1', 
         )
@@ -97,8 +97,8 @@ class Fib(Iterator):
             return False
 
     @classmethod
-    def register(cls):
-        cls.register_factory('pell', lambda: cls(0, 1, 2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+    def declare(cls):
+        cls.declare_factory('pell', lambda: cls(0, 1, 2).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
             oeis='A000129',
         )
 
@@ -138,8 +138,8 @@ class Trib(Iterator):
         return 'f(n) := f(n - 1) + f(n - 2) + f(n - 3), f(0) := {obj.first}, f(1) := {obj.second}, f(2) := {obj.third}'.format(obj=self)
 
     @classmethod
-    def register(cls):
-        cls.register_factory('tribonacci', lambda: cls(0, 1, 1).set_traits(Trait.POSITIVE, Trait.INCREASING),
+    def declare(cls):
+        cls.declare_factory('tribonacci', lambda: cls(0, 1, 1).set_traits(Trait.POSITIVE, Trait.INCREASING),
             oeis='A000073',
         )
 

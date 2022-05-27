@@ -67,6 +67,7 @@ def load_ref(obj_reference, paths=None, base_path=None):
     else:
         pth, obj_reference = tokens
         paths.append(pth)
+    paths.append(os.getcwd())
     abs_paths = []
     for pth in paths:
         if not os.path.isabs(pth):
@@ -82,6 +83,9 @@ def load_ref(obj_reference, paths=None, base_path=None):
     if abs_paths:
         sys.path = abs_paths[:]
         sys.path.extend(old_sys_path)
+    for suffix in ['.py']:
+        if module_name.endswith(suffix):
+            module_name = module_name[:-len(suffix)]
     try:
         module = __import__(module_name, fromlist=fromlist)
     finally:

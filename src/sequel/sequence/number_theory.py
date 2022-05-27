@@ -35,8 +35,8 @@ class Catalan(Function):
         return gmpy2_module.mpz(gmpy2_module.round_away(gmpy2_module.bincoef(2 * i, i) / (i + 1)))
 
     @classmethod
-    def register(cls):
-        cls.register_factory('catalan', cls,
+    def declare(cls):
+        cls.declare_factory('catalan', cls,
             oeis='A000108',
             description='f(n): n-th Catalan number',
         )
@@ -137,8 +137,8 @@ class Prime(StashMixin, Iterator):
             yield int(p)
 
     @classmethod
-    def register(cls):
-        cls.register_factory('p', cls,
+    def declare(cls):
+        cls.declare_factory('p', cls,
             oeis='A000040',
             description='f(n) := the n-th prime number',
         )
@@ -162,8 +162,8 @@ class MersenneExponent(EnumeratedSequence):
         return [gmpy2.mpz(n) for n in _MERSENNE_EXPONENTS]
 
     @classmethod
-    def register(cls):
-        cls.register_factory('m_exp', cls,
+    def declare(cls):
+        cls.declare_factory('m_exp', cls,
             oeis='A000043',
             description='f(n) := the n-th Mersenne exponent',
         )
@@ -178,8 +178,8 @@ class MersennePrime(EnumeratedSequence):
         return [(gmpy2.mpz(2) ** n - 1) for n in _MERSENNE_EXPONENTS]
 
     @classmethod
-    def register(cls):
-        cls.register_factory('m_primes', cls,
+    def declare(cls):
+        cls.declare_factory('m_primes', cls,
             oeis='A000668',
             description='f(n) := the n-th Mersenne prime',
         )
@@ -197,8 +197,8 @@ class Pi(Iterator):
             prev = p
 
     @classmethod
-    def register(cls):
-        cls.register_factory('pi', cls,
+    def declare(cls):
+        cls.declare_factory('pi', cls,
             oeis='A000720',
             description='f(n) := count prime numbers <= n',
         )
@@ -287,8 +287,8 @@ class Phi(StashedFunction):
         return self.PRIORITY_CALL
 
     @classmethod
-    def register(cls):
-        cls.register_factory('phi', cls,
+    def declare(cls):
+        cls.declare_factory('phi', cls,
             oeis='A000010',
             description="""f(n) := count numbers <= n and prime to n (Euler's totient function)""",
         )
@@ -348,8 +348,8 @@ class Tau(StashedFunction):
         return len(tuple(divisors(i + 1)))
 
     @classmethod
-    def register(cls):
-        cls.register_factory('tau', cls,
+    def declare(cls):
+        cls.declare_factory('tau', cls,
             oeis='A000005',
             description='f(n) := count divisors of n',
         )
@@ -438,8 +438,8 @@ class Sigma(StashedFunction):
 
 
     @classmethod
-    def register(cls):
-        cls.register_factory('sigma', cls,
+    def declare(cls):
+        cls.declare_factory('sigma', cls,
             oeis='A000203',
             description='f(n) := sum divisors of n',
         )
@@ -475,8 +475,8 @@ class Euler(EnumeratedSequence):
 
 
     @classmethod
-    def register(cls):
-        cls.register_factory('euler', cls,
+    def declare(cls):
+        cls.declare_factory('euler', cls,
             oeis='A122045',
             description='E(n) - Euler (or secant) numbers',
         )
@@ -537,8 +537,8 @@ class Bell(EnumeratedSequence):
 
 
     @classmethod
-    def register(cls):
-        cls.register_factory('bell', cls,
+    def declare(cls):
+        cls.declare_factory('bell', cls,
             oeis='A000110',
             description='Bell numbers',
         )
@@ -581,8 +581,8 @@ class Genocchi(EnumeratedSequence):
 
 
     @classmethod
-    def register(cls):
-        cls.register_factory('genocchi', cls,
+    def declare(cls):
+        cls.declare_factory('genocchi', cls,
             oeis='A001469',
             description='Genocchi numbers',
         )
@@ -656,8 +656,8 @@ class Mobius(StashedFunction):
         return self.PRIORITY_CALL
 
     @classmethod
-    def register(cls):
-        cls.register_factory('mobius', cls,
+    def declare(cls):
+        cls.declare_factory('mobius', cls,
             oeis='A008683',
 	    description='f(n) := Mobius numbers',
         )
@@ -702,8 +702,8 @@ class LookAndSay(StashMixin, Iterator):
             
 
     @classmethod
-    def register(cls):
-        cls.register_factory('look_and_say', cls,
+    def declare(cls):
+        cls.declare_factory('look_and_say', cls,
             oeis='A005150',
             description="""f(n) := the Conway's look-and-say sequence""",
         )
@@ -800,8 +800,8 @@ class VanEck(StashMixin, Iterator):
             yield last_value
 
     @classmethod
-    def register(cls):
-        cls.register_factory('vaneck', cls,
+    def declare(cls):
+        cls.declare_factory('vaneck', cls,
             oeis='A181391',
             description='f(n) := the Van Eck sequence',
         )

@@ -87,7 +87,7 @@ class SMeta(abc.ABCMeta):
         init_method = getattr(cls, '__init__')
         sig = inspect.signature(init_method)
         cls.__signature__ = sig
-        cls.register()
+        cls.declare()
         return cls
 
 
@@ -107,22 +107,22 @@ class LazyRegistry(collections.abc.Mapping):
         self._data = collections.OrderedDict()
         self._metadata = collections.defaultdict(dict)
 
-    def register_metadata(self, name, **kwargs):
+    def declare_metadata(self, name, **kwargs):
         for key, value in kwargs.items():
             self._metadata[key][name] = value
 
     def get_metadata(self, name, key):
         return self._metadata[key].get(name, None)
 
-    def register_instance(self, name, instance, **metadata):
+    def declare_instance(self, name, instance, **metadata):
         instance = self.LazyValue(instance=instance, factory=None)
         self._data[name] = instance
-        self.register_metadata(name, **metadata)
+        self.declare_metadata(name, **metadata)
 
-    def register_factory(self, name, factory, **metadata):
+    def declare_factory(self, name, factory, **metadata):
         instance = self.LazyValue(instance=None, factory=factory)
         self._data[name] = instance
-        self.register_metadata(name, **metadata)
+        self.declare_metadata(name, **metadata)
 
     def unregister(self, name):
         if name in self._data:
@@ -243,25 +243,28 @@ only as a hint of the expected sequence len.
                 raise ValueError("unknown metadata key: {}".format(key))
 
     @classmethod
-    def register_factory(cls, name, factory, **metadata):
+    def declare_factory(cls, name, factory, **metadata):
         cls._check_metadata(metadata)
-        cls.__registry__.register_factory(name, factory, **metadata)
+        cls.__registry__.declare_factory(name, factory, **metadata)
 
     @classmethod
-    def register_instance(cls, name, sequence, **metadata):
+    def declare_instance(cls, name, sequence, **metadata):
         cls._check_metadata(metadata)
-        cls.__registry__.register_instance(name, sequence, **metadata)
+        cls.__registry__.declare_instance(name, sequence, **metadata)
 
     @classmethod
     def unregister(cls, name):
         cls.__registry__.unregister(name)
+
+    def register(self, name=None, **metadata):
+        self.declare_instance(name, self, **metadata)
 
     def forget(self):
         self.__class__.__instances__.pop(self._instance_parameters)
         self.__class__.unregister(self._instance_name)
 
     @classmethod
-    def register(cls):
+    def declare(cls):
         pass
 
     def _set_name(self, name):
@@ -1080,8 +1083,8 @@ class Integer(Function):
         return i
 
     @classmethod
-    def register(cls):
-        cls.register_factory('i', cls,
+    def declare(cls):
+        cls.declare_factory('i', cls,
             oeis='A001477',
             description='f(i) := i',
         )
@@ -1094,8 +1097,8 @@ class Natural(Function):
         return i + 1
 
     @classmethod
-    def register(cls):
-        cls.register_factory('n', cls,
+    def declare(cls):
+        cls.declare_factory('n', cls,
             oeis='A000027',
             description='f(i) := i + 1',
         )
@@ -1193,11 +1196,11 @@ class BackIndexer(Sequence):
         return self(i)
 
     @classmethod
-    def register(cls):
+    def declare(cls):
         def make_factory(index):
             return lambda: cls(index)
         for i in range(_NUM_INDEXERS):
-            cls.register_factory('I{}'.format(i), make_factory(i))
+            cls.declare_factory('I{}'.format(i), make_factory(i))
 
     def __repr__(self):
         if self._offset < _NUM_INDEXERS:
@@ -1258,6 +1261,10 @@ class RecursiveSequence(Sequence):
         if isinstance(i, slice):
             return SequenceSlicer(self, i.start, i.stop, i.step)
         return self(i)
+
+    def is_bound(self):
+        with BackIndexer.bind(self):
+            return super().is_bound()
 
     def __call__(self, i):
         with BackIndexer.bind(self):

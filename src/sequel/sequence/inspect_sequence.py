@@ -96,7 +96,7 @@ def _make_info(sequence):
     return Info(contains=frozenset(contains), flags=frozenset(flags))
 
 
-def register_info(sequence, contains=(), flags=()):
+def declare_info(sequence, contains=(), flags=()):
     if not isinstance(sequence, Sequence):
         raise TypeError(sequence)
     info = inspect_sequence(sequence)

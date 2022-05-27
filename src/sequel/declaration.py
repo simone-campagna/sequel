@@ -87,7 +87,7 @@ def _declare(declaration, sequences, variables):
             sequence = compile_sequence(declaration.source)
             if name is None:
                 name = str(sequence)
-            sequence.register_instance(name, sequence)
+            sequence.register(name)
             sequences.append(sequence)
         elif declaration.decl_type is DeclarationType.CONST:
             value = int(declaration.source)

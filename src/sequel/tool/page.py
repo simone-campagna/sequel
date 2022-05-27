@@ -76,8 +76,15 @@ class Title(Element):
         self._level = level
 
     def get_text(self):
-        text = "━━━┫ " + self._title + " ┣"
-        text += "━" * (70 - len(text))
+        level = self._level
+        if level == 0:
+            s, l, r = '━┫┣'
+        elif level == 1:
+            s, l, r = '═╣╠'
+        else:
+            s, l, r = '─┤├'
+        text = (s * 2) + l + self._title + r
+        text += s * (70 - len(text))
         return text
 
     def render(self, printer, interactive=True):

@@ -16,7 +16,7 @@ from ..declaration import (
     DeclarationType,
 )
 from .display import Printer, iter_item_types
-from .page import Navigator, Element, Paragraph, Quotation, Break
+from .page import Navigator, Element, Paragraph, Quotation, Break, Title
 from .quiz import QuizShell
 from .shell import SequelShell
 from ..sequence import compile_sequence, Sequence, RecursiveSequenceError, Trait, get_trait_description
@@ -79,10 +79,13 @@ class TraitsElement(OutputLines):
 
         
 class Example(OutputLines):
-    def __init__(self, *, declarations=None, **kwargs):
+    def __init__(self, *, declarations=None, plugins=None, **kwargs):
         if declarations is None:
             declarations = ()
         self._declarations = tuple(declarations)
+        if plugins is None:
+            plugins = ()
+        self._plugins = tuple(plugins)
         super().__init__(**kwargs)
 
     @contextlib.contextmanager
@@ -101,7 +104,7 @@ class Example(OutputLines):
         args = []
         for declaration in self._declarations:
             if isinstance(declaration, DummyCatalogDeclaration):
-                args.append("--catalog={!r}".format(declaration.filename))
+                args.append("--declarations-file={!r}".format(declaration.filename))
             elif declaration.decl_type is DeclarationType.SEQUENCE:
                 if declaration.name is None:
                     decl = declaration.source
@@ -164,8 +167,8 @@ class RaisingMixIn(object):
 
             
 class DocExample(SimplifyMixIn, Example):
-    def __init__(self, printer, kind, source, simplify=False, max_lines=None, declarations=None):
-        super().__init__(printer=printer, simplify=simplify, max_lines=max_lines, declarations=declarations)
+    def __init__(self, printer, kind, source, simplify=False, max_lines=None, declarations=None, plugins=None):
+        super().__init__(printer=printer, simplify=simplify, max_lines=max_lines, declarations=declarations, plugins=plugins)
         self.kind = kind
         self.source = source
         self.simplify = simplify
@@ -198,8 +201,8 @@ class DocExample(SimplifyMixIn, Example):
 
 
 class ShowExample(SimplifyMixIn, RaisingMixIn, Example):
-    def __init__(self, printer, kind, source, simplify=False, expected_exception=False, max_lines=None, num_items=None, declarations=None):
-        super().__init__(printer=printer, simplify=simplify, expected_exception=expected_exception, max_lines=max_lines, declarations=declarations)
+    def __init__(self, printer, kind, source, simplify=False, expected_exception=False, max_lines=None, num_items=None, declarations=None, plugins=None):
+        super().__init__(printer=printer, simplify=simplify, expected_exception=expected_exception, max_lines=max_lines, declarations=declarations, plugins=plugins)
         self.kind = kind
         self.source = source
         self.simplify = simplify
@@ -228,8 +231,8 @@ class ShowExample(SimplifyMixIn, RaisingMixIn, Example):
 
 
 class SearchExample(Example):
-    def __init__(self, *, printer, kind, source, sequences, max_lines=None, declarations=None):
-        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations)
+    def __init__(self, *, printer, kind, source, sequences, max_lines=None, declarations=None, plugins=None):
+        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations, plugins=plugins)
         self.kind = kind
         self.source = source
         self.target_sequence = None
@@ -285,8 +288,8 @@ class SearchExample(Example):
 
 
 class Shellxample(Example):
-    def __init__(self, printer, commands, max_lines=None, declarations=None):
-        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations)
+    def __init__(self, printer, commands, max_lines=None, declarations=None, plugins=None):
+        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations, plugins=plugins)
         self.commands = list(commands)
 
     def get_text(self):
@@ -302,8 +305,8 @@ class Shellxample(Example):
 
 
 class PlayExample(Example):
-    def __init__(self, printer, sequences, commands, num_items=5, max_lines=None, banner=None, max_games=1, declarations=None):
-        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations)
+    def __init__(self, printer, sequences, commands, num_items=5, max_lines=None, banner=None, max_games=1, declarations=None, plugins=None):
+        super().__init__(printer=printer, max_lines=max_lines, declarations=declarations, plugins=plugins)
         self.sequences = [Sequence.make_sequence(x) for x in sequences]
         self.commands = list(commands)
         self.num_items = num_items
@@ -959,13 +962,46 @@ For instance:
         parent="SEARCH",
         elements=[
             """\
-Many of the search algorithms are based on the catalog of known sequences.
-It is possible to declare new non-core sequences in order to increase the efficiency and velocity of the search algorithm.
-
+Sequel has a catalog of known sequences; this catalog can be extended to include custom sequences.
+Notice that declaring new sequences can enhance the search algorithm: indeed many search algorithm are based on the catalog of known sequences.
 For instance consider the items 5 10 27 54 135 211 421 790 1959 5703; the SEARCH algorithm can find the sequence
 that has been used to generate these values, but it is very slow.
+If you have reasons to guess that the p ** 2 sequence is probably part of the solution, the algorithm can be considerably faster.
+Anyway, be aware that adding too many sequence declaration can slow down some catalog-based search algorithms.
 
-If you have reasons to guess that the p ** 2 sequence is probably part of the solution, the algorithm can be considerably faster:
+The sequel catalog of known sequences can be extended with custom declarations in the following three ways:
+ * through the `--load plugin.py` global command line option
+ * through the `--declare ...` global command line option
+ * through the `--declarations-file ...` global command line option
+
+""",
+           Title('--load plugin.py', level=1),
+           """\
+A sequel plugin is a generic python source file; it can be used to declare new sequences. For instance,
+consider the file `myplugin.py` with the following content:
+""",
+           Quotation("""\
+from sequel.sequence import *
+
+seq = p ** 2
+seq.register('p_squared')
+
+for k in range(4, 8):
+    seq = rec(*[1 for _ in range(k)], sum(rec[i] * rec[k-i] for i in range(1, 1 + k//2)) / rec[k])
+    seq.register(f'somos_{k}')
+"""),
+           """\
+This loads five new sequences:
+  * p_squared
+  * somos_4
+  * somos_5
+  * somos_6
+  * somos_7
+
+""",
+           Title('--declare [name:=]<sequence>', level=1),
+           """\
+The --declare ... argument allows to add new sequences to the catalog; for instance:
 """,
             SearchExample(printer=printer,
                           kind="items", source=[5, 10, 27, 54, 135, 211, 421, 790, 1959, 5703],
@@ -979,12 +1015,13 @@ It is possible to give a name to the declared sequence, for instance:
                           sequences=['catalan + p2'],
                           declarations=[parse_declaration('p2:=p ** 2')]),
             """\
-It is possible to register more than one sequence:
+It is possible to declare more than one sequence:
 """,
             SearchExample(printer=printer,
                           kind="items", source=[3, 7, 22, 47, 122, 194, 402, 759, 1898, 5614],
                           sequences=['c + p2'],
                           declarations=[parse_declaration('p2:=p ** 2'), parse_declaration('c:=catalan - m_exp')]),
+           Title('--declarations-file decl.txt', level=1),
             """\
 Sequence declarations can be collected in files; for instance, suppose the file 'catalog.txt' contains the two declarations 'p2:=p ** 2' and 'c:=catalan - m_exp':
 """,
@@ -1001,9 +1038,6 @@ In the following example, 'somos.txt' contains a const declaration 'N::5' and a 
                           declarations=[DummyCatalogDeclaration('somos.txt', [
                               'N::5', 'somos_5:=rec(*[1 for i in range(N)], sum(rec[i]*rec[N-i] for i in range(1, 1+N//2))/rec[N])'
                           ])]),
-            """\
-Be aware that adding too many sequence declaration can slow down some catalog-based search algorithms.
-""",
         ]
     )
     ### ALGORITHMS

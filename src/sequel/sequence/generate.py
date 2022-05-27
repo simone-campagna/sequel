@@ -9,7 +9,7 @@ import random
 
 from .base import compile_sequence, rec, Const
 from .fibonacci import make_fibonacci, make_tribonacci
-from .inspect_sequence import register_info, Flag
+from .inspect_sequence import declare_info, Flag
 from .roundrobin import roundrobin
 from .miscellanea import (
     Geometric,
@@ -392,7 +392,7 @@ def generate_linear_combination(coeffs, sequences, num_items):
     clist = random.sample(coeffs, num_items)
     sequences = [compile_sequence(s) for s in slist]
     sequence = make_linear_combination(clist, sequences)
-    register_info(sequence, flags={Flag.LINEAR_COMBINATION})
+    declare_info(sequence, flags={Flag.LINEAR_COMBINATION})
     return sequence
 
 
@@ -401,7 +401,7 @@ def generate_affine_transform(values, coeffs, sequences):
     value = random.choice(values)
     coeff = random.choice(coeffs)
     sequence = (value + coeff * sequence).simplify()
-    register_info(sequence, flags={Flag.AFFINE_TRANSFORM})
+    declare_info(sequence, flags={Flag.AFFINE_TRANSFORM})
     return sequence
 
 
@@ -409,20 +409,20 @@ def generate_functional(functionals, sequences):
     seq = random.choice(sequences)
     functional = random.choice(functionals)
     sequence = compile_sequence("{}({})".format(functional, seq))
-    register_info(sequence, flags={Flag.FUNCTIONAL})
+    declare_info(sequence, flags={Flag.FUNCTIONAL})
     return sequence
     
     
 def generate_product(sequences):
     seq = random.choice(sequences)
     sequence = compile_sequence("product({})".format(seq))
-    register_info(sequence, flags={Flag.FUNCTIONAL})
+    declare_info(sequence, flags={Flag.FUNCTIONAL})
     return sequence
 
 def generate_polygonal(sides):
     sides = random.choice(sides)
     sequence = compile_sequence("Polygonal({})".format(sides))
-    register_info(sequence, flags={Flag.POLYGONAL})
+    declare_info(sequence, flags={Flag.POLYGONAL})
     return sequence
     
 
@@ -434,14 +434,14 @@ def generate_compose(sequence_groups):
             sequence = seq
         else:
             sequence = sequence | seq
-    register_info(sequence, flags={Flag.COMPOSE})
+    declare_info(sequence, flags={Flag.COMPOSE})
     return sequence
     
 
 def generate_roundrobin(sequences, num):
     sequences = [compile_sequence(seq) for seq in random.sample(sequences, num)]
     sequence = roundrobin(*sequences)
-    register_info(sequence, flags={Flag.ROUNDROBIN})
+    declare_info(sequence, flags={Flag.ROUNDROBIN})
     return sequence
     
 
@@ -451,7 +451,7 @@ def generate_geometric(a_values, b_values, c_values):
     c_value = random.choice(c_values)
     seq = Geometric(c_value)
     sequence = (a_value + b_value * seq).simplify()
-    register_info(sequence, flags={Flag.GEOMETRIC})
+    declare_info(sequence, flags={Flag.GEOMETRIC})
     return sequence
 
 
@@ -459,7 +459,7 @@ def generate_arithmetic(start_values, step_values):
     start_value = random.choice(start_values)
     step_value = random.choice(step_values)
     sequence = Arithmetic(start=start_value, step=step_value)
-    register_info(sequence, flags={Flag.ARITHMETIC})
+    declare_info(sequence, flags={Flag.ARITHMETIC})
     return sequence
 
 
@@ -473,19 +473,19 @@ def generate_rec(sequences, coeffs, denom, known_items):
     gseq = make_linear_combination(clist, slist, denom)
     args = [pick(x) for x in known_items] + [gseq]
     sequence = rec(*args)
-    register_info(sequence, flags={Flag.RECURSIVE_SEQUENCE})
+    declare_info(sequence, flags={Flag.RECURSIVE_SEQUENCE})
     return sequence
         
 
 def generate_fibonacci(first, second):
     sequence = make_fibonacci(pick(first), pick(second))
-    register_info(sequence, flags={Flag.FIBONACCI})
+    declare_info(sequence, flags={Flag.FIBONACCI})
     return sequence
 
 
 def generate_tribonacci(first, second, third):
     sequence = make_tribonacci(pick(first), pick(second), pick(third))
-    register_info(sequence, flags={Flag.TRIBONACCI})
+    declare_info(sequence, flags={Flag.TRIBONACCI})
     return sequence
 
 

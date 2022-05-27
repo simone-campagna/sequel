@@ -79,12 +79,12 @@ class somos(Iterator):
                 idx += 1
 
     @classmethod
-    def register(cls):
+    def declare(cls):
         def somos_builder(k):
             return lambda: cls(k)
 
         for k, sd in cls.__somos__.items():
-            cls.register_factory(f'somos({k})', somos_builder(k),
+            cls.declare_factory(f'somos({k})', somos_builder(k),
                 oeis=sd.oeis_id,
                 description=f'f(n) := the n-th Somos-{k} number',
             )
@@ -115,8 +115,8 @@ class somos_break(StashMixin, Iterator):
             k += 1
 
     @classmethod
-    def register(cls):
-        cls.register_factory(f'somos_break', cls,
+    def declare(cls):
+        cls.declare_factory(f'somos_break', cls,
             oeis='A030127',
             description=f'f(n) := the first index at which (8+n)-Somos sequence first becomes nonintegral',
         )

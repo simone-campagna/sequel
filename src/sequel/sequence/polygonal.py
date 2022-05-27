@@ -43,13 +43,13 @@ class Polygonal(Function):
             return False
 
     @classmethod
-    def register(cls):
-        cls.register_factory('triangular', lambda: cls(3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+    def declare(cls):
+        cls.declare_factory('triangular', lambda: cls(3).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
             oeis='A000217',
         )
-        cls.register_factory('pentagonal', lambda: cls(5).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+        cls.declare_factory('pentagonal', lambda: cls(5).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
             oeis='A000326',
         )
-        cls.register_factory('hexagonal', lambda: cls(6).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
+        cls.declare_factory('hexagonal', lambda: cls(6).set_traits(Trait.INJECTIVE, Trait.POSITIVE, Trait.INCREASING),
             oeis='A000384',
         )
