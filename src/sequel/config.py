@@ -3,6 +3,7 @@ Configuration
 """
 
 import collections
+import collections.abc
 import copy
 import functools
 import json
@@ -201,7 +202,7 @@ def merge_config(config, cfg):
     for key, value in cfg.items():
         if key not in config:
             raise KeyError(key)
-        if isinstance(key, collections.Mapping):
+        if isinstance(key, collections.abc.Mapping):
             merge_config(config[key], value)
         else:
             config[key] = value
