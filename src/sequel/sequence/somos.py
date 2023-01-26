@@ -6,7 +6,8 @@ from .trait import Trait
 
 
 __all__ = [
-    'Somos',
+    'somos',
+    'somos_break',
 ]
 
 
@@ -103,11 +104,11 @@ class somos_break(StashMixin, Iterator):
             yield item
             k += 1
         while True:
-            somos = iter(Somos(k))
+            somos_k = iter(somos(k))
             i = 0
             while True:
                 try:
-                    next(somos)
+                    next(somos_k)
                 except ValueError:
                     yield i
                     break
