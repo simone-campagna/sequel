@@ -32,10 +32,13 @@ class _Gmpy2(object):
         self.gcd = _lazy_method(self, 'gcd')
         self.lcm = _lazy_method(self, 'lcm')
         self.fac = _lazy_method(self, 'fac')
+        self.exp = _lazy_method(self, 'exp')
+        self.double_fac = _lazy_method(self, 'double_fac')
         self.fib = _lazy_method(self, 'fib')
         self.lucas = _lazy_method(self, 'lucas')
         self.next_prime = _lazy_method(self, 'next_prime')
         self.remove = _lazy_method(self, 'remove')
+        self.trunc = _lazy_method(self, 'trunc')
 
     def _init(self):
         # print(">>> import gmpy2")
@@ -55,11 +58,14 @@ class _Gmpy2(object):
         self.mpz = gmpy2_module.mpz
         self.gcd = gmpy2_module.gcd
         self.lcm = gmpy2_module.lcm
+        self.exp = gmpy2_module.exp
         self.fac = gmpy2_module.fac
+        self.double_fac = gmpy2_module.double_fac
         self.fib = gmpy2_module.fib
         self.lucas = gmpy2_module.lucas
         self.next_prime = gmpy2_module.next_prime
         self.remove = gmpy2_module.remove
+        self.trunc = gmpy2_module.trunc
 
     def _is_integer_lazy(self, value):
         self._init()

@@ -17,7 +17,13 @@ from .base import (
     Values,
 )
 
-from .factorial import Factorial
+from .combinatorics import (
+    Factorial,
+    DoubleFactorial,
+    DoubleFactorialEven,
+    DoubleFactorialOdd,
+    Derangements,
+)
 from .fibonacci import (
     Fib01, Fib11, Lucas, Fib, make_fibonacci,
     Trib, make_tribonacci,
