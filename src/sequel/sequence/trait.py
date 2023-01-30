@@ -73,20 +73,24 @@ def verify_alternating(items):
 
 
 def verify_increasing(items):
-    prev = None
-    for item in items:
-        if prev is not None:
-            if item < prev:
-                return False
+    if not items:
+        return True
+    prev = items[0]
+    for item in items[1:]:
+        if item < prev:
+            return False
+        prev = item
     return True
 
 
 def verify_decreasing(items):
-    prev = None
-    for item in items:
-        if prev is not None:
-            if item > prev:
-                return False
+    if not items:
+        return True
+    prev = items[0]
+    for item in items[1:]:
+        if item > prev:
+            return False
+        prev = item
     return True
 
 

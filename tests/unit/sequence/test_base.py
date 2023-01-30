@@ -298,6 +298,8 @@ _sequences = list(Sequence.get_registry().values())
 def test_verify_traits(sequence):
     items = sequence.get_values(20)
     for trait in sequence.traits:
+        print(items)
+        print(sequence, trait)
         assert verify_traits(items, trait)
 
 
