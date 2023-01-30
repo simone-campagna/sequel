@@ -19,7 +19,7 @@ __all__ = [
 
 
 class Factorial(Function):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING, Trait.FAST_GROWING]
 
     def __call__(self, i):
         return gmpy2.fac(i)
@@ -33,7 +33,7 @@ class Factorial(Function):
 
 
 class DoubleFactorial(Function):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING, Trait.FAST_GROWING]
 
     def __call__(self, i):
         return gmpy2.double_fac(i)
@@ -41,12 +41,12 @@ class DoubleFactorial(Function):
     @classmethod
     def declare(cls):
         cls.declare_factory('dfactorial', cls,
-            description='n!! : f(n) := n * f(n - 2), f(0) := 2 + n % 2',
+            description='n!! :: f(n) := n * f(n - 2), f(0) := 2 + n % 2',
         )
 
 
 class DoubleFactorialEven(Function):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING, Trait.FAST_GROWING]
 
     def __call__(self, i):
         return gmpy2.double_fac(2 * i)
@@ -60,7 +60,7 @@ class DoubleFactorialEven(Function):
 
 
 class DoubleFactorialOdd(Function):
-    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING]
+    __traits__ = [Trait.POSITIVE, Trait.NON_ZERO, Trait.INCREASING, Trait.FAST_GROWING]
 
     def __call__(self, i):
         return gmpy2.double_fac(2 * i + 1)
@@ -74,23 +74,32 @@ class DoubleFactorialOdd(Function):
 
 
 class Derangements(Function):
-    __traits__ = [Trait.POSITIVE, Trait.INCREASING]
+    __traits__ = [Trait.POSITIVE, Trait.FAST_GROWING]
+    #
+    #      ___ n             n!      
+    #      \                ____    
+    # !n = /__     (-1)^i *        = (-1)^n * n * !(n-1)
+    #      i = 0             i!    
+    #
 
     def __call__(self, i):
-        # res = 0
-        # fac = gmpy2.fac
-        # fi = fac(i)
-        # for k in range(i + 1):
-        #     res += (-1)**k * fi / fac(k)
-        # return res
-        if i < 1:
-            return 1
-        e = gmpy2.exp(1.0)
-        return gmpy2.mpz(gmpy2.trunc((gmpy2.fac(i) + 1) / e))
+        last = 1
+        for x in range(i + 1):
+            last = (-1)**x + x * last
+        return last
+
+    def __iter__(self):
+        i = 0
+        last = 1
+        while True:
+            yield last
+            i += 1
+            last = (-1)**i + i * last
+        yield from super().__iter__()
 
     @classmethod
     def declare(cls):
         cls.declare_factory('derangements', cls,
             oeis='A000166',
-            description='!n - f(n) := sum (-1)^i * i! / n!',
+            description='!n :: f(n) := sum (-1)^i * i! / n! == (-1)^n + n * f(n-1)',
         )
